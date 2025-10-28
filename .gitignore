@@ -13,3 +13,8 @@ wp-content/themes/Register Custom Post Type: Job Post/stripe/
 wp-content/themes/Register Custom Post Type: Job Post/stripe/
 wp-content/themes/jobs/checkout.php
 wp-content/themes/jobs/checkout.php
+wp-content/themes/jobs/checkout.php
+wp-content/themes/jobs/inc/stripe-job.php
+wp-content/themes/jobs/page-create-account-test.php
+wp-content/themes/jobs/page-create-account.php
+wp-content/themes/jobs/page-create-checkout.php
