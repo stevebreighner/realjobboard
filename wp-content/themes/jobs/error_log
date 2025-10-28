@@ -1,0 +1,22 @@
+[05-May-2025 16:34:56 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function get_template_directory() in /home/stepusmy/public_html/wp-content/themes/sb25/create-checkout-session.php:2
+Stack trace:
+#0 {main}
+  thrown in /home/stepusmy/public_html/wp-content/themes/sb25/create-checkout-session.php on line 2
+[05-May-2025 16:37:17 UTC] PHP Warning:  require_once(/home/stepusmy/public_html/wp-content/themes/sb25/init.php): failed to open stream: No such file or directory in /home/stepusmy/public_html/wp-content/themes/sb25/create-checkout-session.php on line 3
+[05-May-2025 16:37:17 UTC] PHP Fatal error:  require_once(): Failed opening required '/home/stepusmy/public_html/wp-content/themes/sb25/init.php' (include_path='.:/opt/alt/php74/usr/share/pear') in /home/stepusmy/public_html/wp-content/themes/sb25/create-checkout-session.php on line 3
+[01-Oct-2025 13:14:17 UTC] PHP Warning:  require_once(/home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/wp-load.php): failed to open stream: No such file or directory in /home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/switch-roles.php on line 3
+[01-Oct-2025 13:14:17 UTC] PHP Fatal error:  require_once(): Failed opening required '/home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/wp-load.php' (include_path='.:/opt/alt/php74/usr/share/pear') in /home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/switch-roles.php on line 3
+[01-Oct-2025 13:14:44 UTC] PHP Warning:  require_once(/home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/wp-load.php): failed to open stream: No such file or directory in /home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/switch-roles.php on line 3
+[01-Oct-2025 13:14:44 UTC] PHP Fatal error:  require_once(): Failed opening required '/home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/wp-load.php' (include_path='.:/opt/alt/php74/usr/share/pear') in /home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/switch-roles.php on line 3
+[01-Oct-2025 13:16:40 UTC] PHP Warning:  require_once(/home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/../../wp-load.php): failed to open stream: No such file or directory in /home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/switch-roles.php on line 2
+[01-Oct-2025 13:16:40 UTC] PHP Fatal error:  require_once(): Failed opening required '/home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/../../wp-load.php' (include_path='.:/opt/alt/php74/usr/share/pear') in /home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/switch-roles.php on line 2
+[01-Oct-2025 13:17:12 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function is_user_logged_in() in /home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/switch-roles.php:4
+Stack trace:
+#0 {main}
+  thrown in /home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/switch-roles.php on line 4
+[01-Oct-2025 13:17:38 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function is_user_logged_in() in /home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/switch-roles.php:4
+Stack trace:
+#0 {main}
+  thrown in /home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/switch-roles.php on line 4
+[01-Oct-2025 13:18:18 UTC] PHP Warning:  require_once(/home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/../../../../wp-load.php): failed to open stream: No such file or directory in /home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/switch-roles.php on line 3
+[01-Oct-2025 13:18:18 UTC] PHP Fatal error:  require_once(): Failed opening required '/home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/../../../../wp-load.php' (include_path='.:/opt/alt/php74/usr/share/pear') in /home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/switch-roles.php on line 3

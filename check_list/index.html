@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checklist App</title>
+  <style>
+    body {
+      font-family: "Inter", sans-serif;
+      background: #f3f4f6;
+      margin: 0;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      margin-bottom: 1rem;
+    }
+
+    #checklist {
+      list-style: none;
+      padding: 0;
+      width: 320px;
+    }
+
+    #checklist li {
+      background: white;
+      margin: 0.5rem 0;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .checked {
+      text-decoration: line-through;
+      color: #888;
+    }
+
+    input[type="text"] {
+      width: 300px;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin-top: 1rem;
+    }
+
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      margin-left: 0.5rem;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🗒️ My Checklist</h1>
+  <ul id="checklist"></ul>
+
+  <div>
+    <input id="newItem" type="text" placeholder="Add a new item...">
+    <button onclick="addItem()">Add</button>
+  </div>
+
+  <script>
+    let checklist = [];
+
+    // Load items from local JSON or localStorage
+    async function loadChecklist() {
+      try {
+        const response = await fetch('data.json');
+        checklist = await response.json();
+      } catch (err) {
+        // fallback if file missing
+        checklist = JSON.parse(localStorage.getItem('checklist')) || [];
+      }
+      renderList();
+    }
+
+    function renderList() {
+      const list = document.getElementById('checklist');
+      list.innerHTML = '';
+      checklist.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.className = item.done ? 'checked' : '';
+        li.innerHTML = `
+          <span onclick="toggleItem(${index})">${item.text}</span>
+          <div>
+            <button onclick="deleteItem(${index})">🗑</button>
+          </div>`;
+        list.appendChild(li);
+      });
+      localStorage.setItem('checklist', JSON.stringify(checklist));
+    }
+
+    function addItem() {
+      const input = document.getElementById('newItem');
+      const text = input.value.trim();
+      if (text) {
+        checklist.push({ text, done: false });
+        input.value = '';
+        renderList();
+      }
+    }
+
+    function toggleItem(index) {
+      checklist[index].done = !checklist[index].done;
+      renderList();
+    }
+
+    function deleteItem(index) {
+      checklist.splice(index, 1);
+      renderList();
+    }
+
+    loadChecklist();
+  </script>
+
+</body>
+</html>

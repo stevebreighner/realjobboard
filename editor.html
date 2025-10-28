@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>File Editor</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
+
+  <style>
+    body { font-family: sans-serif; display: flex; height: 100vh; margin: 0; }
+    #login-area { margin: auto; text-align: center; }
+    #editor-area { display: none; flex: 1; }
+    #sidebar { width: 200px; border-right: 1px solid #ccc; overflow-y: auto; padding: 10px; }
+    #main { flex: 1; padding: 10px; }
+    textarea { width: 100%; height: 90%; }
+    ul { list-style: none; padding: 0; }
+    li { cursor: pointer; padding: 4px 8px; }
+  </style>
+</head>
+<body>
+  <div id="login-area">
+    <h2>Login</h2>
+    <input type="text" id="user" placeholder="Username" /><br>
+    <input type="password" id="pass" placeholder="Password" /><br>
+    <button onclick="loginWithPassword()">Login</button>
+
+    <hr />
+    <h4>OR use Face ID</h4>
+    <video id="video" width="320" height="240" autoplay muted style="display:none;"></video>
+    <canvas id="overlay" style="position:absolute;"></canvas>
+    <button style="margin-top:70px;" onclick="startFaceAuth()">Login with Face ID</button>
+  </div>
+
+  <div id="editor-area">
+    <div id="sidebar">
+      <h3>Files</h3>
+      <ul id="file-list"></ul>
+    </div>
+    <div id="main">
+      <h3 id="file-name">No file selected</h3>
+      <textarea id="editor"></textarea><br>
+      <button onclick="saveFile()">Save</button>
+    </div>
+  </div>
+
+  <script>
+    let currentFile = '';
+
+    function loginWithPassword() {
+      const user = document.getElementById('user').value;
+      const pass = document.getElementById('pass').value;
+
+      fetch('login.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user, pass })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'ok') unlockEditor();
+          else if (data.error) {
+            alert(data.error);
+            if (data.error.includes('Too many')) {
+              document.getElementById('login-area').innerHTML = `<h3>🔒 Locked</h3><p>${data.error}</p>`;
+            }
+          }
+        });
+    }
+
+    function unlockEditor() {
+      document.getElementById('login-area').style.display = 'none';
+      document.getElementById('editor-area').style.display = 'flex';
+      loadFileList();
+    }
+
+    function loadFileList(path = '') {
+      fetch(`api.php?action=list&path=${encodeURIComponent(path)}`)
+        .then(res => res.json())
+        .then(data => {
+          const ul = document.getElementById('file-list');
+          ul.innerHTML = '';
+
+          // Convert object to array if needed
+          let files = [];
+          if (Array.isArray(data)) {
+            files = data;
+          } else if (typeof data === 'object' && data !== null) {
+            files = Object.values(data);
+          }
+
+          if (path) {
+            const li = document.createElement('li');
+            li.textContent = '..';
+            li.style.fontWeight = 'bold';
+            li.onclick = () => {
+              const parent = path.split('/').slice(0, -1).join('/');
+              loadFileList(parent);
+            };
+            ul.appendChild(li);
+          }
+
+          files.forEach(item => {
+            // Ignore empty or invalid entries if any
+            if (!item || !item.name) return;
+
+            const li = document.createElement('li');
+            li.textContent = item.name + (item.isDir ? '/' : '');
+            li.style.userSelect = 'none';
+
+            li.onclick = () => {
+              if (item.isDir) {
+                loadFileList((path ? path + '/' : '') + item.name);
+              } else {
+                loadFile((path ? path + '/' : '') + item.name);
+              }
+            };
+            ul.appendChild(li);
+          });
+        })
+        .catch(err => {
+          alert('Failed to load file list: ' + err.message);
+        });
+    }
+
+    function loadFile(path) {
+      fetch(`api.php?action=read&path=${encodeURIComponent(path)}`)
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to read file');
+          return res.text();
+        })
+        .then(text => {
+          document.getElementById('editor').value = text;
+          document.getElementById('file-name').textContent = path;
+          currentFile = path;
+        })
+        .catch(err => {
+          alert('Error loading file: ' + err.message);
+        });
+    }
+
+    function saveFile() {
+      if (!currentFile) {
+        alert('No file selected');
+        return;
+      }
+      fetch('api.php?action=save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file: currentFile,
+          content: document.getElementById('editor').value
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'saved') alert('Saved!');
+          else alert('Save failed: ' + (data.error || 'Unknown error'));
+        })
+        .catch(err => {
+          alert('Error saving file: ' + err.message);
+        });
+    }
+
+    // FaceID login (unchanged)
+    async function startFaceAuth() {
+      await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+      await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
+      await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
+
+      const labeledDescriptors = await loadLabeledImages();
+      const faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
+
+      const video = document.getElementById('video');
+      const overlay = document.getElementById('overlay');
+      overlay.width = 320;
+      overlay.height = 240;
+      video.style.display = 'block';
+
+      navigator.mediaDevices.getUserMedia({ video: {} })
+        .then(stream => video.srcObject = stream)
+        .catch(() => alert('Camera access denied'));
+
+      video.onplay = () => {
+        setInterval(async () => {
+          const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+            .withFaceLandmarks().withFaceDescriptors();
+
+          const results = detections.map(d => faceMatcher.findBestMatch(d.descriptor));
+          const ctx = overlay.getContext('2d');
+          ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+          results.forEach((result, i) => {
+            const box = detections[i].detection.box;
+            ctx.strokeStyle = result.label === 'yourname' ? 'green' : 'red';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(box.x, box.y, box.width, box.height);
+            if (result.label === 'yourname') unlockEditor();
+          });
+        }, 1000);
+      };
+    }
+
+    function loadLabeledImages() {
+      const labels = ['yourname'];
+      return Promise.all(labels.map(async label => {
+        const imgUrl = `/models/${label}.jpg`;
+        const img = await faceapi.fetchImage(imgUrl);
+        const detection = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
+        return new faceapi.LabeledFaceDescriptors(label, [detection.descriptor]);
+      }));
+    }
+  </script>
+</body>
+</html>

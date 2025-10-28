@@ -1,0 +1,5 @@
+[
+  { "text": "Buy groceries", "done": false },
+  { "text": "Call doctor", "done": true },
+  { "text": "Water the plants", "done": false }
+]

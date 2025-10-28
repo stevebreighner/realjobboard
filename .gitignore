@@ -1,0 +1,11 @@
+# WordPress config
+wp-config.php
+# Ignore Stripe-related folder
+wp-content/themes/jobs/stripe/
+wp-content/themes/jobs/stripe/
+
+wp-content/themes/jobs/stripe/
+wp-content/themes/Register Custom Post Type: Job Post/stripe/
+wp-config.php
+wp-content/themes/Register Custom Post Type: Job Post/stripe/
+*.tar.gz
