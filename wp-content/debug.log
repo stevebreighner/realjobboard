@@ -47,3 +47,5 @@
 [28-Oct-2025 15:49:23 UTC] PHP Warning:  session_start(): Cannot start session when headers already sent in /home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/customapi_profile_stuff.php on line 4
 [28-Oct-2025 15:49:23 UTC] PHP Warning:  session_start(): Cannot start session when headers already sent in /home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/customapi_posts.php on line 3
 [28-Oct-2025 15:49:23 UTC] PHP Warning:  session_start(): Cannot start session when headers already sent in /home/stepusmy/jobs.stephenbreighner.com/wp-content/themes/jobs/functions.php on line 21
+[29-Oct-2025 11:23:08 UTC] PHP Warning:  mysqli_real_connect(): (HY000/2002): No such file or directory in /home/steve/jobboard/realjobboard/wp-includes/class-wpdb.php on line 1988
+[29-Oct-2025 11:28:45 UTC] PHP Warning:  mysqli_real_connect(): (HY000/1045): Access denied for user 'stepusmy_wp979'@'localhost' (using password: YES) in /home/steve/jobboard/realjobboard/wp-includes/class-wpdb.php on line 1988

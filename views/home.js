@@ -26,7 +26,11 @@ export function renderHome(container) {
           </div>
           <div class="p-6 shadow-md rounded-2xl hover:shadow-xl transition">
             <div class="mx-auto h-12 w-12 text-indigo-600 mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-full w-full" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M16 12a4 4 0 00-8 0m8 0a4 4 0 01-8 0m8 0H5m14 0a2 2 0 00-2-2h-3.5m-1 4H7m0 0v2m0-2h10" /></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="9" y1="12" x2="15" y2="12" />
+    <line x1="9" y1="15" x2="15" y2="15" />
+  </svg>
             </div>
             <h3 class="text-2xl font-semibold mb-2">For Job Seekers</h3>
             <p class="text-gray-600">Search and apply to ${CONFIG.COMPANY_BUSINESS_THING} easily. No ads, no spam. Just real opportunities.</p>
