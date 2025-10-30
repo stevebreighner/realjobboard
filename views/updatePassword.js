@@ -14,7 +14,7 @@ export function renderUpdatePassword(container) {
         <label for="confirm_password" class="block text-sm font-medium text-gray-700">Confirm New Password</label>
         <input type="password" id="confirm_password" class="w-full p-2 border rounded" placeholder="Confirm New Password" required />
       </div>
-      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Update Password</button>
+      <button type="submit" class="text-purple px-4 py-2 rounded hover:bg-blue-700 transition">Update Password</button>
     </form>
     <p class="mt-4"><a href="/#profile" class="text-blue-600 hover:underline">← Back to Profile</a></p>
   `;

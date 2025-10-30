@@ -6,12 +6,12 @@ export function renderLogin(container) {
     <form id="loginForm" class="space-y-4">
       <input type="email" placeholder="Email" class="w-full p-2 border rounded" required />
       <input type="password" placeholder="Password" class="w-full p-2 border rounded" required />
-      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Login</button>
+      <button type="submit" class="text-purple px-4 py-2 rounded">Login</button>
     </form>
     <div id="twoFASection" style="display:none; margin-top:1rem;">
       <label for="twoFACode" class="block mb-1">Enter 2FA Code:</label>
       <input type="text" id="twoFACode" class="w-full p-2 border rounded" maxlength="6" />
-      <button id="verify2FAButton" class="mt-2 bg-green-600 text-white px-4 py-2 rounded">Verify</button>
+      <button id="verify2FAButton" class="mt-2 text-purple px-4 py-2 rounded">Verify</button>
     </div>
     <br>
     <p class="mt-4"><a href="/#forgot-password" class="text-blue-600">Forgot Password</a></p>

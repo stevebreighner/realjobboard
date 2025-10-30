@@ -22,7 +22,7 @@ export async function renderResume(container) {
           </ul>
           <form id="resumeUpload" class="mt-4 flex items-center space-x-2">
             <input type="file" name="resume" accept=".pdf,.doc,.docx" required />
-            <button type="submit" class="bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700">
+            <button type="submit" class="text-purple px-3 py-1 rounded hover:bg-indigo-700">
               Upload Resume
             </button>
           </form>
@@ -40,7 +40,7 @@ export async function renderResume(container) {
           </ul>
           <form id="coverUpload" class="mt-4 flex items-center space-x-2">
             <input type="file" name="cover_letter" accept=".pdf,.doc,.docx" required />
-            <button type="submit" class="bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700">
+            <button type="submit" class="text-purple px-3 py-1 rounded hover:bg-indigo-700">
               Upload Cover Letter
             </button>
           </form>

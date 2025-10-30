@@ -26,7 +26,7 @@ export async function start2FA() {
       <form id="twofa-form" class="space-y-4">
         <label for="code">Enter your 2FA code:</label>
         <input type="text" id="code" name="code" class="w-full p-2 border rounded" required />
-        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Verify</button>
+        <button type="submit" class="text-purple px-4 py-2 rounded">Verify</button>
       </form>
       <div id="twofa-message" class="mt-4"></div>
     `;

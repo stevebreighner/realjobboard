@@ -10,7 +10,7 @@ export function renderPost(container) {
           : `<input type="${f.type}" name="${f.name}" class="w-full p-2 border rounded" placeholder="${f.label}" ${f.required ? 'required' : ''} />`;
         return inputType;
       }).join('')}
-      <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Submit</button>
+      <button type="submit" class="text-purple px-4 py-2 rounded">Submit</button>
     </form>
     <p class="mt-4"><a href="/#list" class="text-blue-600 hover:underline">Back to ${CONFIG.COMPANY_BUSINESS_THING_PLURAL}</a></p>
   `;

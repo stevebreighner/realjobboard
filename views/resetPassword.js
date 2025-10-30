@@ -13,7 +13,7 @@ export function renderResetPassword(container, params) {
       <input type="password" id="new_password" class="w-full p-2 border rounded" placeholder="New Password" required />
       <input type="password" id="confirm_password" class="w-full p-2 border rounded" placeholder="Confirm Password" required />
       <div class="flex justify-end">
-        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
+        <button type="submit" class="text-purple px-4 py-2 rounded hover:bg-green-700 transition">
           Set New Password
         </button>
       </div>

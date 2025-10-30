@@ -16,7 +16,7 @@ export async function renderListDetail(container, id) {
         `<div class="mb-1"><strong>${key}:</strong> ${val}</div>`
       ).join('') : ''}
 
-      <button id="submitAction" class="mt-6 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition">
+      <button id="submitAction" class="mt-6 text-purple px-4 py-2 rounded hover:bg-indigo-700 transition">
         ${CONFIG.SUBMIT_LABEL}
       </button>
 

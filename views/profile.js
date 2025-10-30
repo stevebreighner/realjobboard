@@ -32,12 +32,12 @@ export function renderProfile(container) {
     <label for="dob" class="block font-semibold">Date of Birth</label>
     <input type="date" id="dob" name="dob" class="w-full p-2 border rounded" /><br />
 
-    <button type="submit" class="bg-purple-600 text-white px-4 py-2 rounded">Save</button>
+    <button type="submit" class="text-purple px-4 py-2 rounded">Save</button>
   </form>
 
   <div id="jobboard-links" class="mt-4"></div>
 
-  <p class="mt-4"><a href="/#update-password" class="text-red-600">Update Password</a></p>
+  <p class="mt-4"><a href="/#update-password" class="text-purple-600">Update Password</a></p>
 `;
 
   const jobboardLinks = container.querySelector('#jobboard-links');

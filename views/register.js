@@ -14,7 +14,7 @@ export function renderRegister(container) {
         <option value="employer">Employer</option>
       </select>
 
-      <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Register</button>
+      <button type="submit" class="text-purple px-4 py-2 rounded">Register</button>
     </form>
     <p class="mt-4">
       Have an account? <a href="#/login" class="text-blue-600">Login here</a>

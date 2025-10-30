@@ -80,7 +80,7 @@ export async function renderApply(container, jobId) {
             }
           </div>
   
-          <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
+          <button type="submit" class="text-purple px-4 py-2 rounded hover:bg-indigo-700">
             Submit Application
           </button>
         </form>
