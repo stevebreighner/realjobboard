@@ -6,7 +6,7 @@ export function renderHome(container) {
     <!-- Hero Section -->
     <div class="flex flex-col items-center justify-center text-center min-h-screen bg-gradient-to-br from-indigo-600 to-purple-500 text-white p-8">
       <h1 class="text-4xl md:text-6xl font-bold mb-4">Welcome to ${CONFIG.COMPANY_NAME}</h1>
-      <p class="text-xl md:text-2xl mb-6">Find the best talent. Post a ${CONFIG.COMPANY_BUSINESS_THING} Get hired.</p>
+      <p class="text-xl md:text-2xl mb-6">Privacy focused Job Search for finding the best talent and getting hired.</p>
       <div class="flex gap-4">
         <a href="/#post" class="bg-white text-indigo-600 font-semibold px-6 py-3 rounded-xl shadow hover:bg-gray-100 transition">Post a ${CONFIG.COMPANY_BUSINESS_THING}</a>
         <a href="/#list" class="border border-white px-6 py-3 rounded-xl hover:bg-white hover:text-indigo-600 transition">Browse ${CONFIG.COMPANY_BUSINESS_THING_PLURAL}</a>
