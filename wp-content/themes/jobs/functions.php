@@ -219,7 +219,7 @@ add_action('wp_footer', function() {
     }
   }
 });
-
+require_once get_template_directory() . '/encrypt.php';
 require_once get_template_directory() . '/customapi_profile_stuff.php';
 require_once get_template_directory() . '/customapi_posts.php';
 // require_once get_template_directory() . '/customapi_get_user_jobs.php';

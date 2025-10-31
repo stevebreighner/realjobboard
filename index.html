@@ -5,6 +5,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Plain JS SPA</title>
+
+   <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
 <style>:root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -81,11 +84,12 @@ input,
 textarea,
 select {
   display: block;
-  width: 100%;
+  width: auto;
   padding: 0.5rem;
   border: 1px solid #ccc;
   border-radius: 0.375rem;
   margin-top: 0.25rem;
+  max-width: 400px;
 }
 form button {
  

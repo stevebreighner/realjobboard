@@ -4,6 +4,7 @@ import { renderProfile } from './views/profile.js';
 import { renderList } from './views/list.js';
 import { renderListDetail } from './views/listDetail.js';
 import { renderPost } from './views/post.js';
+import { renderAbout } from './views/about.js';
 import { renderUpdatePassword } from './views/updatePassword.js';
 import { renderForgotPassword } from './views/forgotPassword.js';
 import { renderResetPassword } from './views/resetPassword.js';
@@ -61,6 +62,8 @@ export async function router() {
       return renderHome(app);
     case 'login':
       return renderLogin(app);
+       case 'about':
+      return renderAbout(app);
     case 'register':
       return renderRegister(app);
     case 'list':

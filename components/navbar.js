@@ -35,6 +35,7 @@ export async function renderNavbar(container) {
 
   .menu-toggle {
     display: none;
+    padding: 5px;
     background: none;
     border: none;
     font-size: 1.5rem;

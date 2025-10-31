@@ -69,30 +69,55 @@ function customapi_login_user($request) {
   return ['message' => '✅ Login successful', 'user' => $_SESSION['user']];
 }
 
-
 function customapi_get_user_profile() {
-  if (!isset($_SESSION['user'])) {
-      return new WP_Error('unauthorized', 'Login required', ['status' => 403]);
-  }
+    // Ensure the user is logged in
+    if (!isset($_SESSION['user'])) {
+        return new WP_Error('unauthorized', 'Login required', ['status' => 403]);
+    }
 
-  $user_id = $_SESSION['user']['id'];
-  $user = get_userdata($user_id);
-  $_SESSION['user']['roles'] = $user->roles;
+    $user_id = $_SESSION['user']['id'];
+    $user = get_userdata($user_id);
+    $_SESSION['user']['roles'] = $user->roles;
 
-  return [
-      'id'           => $user->ID,
-      'email'        => $user->user_email,
-      'username'     => $user->user_login,
-      'display_name' => $user->display_name,
-      'avatar_url'   => get_user_meta($user_id, 'custom_avatar_url', true),
-      'first_name'   => get_user_meta($user_id, 'first_name', true),
-      'last_name'    => get_user_meta($user_id, 'last_name', true),
-      'company'      => get_user_meta($user_id, 'company', true),
-      'dob'          => get_user_meta($user_id, 'dob', true),
-      'resumes'      => get_user_meta($user_id, 'user_resumes', true) ?: [],
-      'cover_letters'=> get_user_meta($user_id, 'user_covers', true) ?: [],
-      'roles'        => $user->roles,
-  ];
+    // Fetch user data
+    $user_profile = [
+        'id'           => $user->ID,
+        'email'        => $user->user_email,
+        'username'     => $user->user_login,
+        'display_name' => $user->display_name,
+        'avatar_url'   => get_user_meta($user_id, 'custom_avatar_url', true),
+        'first_name'   => get_user_meta($user_id, 'first_name', true),
+        'last_name'    => get_user_meta($user_id, 'last_name', true),
+        'company'      => get_user_meta($user_id, 'company', true),
+        'dob'          => get_user_meta($user_id, 'dob', true),
+        'roles'        => $user->roles,
+    ];
+
+    // Fetch resumes and decrypt them
+    $resumes = get_user_meta($user_id, 'user_resumes', true) ?: [];
+
+    // Retrieve encryption key
+    $encryption_key = get_encryption_key($user_id);
+
+    foreach ($resumes as $key => $resume) {
+        // Decrypt each resume file
+        $decrypted_file_path = decrypt_file($resume['url'], $encryption_key);
+
+        if ($decrypted_file_path === false) {
+            // If decryption fails, remove this resume from the list
+            unset($resumes[$key]);
+            // Optionally log or add an error message here
+        } else {
+            // Update the URL to point to the decrypted file
+            $resumes[$key]['url'] = esc_url($decrypted_file_path);
+        }
+    }
+
+    // Add decrypted resumes to the user profile
+    $user_profile['resumes'] = $resumes;
+    $user_profile['cover_letters'] = get_user_meta($user_id, 'user_covers', true) ?: [];
+
+    return $user_profile;
 }
 
 
@@ -148,105 +173,165 @@ function customapi_delete_cover($data) {
 }
 
 function customapi_user_profile_update() {
-  if (!isset($_SESSION['user'])) {
-      return new WP_Error('unauthorized', 'Login required', ['status' => 403]);
-  }
+    if (!isset($_SESSION['user'])) {
+        return new WP_Error('unauthorized', 'Login required', ['status' => 403]);
+    }
 
-  $user_id = $_SESSION['user']['id'];
+    $user_id = $_SESSION['user']['id'];
 
-  // Simple text/meta fields
-  $fields = ['first_name', 'last_name', 'dob', 'company'];
-  foreach ($fields as $field) {
-      if (isset($_POST[$field])) {
-          update_user_meta($user_id, $field, sanitize_text_field($_POST[$field]));
-      }
-  }
-//end here to check }
-  require_once(ABSPATH . 'wp-admin/includes/file.php');
+    // Simple text/meta fields
+    $fields = ['first_name', 'last_name', 'dob', 'company'];
+    foreach ($fields as $field) {
+        if (isset($_POST[$field])) {
+            update_user_meta($user_id, $field, sanitize_text_field($_POST[$field]));
+        }
+    }
 
-  // Handle avatar upload (single)
-  if (!empty($_FILES['avatar']) && !$_FILES['avatar']['error']) {
-      $file   = $_FILES['avatar'];
-      $upload = wp_handle_upload($file, ['test_form' => false]);
+    require_once(ABSPATH . 'wp-admin/includes/file.php');
 
-      if (isset($upload['url'])) {
-          update_user_meta($user_id, 'custom_avatar_url', esc_url($upload['url']));
-      } else {
-          return new WP_Error('upload_error', 'Avatar upload failed');
-      }
-  }
+    // Handle avatar upload (single)
+    if (!empty($_FILES['avatar']) && !$_FILES['avatar']['error']) {
+        $file = $_FILES['avatar'];
+        $upload = wp_handle_upload($file, ['test_form' => false]);
 
-  // Helper for file validation
-  $allowed_docs = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-  ];
+        if (isset($upload['url'])) {
+            update_user_meta($user_id, 'custom_avatar_url', esc_url($upload['url']));
+        } else {
+            return new WP_Error('upload_error', 'Avatar upload failed');
+        }
+    }
 
-  // Handle resume upload (multiple)
-  if (!empty($_FILES['resume']) && !$_FILES['resume']['error']) {
-      $file = $_FILES['resume'];
-      if (!in_array($file['type'], $allowed_docs)) {
-          return new WP_Error('invalid_type', 'Resume must be PDF or DOC/DOCX', ['status' => 415]);
-      }
+    // Helper for file validation
+    $allowed_docs = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
 
-      $upload = wp_handle_upload($file, ['test_form' => false]);
-      if (isset($upload['url'])) {
-          $resumes = get_user_meta($user_id, 'user_resumes', true);
-          if (!is_array($resumes)) {
-              $resumes = [];
-          }
+    // Handle resume upload (multiple)
+    if (!empty($_FILES['resume']) && !$_FILES['resume']['error']) {
+        // Check if it's a multiple file upload
+        if (is_array($_FILES['resume']['name'])) {
+            // Loop through each uploaded file
+            foreach ($_FILES['resume']['name'] as $index => $name) {
+                $file = [
+                    'name'     => $_FILES['resume']['name'][$index],
+                    'type'     => $_FILES['resume']['type'][$index],
+                    'tmp_name' => $_FILES['resume']['tmp_name'][$index],
+                    'error'    => $_FILES['resume']['error'][$index],
+                    'size'     => $_FILES['resume']['size'][$index],
+                ];
 
-          $resumes[] = [
-              'url'  => esc_url($upload['url']),
-              'name' => basename($upload['file']),
-              'time' => time(),
-          ];
+                // Validate file type
+                if (!in_array($file['type'], $allowed_docs)) {
+                    return new WP_Error('invalid_type', 'Resume must be PDF or DOC/DOCX', ['status' => 415]);
+                }
 
-          update_user_meta($user_id, 'user_resumes', $resumes);
-      } else {
-          return new WP_Error('upload_error', 'Resume upload failed');
-      }
-  }
+                // Handle file upload
+                $upload = wp_handle_upload($file, ['test_form' => false]);
 
-// Handle cover letter upload (multiple)
-if (!empty($_FILES['cover_letter']) && !$_FILES['cover_letter']['error']) {
-  $file = $_FILES['cover_letter'];
+                if (isset($upload['url'])) {
+                    // Retrieve the encryption key for the user
+                    $encryption_key = get_encryption_key($user_id);
 
-  if (!in_array($file['type'], $allowed_docs)) {
-      return rest_ensure_response([
-          'success' => false,
-          'message' => 'Cover letter must be PDF or DOC/DOCX'
-      ]);
-  }
+                    // Encrypt the uploaded file before saving
+                    $encrypted_file_path = encrypt_file($upload['file'], $encryption_key);
 
-  $upload = wp_handle_upload($file, ['test_form' => false]);
+                    // If encryption fails, return error
+                    if (!$encrypted_file_path) {
+                        return new WP_Error('encryption_failed', 'Resume encryption failed', ['status' => 500]);
+                    }
 
-  if (isset($upload['error'])) {
-      error_log("Cover letter upload error: " . $upload['error']);
-      return rest_ensure_response([
-          'success' => false,
-          'message' => 'Cover letter upload failed: ' . $upload['error']
-      ]);
-  }
+                    // Save the encrypted resume details in the database
+                    $resumes = get_user_meta($user_id, 'user_resumes', true) ?: [];
 
-  $covers = get_user_meta($user_id, 'user_covers', true);
-  if (!is_array($covers)) {
-      $covers = [];
-  }
+                    $resumes[] = [
+                        'url'  => esc_url($encrypted_file_path),
+                        'name' => basename($encrypted_file_path),
+                        'time' => time(),
+                    ];
 
-  $covers[] = [
-      'url'  => esc_url($upload['url']),
-      'name' => basename($upload['file']),
-      'time' => time(),
-  ];
+                    update_user_meta($user_id, 'user_resumes', $resumes);
+                } else {
+                    return new WP_Error('upload_error', 'Resume upload failed');
+                }
+            }
+        } else {
+            // Single file upload scenario
+            $file = $_FILES['resume'];
 
-  update_user_meta($user_id, 'user_covers', $covers);
+            // Validate file type
+            if (!in_array($file['type'], $allowed_docs)) {
+                return new WP_Error('invalid_type', 'Resume must be PDF or DOC/DOCX', ['status' => 415]);
+            }
+
+            $upload = wp_handle_upload($file, ['test_form' => false]);
+
+            if (isset($upload['url'])) {
+                // Retrieve the encryption key for the user
+                $encryption_key = get_encryption_key($user_id);
+
+                // Encrypt the uploaded file before saving
+                $encrypted_file_path = encrypt_file($upload['file'], $encryption_key);
+
+                // If encryption fails, return error
+                if (!$encrypted_file_path) {
+                    return new WP_Error('encryption_failed', 'Resume encryption failed', ['status' => 500]);
+                }
+
+                // Save the encrypted resume details in the database
+                $resumes = get_user_meta($user_id, 'user_resumes', true) ?: [];
+
+                $resumes[] = [
+                    'url'  => esc_url($encrypted_file_path),
+                    'name' => basename($encrypted_file_path),
+                    'time' => time(),
+                ];
+
+                update_user_meta($user_id, 'user_resumes', $resumes);
+            } else {
+                return new WP_Error('upload_error', 'Resume upload failed');
+            }
+        }
+    }
+
+    // Handle cover letter upload (multiple)
+    if (!empty($_FILES['cover_letter']) && !$_FILES['cover_letter']['error']) {
+        $file = $_FILES['cover_letter'];
+
+        // Validate file type
+        if (!in_array($file['type'], $allowed_docs)) {
+            return rest_ensure_response([
+                'success' => false,
+                'message' => 'Cover letter must be PDF or DOC/DOCX'
+            ]);
+        }
+
+        $upload = wp_handle_upload($file, ['test_form' => false]);
+
+        if (isset($upload['error'])) {
+            error_log("Cover letter upload error: " . $upload['error']);
+            return rest_ensure_response([
+                'success' => false,
+                'message' => 'Cover letter upload failed: ' . $upload['error']
+            ]);
+        }
+
+        // Save cover letter to user meta
+        $covers = get_user_meta($user_id, 'user_covers', true) ?: [];
+
+        $covers[] = [
+            'url'  => esc_url($upload['url']),
+            'name' => basename($upload['file']),
+            'time' => time(),
+        ];
+
+        update_user_meta($user_id, 'user_covers', $covers);
+    }
+
+    return ['success' => true];
 }
 
-
-  return ['success' => true];
-}
 
   function customapi_user_profile_avatar() {
     if (!isset($_SESSION['user'])) {
