@@ -1,3 +1,5 @@
+import { getUserProfileCached, getUserProfileCachedAny } from '../utils/session.js';
+
 export function renderProfile(container) {
   container.innerHTML = `
   <h1 class="text-2xl font-bold mb-2">Profile</h1>
@@ -5,7 +7,7 @@ export function renderProfile(container) {
 
   <div id="avatar-preview-container" class="mb-4">
     <img id="avatarPreview" src="/default-avatar.png"
-         alt="Avatar" class="rounded-full border object-cover" />
+         alt="Avatar" class="rounded-full border object-cover" loading="lazy" decoding="async" />
   </div>
 
   <div class="mb-4">
@@ -65,46 +67,50 @@ export function renderProfile(container) {
   const previewImg    = container.querySelector('#avatarPreview');
 
   // Fetch profile + role info
+  function applyProfileData(data) {
+    document.getElementById('username').value   = data.username || '';
+    document.getElementById('email').value      = data.email || '';
+    document.getElementById('first_name').value = data.first_name || '';
+    document.getElementById('last_name').value  = data.last_name || '';
+    document.getElementById('company').value  = data.company || '';
+    document.getElementById('dob').value        = data.dob || '';
+    document.getElementById('street1').value    = data.street1 || '';
+    document.getElementById('street2').value    = data.street2 || '';
+    document.getElementById('city').value       = data.city || '';
+    document.getElementById('state').value      = data.state || '';
+    document.getElementById('zip').value        = data.zip || '';
+    document.getElementById('country').value    = data.country || 'United States';
+    previewImg.src = data.avatar_url || '/default-avatar.png';
+
+    // Determine role + links
+    const roles = data.roles || []; // backend should return roles array
+    if (roles.includes('employer')) {
+      roleLabel.textContent = "Employer";
+      jobboardLinks.innerHTML = `
+        <p class="mt-2"><a href="/#my-job-posts" class="text-blue-600">Manage Job Applications</a></p>
+      `;
+    } else {
+      roleLabel.textContent = "Job Seeker";
+      jobboardLinks.innerHTML = `
+        <p class="mt-2"><a href="/#resume" class="text-blue-600">Manage Resume & Cover Letter</a></p>
+      `;
+    }
+  }
+
   async function getProfileInfo() {
     try {
-      const response = await fetch('/wp-json/customapi/v1/user-profile?_=' + Date.now(), {
-        method: 'GET',
-        credentials: 'include'
-      });
-      const data = await response.json();
+      // Stale-while-revalidate: show cached data immediately if available
+      const cached = getUserProfileCachedAny();
+      if (cached) {
+        applyProfileData(cached);
+      }
 
-      if (response.ok) {
-        document.getElementById('username').value   = data.username || '';
-        document.getElementById('email').value      = data.email || '';
-        document.getElementById('first_name').value = data.first_name || '';
-        document.getElementById('last_name').value  = data.last_name || '';
-        document.getElementById('company').value  = data.company || '';
-        document.getElementById('dob').value        = data.dob || '';
-        document.getElementById('street1').value    = data.street1 || '';
-        document.getElementById('street2').value    = data.street2 || '';
-        document.getElementById('city').value       = data.city || '';
-        document.getElementById('state').value      = data.state || '';
-        document.getElementById('zip').value        = data.zip || '';
-        document.getElementById('country').value    = data.country || 'United States';
-        previewImg.src = data.avatar_url || '/default-avatar.png';
-
-        // Determine role + links
-        const roles = data.roles || []; // backend should return roles array
-        if (roles.includes('employer')) {
-          roleLabel.textContent = "Employer";
-          jobboardLinks.innerHTML = `
-            <p class="mt-2"><a href="/#my-job-posts" class="text-blue-600">Manage Job Applications</a></p>
-          `;
-        } else {
-          roleLabel.textContent = "Job Seeker";
-          jobboardLinks.innerHTML = `
-            <p class="mt-2"><a href="/#resume" class="text-blue-600">Manage Resume & Cover Letter</a></p>
-          `;
-        }
-
+      const data = await getUserProfileCached({ maxAgeMs: 30000 });
+      if (data) {
+        applyProfileData(data);
       } else {
-        alert('❌ Error fetching profile: ' + (data.message || 'Unknown error'));
-        if (response.status === 401) window.location.hash = '#/login';
+        alert('❌ Error fetching profile: Unable to load profile.');
+        window.location.hash = '#/login';
       }
     } catch (err) {
       alert('❌ Network error: ' + err.message);

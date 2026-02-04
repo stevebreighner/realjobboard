@@ -16,6 +16,7 @@ import { renderApply } from './views/apply.js';
 import { renderResume } from './views/resume.js';
 import { renderMyJobPosts } from './views/myJobPosts.js';
 import { renderMyJobPostDetail } from './views/myJobPostDetail.js';
+import { getSessionCached } from './utils/session.js';
 
 function parseHash() {
   const rawHash = window.location.hash.slice(1);
@@ -26,18 +27,6 @@ function parseHash() {
 
 function kebabToCamel(str) {
   return str.replace(/-([a-z])/g, (_, char) => char.toUpperCase());
-}
-
-async function getSession() {
-  try {
-    const response = await fetch('/wp-json/customapi/v1/sessions?_=' + Date.now(), {
-      credentials: 'include'
-    });
-    if (!response.ok) return null;
-    return response.json();
-  } catch {
-    return null;
-  }
 }
 
 const protectedRoutes = ['profile', 'updatePassword','post','apply','resume', 'myJobPosts', 'myJobPostDetail'];
@@ -52,7 +41,7 @@ export async function router() {
   console.log('Normalized path:', normalizedPath);
   console.log('Params:', params);
   if (protectedRoutes.includes(normalizedPath)) {
-    const session = await getSession();
+    const session = await getSessionCached({ maxAgeMs: 30000 });
     if (!session) {
       window.location.hash = '#login';
       return;

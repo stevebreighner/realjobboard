@@ -1,4 +1,5 @@
 import { CONFIG } from '../config.js';
+import { getSessionCached } from '../utils/session.js';
 
 let hasHashListener = false;
 
@@ -147,16 +148,8 @@ function highlightActiveLink() {
 }
 
 async function checkLoginStatus() {
-  try {
-    const res = await fetch('/wp-json/customapi/v1/sessions?_=' + Date.now(), {
-      method: 'GET',
-      credentials: 'include',
-    });
-    if (!res.ok) return { isLoggedIn: false, isEmployer: false };
-    const data = await res.json();
-    const roles = Array.isArray(data?.roles) ? data.roles : [];
-    return { isLoggedIn: true, isEmployer: roles.includes('employer') };
-  } catch {
-    return { isLoggedIn: false, isEmployer: false };
-  }
+  const session = await getSessionCached({ maxAgeMs: 30000 });
+  if (!session) return { isLoggedIn: false, isEmployer: false };
+  const roles = Array.isArray(session?.roles) ? session.roles : [];
+  return { isLoggedIn: true, isEmployer: roles.includes('employer') };
 }

@@ -1,6 +1,7 @@
 //home.js
 
 import { CONFIG } from '../config.js';
+import { getSessionCached } from '../utils/session.js';
 export function renderHome(container) {
   container.innerHTML = `
     <style>
@@ -68,13 +69,9 @@ export function renderHome(container) {
   `;
 
   const postCta = container.querySelector('#postCta');
-  fetch('/wp-json/customapi/v1/user-profile?_=' + Date.now(), {
-    method: 'GET',
-    credentials: 'include',
-  })
-    .then(res => (res.ok ? res.json() : null))
-    .then(data => {
-      const roles = Array.isArray(data?.roles) ? data.roles : [];
+  getSessionCached({ maxAgeMs: 30000 })
+    .then(session => {
+      const roles = Array.isArray(session?.roles) ? session.roles : [];
       if (postCta && roles.includes('employer')) {
         postCta.style.display = 'inline-block';
       }
