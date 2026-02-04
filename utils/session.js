@@ -19,6 +19,22 @@ function setCache(key, data) {
   window[PRELOAD_KEY][key] = { data, ts: Date.now() };
 }
 
+export function clearSessionCache() {
+  if (!window[PRELOAD_KEY]) return;
+  delete window[PRELOAD_KEY].session;
+}
+
+export function clearProfileCache() {
+  if (!window[PRELOAD_KEY]) return;
+  delete window[PRELOAD_KEY].profile;
+  delete window[PRELOAD_KEY].profile_light;
+}
+
+export function notifyAuthChanged(session = null) {
+  const event = new CustomEvent('auth:changed', { detail: session });
+  window.dispatchEvent(event);
+}
+
 export async function getSessionCached({ maxAgeMs = 30000, force = false } = {}) {
   if (!force) {
     const cached = getCache('session', maxAgeMs);
@@ -38,26 +54,31 @@ export async function getSessionCached({ maxAgeMs = 30000, force = false } = {})
   }
 }
 
-export async function getUserProfileCached({ maxAgeMs = 30000, force = false } = {}) {
+export async function getUserProfileCached({ maxAgeMs = 30000, force = false, light = false } = {}) {
+  const cacheKey = light ? 'profile_light' : 'profile';
   if (!force) {
-    const cached = getCache('profile', maxAgeMs);
+    const cached = getCache(cacheKey, maxAgeMs);
     if (cached) return cached;
   }
   try {
-    const res = await fetch('/wp-json/customapi/v1/user-profile?_=' + Date.now(), {
+    const url = light
+      ? '/wp-json/customapi/v1/user-profile?light=1&_=' + Date.now()
+      : '/wp-json/customapi/v1/user-profile?_=' + Date.now();
+    const res = await fetch(url, {
       method: 'GET',
       credentials: 'include',
     });
     if (!res.ok) return null;
     const data = await res.json();
-    setCache('profile', data);
+    setCache(cacheKey, data);
     return data;
   } catch {
     return null;
   }
 }
 
-export function getUserProfileCachedAny() {
-  const cached = getCacheRaw('profile');
+export function getUserProfileCachedAny({ light = false } = {}) {
+  const cacheKey = light ? 'profile_light' : 'profile';
+  const cached = getCacheRaw(cacheKey);
   return cached ? cached.data : null;
 }

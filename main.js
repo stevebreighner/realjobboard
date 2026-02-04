@@ -34,7 +34,7 @@ function preloadData() {
     getSessionCached({ maxAgeMs: 30000, force: true })
       .then(session => {
         if (session) {
-          return getUserProfileCached({ maxAgeMs: 30000, force: true });
+          return getUserProfileCached({ maxAgeMs: 30000, force: true, light: true });
         }
         return null;
       })

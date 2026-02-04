@@ -1,9 +1,9 @@
 import { CONFIG } from '../config.js';
-import { getSessionCached } from '../utils/session.js';
+import { getSessionCached, clearProfileCache, clearSessionCache, notifyAuthChanged } from '../utils/session.js';
 
 let hasHashListener = false;
 
-function navbarHtml(isLoggedIn, isEmployer) {
+function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
   return `
     <style>
   .navbar {
@@ -81,6 +81,7 @@ function navbarHtml(isLoggedIn, isEmployer) {
         ${!isLoggedIn ? '<a href="/#home" class="nav-link">Home</a>' : ''}
         <a href="/#list" class="nav-link">${CONFIG.COMPANY_BUSINESS_THING_PLURAL}</a>
         ${isEmployer ? `<a href="/#post" class="nav-link">Post a ${CONFIG.COMPANY_BUSINESS_THING}</a>` : ''}
+        ${isSiteAdmin ? `<a href="/#admin" class="nav-link">Admin</a>` : ''}
         ${isLoggedIn ? '<a href="/#profile" class="nav-link">Profile</a>' : ''}
         ${isLoggedIn
           ? '<a href="#" class="nav-link" id="logoutLink">Logout</a>'
@@ -107,6 +108,9 @@ function bindNavbar(container, isLoggedIn) {
         method: 'POST',
         credentials: 'include',
       });
+      clearSessionCache();
+      clearProfileCache();
+      notifyAuthChanged(null);
       window.location.hash = '#login';
       renderNavbar(container);
     });
@@ -121,17 +125,26 @@ function bindNavbar(container, isLoggedIn) {
 
 export function renderNavbar(container) {
   // Render immediately for fast paint
-  container.innerHTML = navbarHtml(false, false);
+  container.innerHTML = navbarHtml(false, false, false);
   bindNavbar(container, false);
 
   // Update nav after async auth check
-  checkLoginStatus().then(({ isLoggedIn, isEmployer }) => {
+  checkLoginStatus().then(({ isLoggedIn, isEmployer, isSiteAdmin }) => {
     if (!isLoggedIn) {
       return;
     }
-    container.innerHTML = navbarHtml(true, isEmployer);
+    container.innerHTML = navbarHtml(true, isEmployer, isSiteAdmin);
     bindNavbar(container, true);
   });
+}
+
+function renderNavbarFromSession(container, session) {
+  const roles = Array.isArray(session?.roles) ? session.roles : [];
+  const isLoggedIn = !!session;
+  const isEmployer = roles.includes('employer');
+  const isSiteAdmin = roles.includes('site_admin') || roles.includes('administrator');
+  container.innerHTML = navbarHtml(isLoggedIn, isEmployer, isSiteAdmin);
+  bindNavbar(container, isLoggedIn);
 }
 
 function highlightActiveLink() {
@@ -151,5 +164,15 @@ async function checkLoginStatus() {
   const session = await getSessionCached({ maxAgeMs: 30000 });
   if (!session) return { isLoggedIn: false, isEmployer: false };
   const roles = Array.isArray(session?.roles) ? session.roles : [];
-  return { isLoggedIn: true, isEmployer: roles.includes('employer') };
+  return {
+    isLoggedIn: true,
+    isEmployer: roles.includes('employer'),
+    isSiteAdmin: roles.includes('site_admin') || roles.includes('administrator'),
+  };
 }
+
+window.addEventListener('auth:changed', (e) => {
+  const container = document.getElementById('navbar');
+  if (!container) return;
+  renderNavbarFromSession(container, e.detail || null);
+});

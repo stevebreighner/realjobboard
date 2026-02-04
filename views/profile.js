@@ -3,10 +3,30 @@ import { getUserProfileCached, getUserProfileCachedAny } from '../utils/session.
 export function renderProfile(container) {
   container.innerHTML = `
   <h1 class="text-2xl font-bold mb-2">Profile</h1>
+  <style>
+    .profile-spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(79, 70, 229, 0.25);
+      border-top-color: #4f46e5;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: -2px;
+      margin-right: 6px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
   <h2 id="roleLabel" class="text-lg font-semibold text-gray-700 mb-4"></h2>
+  <div id="profileStatus" class="mb-4 text-sm text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-3 py-2">
+    <span class="profile-spinner" aria-hidden="true"></span>
+    Decrypting profile...
+  </div>
 
   <div id="avatar-preview-container" class="mb-4">
-    <img id="avatarPreview" src="/default-avatar.png"
+    <img id="avatarPreview" src="/default-avatar.svg"
          alt="Avatar" class="rounded-full border object-cover" loading="lazy" decoding="async" />
   </div>
 
@@ -65,6 +85,7 @@ export function renderProfile(container) {
   const jobboardLinks = container.querySelector('#jobboard-links');
   const roleLabel     = container.querySelector('#roleLabel');
   const previewImg    = container.querySelector('#avatarPreview');
+  const profileStatus = container.querySelector('#profileStatus');
 
   // Fetch profile + role info
   function applyProfileData(data) {
@@ -80,7 +101,7 @@ export function renderProfile(container) {
     document.getElementById('state').value      = data.state || '';
     document.getElementById('zip').value        = data.zip || '';
     document.getElementById('country').value    = data.country || 'United States';
-    previewImg.src = data.avatar_url || '/default-avatar.png';
+    previewImg.src = data.avatar_url || '/default-avatar.svg';
 
     // Determine role + links
     const roles = data.roles || []; // backend should return roles array
@@ -95,17 +116,25 @@ export function renderProfile(container) {
         <p class="mt-2"><a href="/#resume" class="text-blue-600">Manage Resume & Cover Letter</a></p>
       `;
     }
+
+    if (profileStatus) {
+      profileStatus.textContent = 'Profile decrypted.';
+      profileStatus.className = 'mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2';
+      setTimeout(() => {
+        profileStatus.classList.add('hidden');
+      }, 1500);
+    }
   }
 
   async function getProfileInfo() {
     try {
       // Stale-while-revalidate: show cached data immediately if available
-      const cached = getUserProfileCachedAny();
+      const cached = getUserProfileCachedAny({ light: false });
       if (cached) {
         applyProfileData(cached);
       }
 
-      const data = await getUserProfileCached({ maxAgeMs: 30000 });
+      const data = await getUserProfileCached({ maxAgeMs: 30000, light: false });
       if (data) {
         applyProfileData(data);
       } else {

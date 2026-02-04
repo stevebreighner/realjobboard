@@ -63,6 +63,13 @@ add_action('init', function () {
   }
 }, 1);
 
+// Ensure custom admin role exists
+add_action('init', function () {
+  if (!get_role('site_admin')) {
+    add_role('site_admin', 'Site Admin');
+  }
+});
+
 // CORS for REST API responses
 add_action('rest_api_init', function () {
   add_filter('rest_pre_serve_request', function ($served, $result, $request, $server) {
@@ -200,10 +207,40 @@ function customapi_is_employer($user_id = null) {
   return in_array('employer', (array) $user->roles, true);
 }
 
+function customapi_is_site_admin($user_id = null) {
+  if (!$user_id) {
+    if (empty($_SESSION['user']['id'])) {
+      return false;
+    }
+    $user_id = intval($_SESSION['user']['id']);
+  }
+
+  $user = get_userdata($user_id);
+  if (!$user || empty($user->roles)) {
+    return false;
+  }
+
+  return in_array('site_admin', (array) $user->roles, true) || in_array('administrator', (array) $user->roles, true);
+}
+
+function customapi_set_user_hashes($user_id, $email, $username) {
+  $email_norm = strtolower(trim((string) $email));
+  $user_norm = strtolower(trim((string) $username));
+  if ($email_norm !== '') {
+    update_user_meta($user_id, 'email_hash', hash('sha256', $email_norm));
+  }
+  if ($user_norm !== '') {
+    update_user_meta($user_id, 'username_hash', hash('sha256', $user_norm));
+  }
+}
+
 
 // ⚙️ DEV-ONLY — Toggle current user's role and dump all users
 add_action('template_redirect', function() {
   if (!is_user_logged_in() || !isset($_GET['switch_role']) || $_GET['switch_role'] !== 'toggle') {
+      return;
+  }
+  if (!customapi_is_site_admin()) {
       return;
   }
 
@@ -266,6 +303,7 @@ require_once get_template_directory() . '/customapi_posts.php';
 // require_once get_template_directory() . '/customapi_get_user_jobs.php';
 require_once get_template_directory() . '/customapi_get_lists.php';
 require_once get_template_directory() . '/customapi_apply.php';
+require_once get_template_directory() . '/customapi_admin.php';
 // require_once get_template_directory() . '/customapi_resume.php';
 // require_once get_template_directory() . '/customapi_magic_link.php';
 

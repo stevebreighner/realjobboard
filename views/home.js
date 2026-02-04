@@ -23,7 +23,8 @@ export function renderHome(container) {
       <div class="relative z-10">
         <h1 class="text-4xl md:text-6xl font-bold mb-4">Welcome to ${CONFIG.COMPANY_NAME}</h1>
         <p class="text-xl md:text-2xl mb-3">Privacy focused Job Search for finding the best talent and getting hired.</p>
-        <p class="text-base md:text-lg text-white/90 mb-6">Your data stays private — resumes and files are encrypted by default.</p>
+        <p class="text-base md:text-lg text-white/90 mb-2">Your data stays private — resumes and files are encrypted by default.</p>
+        <p class="text-sm md:text-base text-white/80 mb-6">Sensitive documents are encrypted and only decrypted when you load them.</p>
         <div class="flex gap-4 justify-center">
           <a id="postCta" href="/#post" class="bg-white text-indigo-600 font-semibold px-6 py-3 rounded-xl shadow hover:bg-gray-100 transition" style="display:none;">Post a ${CONFIG.COMPANY_BUSINESS_THING}</a>
           <a href="/#list" class="border border-white px-6 py-3 rounded-xl hover:bg-white hover:text-indigo-600 transition">Browse ${CONFIG.COMPANY_BUSINESS_THING_PLURAL}</a>

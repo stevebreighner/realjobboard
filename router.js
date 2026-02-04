@@ -17,6 +17,7 @@ import { renderResume } from './views/resume.js';
 import { renderMyJobPosts } from './views/myJobPosts.js';
 import { renderMyJobPostDetail } from './views/myJobPostDetail.js';
 import { getSessionCached } from './utils/session.js';
+import { renderAdmin } from './views/admin.js';
 
 function parseHash() {
   const rawHash = window.location.hash.slice(1);
@@ -29,8 +30,9 @@ function kebabToCamel(str) {
   return str.replace(/-([a-z])/g, (_, char) => char.toUpperCase());
 }
 
-const protectedRoutes = ['profile', 'updatePassword','post','apply','resume', 'myJobPosts', 'myJobPostDetail'];
+const protectedRoutes = ['profile', 'updatePassword','post','apply','resume', 'myJobPosts', 'myJobPostDetail', 'admin'];
 const employerRoutes = ['post', 'myJobPosts', 'myJobPostDetail'];
+const adminRoutes = ['admin'];
 
 export async function router() {
   
@@ -49,6 +51,13 @@ export async function router() {
     if (employerRoutes.includes(normalizedPath)) {
       const roles = Array.isArray(session?.roles) ? session.roles : [];
       if (!roles.includes('employer')) {
+        window.location.hash = '#home';
+        return;
+      }
+    }
+    if (adminRoutes.includes(normalizedPath)) {
+      const roles = Array.isArray(session?.roles) ? session.roles : [];
+      if (!roles.includes('site_admin') && !roles.includes('administrator')) {
         window.location.hash = '#home';
         return;
       }
@@ -80,6 +89,8 @@ case 'myJobPostDetail':
       return renderPost(app);
     case 'profile':
       return renderProfile(app);
+    case 'admin':
+      return renderAdmin(app);
     case 'updatePassword':
       return renderUpdatePassword(app);
     case 'forgotPassword':
