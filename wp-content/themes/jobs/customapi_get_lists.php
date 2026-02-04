@@ -214,11 +214,92 @@ function customapi_user_job_detail(WP_REST_Request $request) {
         'id'          => $post->ID,
         'title'       => get_the_title($post),
         'content'     => apply_filters('the_content', $post->post_content),
+        'raw_content' => $post->post_content,
         'date'        => get_the_date('', $post),
         'applicants'  => $formattedApplicants,
     ]);
 }
+function customapi_user_job_update(WP_REST_Request $request) {
+    if (empty($_SESSION['user']['id'])) {
+        return new WP_Error('unauthorized', 'You must be logged in.', ['status' => 401]);
+    }
+    $user_id = intval($_SESSION['user']['id']);
+    if (!customapi_is_employer($user_id)) {
+        return new WP_Error('forbidden', 'Employer account required', ['status' => 403]);
+    }
 
+    $job_id = intval($request->get_param('id'));
+    if (!$job_id) {
+        return new WP_Error('missing_id', 'Job ID is required', ['status' => 400]);
+    }
+
+    $post = get_post($job_id);
+    if (!$post || $post->post_type !== 'post') {
+        return new WP_Error('not_found', 'Job not found', ['status' => 404]);
+    }
+
+    if ((int)$post->post_author !== $user_id) {
+        return new WP_Error('forbidden', 'You are not the author of this job', ['status' => 403]);
+    }
+
+    $title = sanitize_text_field($request->get_param('title'));
+    $content = $request->get_param('content');
+    $status = sanitize_text_field($request->get_param('status'));
+
+    $update = ['ID' => $job_id];
+    if ($title !== null && $title !== '') {
+        $update['post_title'] = $title;
+    }
+    if ($content !== null && $content !== '') {
+        $update['post_content'] = wp_kses_post($content);
+    }
+    if (in_array($status, ['publish', 'draft'], true)) {
+        $update['post_status'] = $status;
+    }
+
+    if (count($update) === 1) {
+        return new WP_Error('missing_fields', 'Nothing to update', ['status' => 400]);
+    }
+
+    $result = wp_update_post($update, true);
+    if (is_wp_error($result)) {
+        return $result;
+    }
+
+    return rest_ensure_response(['message' => 'Job updated', 'id' => $job_id]);
+}
+
+
+function customapi_user_job_delete(WP_REST_Request $request) {
+    if (empty($_SESSION['user']['id'])) {
+        return new WP_Error('unauthorized', 'You must be logged in.', ['status' => 401]);
+    }
+    $user_id = intval($_SESSION['user']['id']);
+    if (!customapi_is_employer($user_id)) {
+        return new WP_Error('forbidden', 'Employer account required', ['status' => 403]);
+    }
+
+    $job_id = intval($request->get_param('id'));
+    if (!$job_id) {
+        return new WP_Error('missing_id', 'Job ID is required', ['status' => 400]);
+    }
+
+    $post = get_post($job_id);
+    if (!$post || $post->post_type !== 'post') {
+        return new WP_Error('not_found', 'Job not found', ['status' => 404]);
+    }
+
+    if ((int)$post->post_author !== $user_id) {
+        return new WP_Error('forbidden', 'You are not the author of this job', ['status' => 403]);
+    }
+
+    $deleted = wp_delete_post($job_id, true);
+    if (!$deleted) {
+        return new WP_Error('delete_failed', 'Unable to delete job', ['status' => 500]);
+    }
+
+    return rest_ensure_response(['message' => 'Job deleted', 'id' => $job_id]);
+}
 
 
 ?>

@@ -32,6 +32,26 @@ export function renderProfile(container) {
     <label for="dob" class="block font-semibold">Date of Birth</label>
     <input type="date" id="dob" name="dob" class="w-full p-2 border rounded" /><br />
 
+    <h3 class="text-lg font-semibold mt-4">Address (USA Only)</h3>
+    <label for="street1" class="block font-semibold">Street Address</label>
+    <input type="text" id="street1" name="street1" class="w-full p-2 border rounded" required /><br />
+
+    <label for="street2" class="block font-semibold">Unit/Suite (optional)</label>
+    <input type="text" id="street2" name="street2" class="w-full p-2 border rounded" /><br />
+
+    <label for="city" class="block font-semibold">City</label>
+    <input type="text" id="city" name="city" class="w-full p-2 border rounded" required /><br />
+
+    <label for="state" class="block font-semibold">State (2-letter)</label>
+    <input type="text" id="state" name="state" class="w-full p-2 border rounded" required maxlength="2" /><br />
+
+    <label for="zip" class="block font-semibold">ZIP Code</label>
+    <input type="text" id="zip" name="zip" class="w-full p-2 border rounded" required /><br />
+
+    <label for="country" class="block font-semibold">Country</label>
+    <input type="text" id="country" name="country" class="w-full p-2 border rounded" required /><br />
+
+    <p id="profileError" class="text-sm text-red-600"></p>
     <button type="submit" class="text-purple px-4 py-2 rounded">Save</button>
   </form>
 
@@ -60,6 +80,12 @@ export function renderProfile(container) {
         document.getElementById('last_name').value  = data.last_name || '';
         document.getElementById('company').value  = data.company || '';
         document.getElementById('dob').value        = data.dob || '';
+        document.getElementById('street1').value    = data.street1 || '';
+        document.getElementById('street2').value    = data.street2 || '';
+        document.getElementById('city').value       = data.city || '';
+        document.getElementById('state').value      = data.state || '';
+        document.getElementById('zip').value        = data.zip || '';
+        document.getElementById('country').value    = data.country || 'United States';
         previewImg.src = data.avatar_url || '/default-avatar.png';
 
         // Determine role + links
@@ -91,7 +117,26 @@ async function handleProfileUpdate(event) {
   event.preventDefault();
 
   const form = event.target;
+  const errorEl = document.getElementById('profileError');
   const formData = new FormData(form);
+  if (errorEl) errorEl.textContent = '';
+
+  const country = (formData.get('country') || '').trim();
+  const state = (formData.get('state') || '').trim();
+  const zip = (formData.get('zip') || '').trim();
+  const usaValues = ['usa', 'us', 'united states', 'united states of america'];
+  if (!usaValues.includes(country.toLowerCase())) {
+    if (errorEl) errorEl.textContent = 'USA only: please enter United States.';
+    return;
+  }
+  if (state && !/^[A-Za-z]{2}$/.test(state)) {
+    if (errorEl) errorEl.textContent = 'State must be a 2-letter code.';
+    return;
+  }
+  if (zip && !/^\d{5}(-\d{4})?$/.test(zip)) {
+    if (errorEl) errorEl.textContent = 'ZIP must be 5 digits (or 5+4).';
+    return;
+  }
 
   try {
     const response = await fetch('/wp-json/customapi/v1/user-profile-update', {

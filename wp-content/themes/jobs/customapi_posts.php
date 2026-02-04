@@ -6,6 +6,9 @@ if (session_status() === PHP_SESSION_NONE) {
     if (!isset($_SESSION['user'])) {
         return new WP_Error('unauthorized', 'Login required', ['status' => 403]);
     }
+    if (!customapi_is_employer($_SESSION['user']['id'])) {
+        return new WP_Error('forbidden', 'Employer account required', ['status' => 403]);
+    }
 
     $params = $request->get_json_params();
     if (empty($params['title'])) {
@@ -14,12 +17,16 @@ if (session_status() === PHP_SESSION_NONE) {
 
     $title   = sanitize_text_field($params['title']);
     $content = isset($params['description']) ? wp_kses_post($params['description']) : '';
+    $status  = isset($params['status']) ? sanitize_text_field($params['status']) : 'publish';
+    if (!in_array($status, ['publish', 'draft'], true)) {
+        $status = 'publish';
+    }
 
     $post_id = wp_insert_post([
         'post_type'    => 'post',
         'post_title'   => $title,
         'post_content' => $content,
-        'post_status'  => 'publish',
+        'post_status'  => $status,
         'post_author'  => $_SESSION['user']['id']
     ]);
 

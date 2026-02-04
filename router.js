@@ -28,18 +28,20 @@ function kebabToCamel(str) {
   return str.replace(/-([a-z])/g, (_, char) => char.toUpperCase());
 }
 
-async function isLoggedIn() {
+async function getSession() {
   try {
-    const response = await fetch('/wp-json/customapi/v1/user-profile?_=' + Date.now(), {
+    const response = await fetch('/wp-json/customapi/v1/sessions?_=' + Date.now(), {
       credentials: 'include'
     });
-    return response.ok;
+    if (!response.ok) return null;
+    return response.json();
   } catch {
-    return false;
+    return null;
   }
 }
 
 const protectedRoutes = ['profile', 'updatePassword','post','apply','resume', 'myJobPosts', 'myJobPostDetail'];
+const employerRoutes = ['post', 'myJobPosts', 'myJobPostDetail'];
 
 export async function router() {
   
@@ -50,10 +52,17 @@ export async function router() {
   console.log('Normalized path:', normalizedPath);
   console.log('Params:', params);
   if (protectedRoutes.includes(normalizedPath)) {
-    const loggedIn = await isLoggedIn();
-    if (!loggedIn) {
+    const session = await getSession();
+    if (!session) {
       window.location.hash = '#login';
       return;
+    }
+    if (employerRoutes.includes(normalizedPath)) {
+      const roles = Array.isArray(session?.roles) ? session.roles : [];
+      if (!roles.includes('employer')) {
+        window.location.hash = '#home';
+        return;
+      }
     }
   }
 

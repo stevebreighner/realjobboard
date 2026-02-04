@@ -1,9 +1,9 @@
 import { CONFIG } from '../config.js';
 
-export async function renderNavbar(container) {
-  const isLoggedIn = await checkLoginStatus();
+let hasHashListener = false;
 
-  container.innerHTML = `
+function navbarHtml(isLoggedIn, isEmployer) {
+  return `
     <style>
   .navbar {
     position: relative;
@@ -79,7 +79,7 @@ export async function renderNavbar(container) {
       <div id="menu" class="menu">
         ${!isLoggedIn ? '<a href="/#home" class="nav-link">Home</a>' : ''}
         <a href="/#list" class="nav-link">${CONFIG.COMPANY_BUSINESS_THING_PLURAL}</a>
-        <a href="/#post" class="nav-link">Post a ${CONFIG.COMPANY_BUSINESS_THING}</a>
+        ${isEmployer ? `<a href="/#post" class="nav-link">Post a ${CONFIG.COMPANY_BUSINESS_THING}</a>` : ''}
         ${isLoggedIn ? '<a href="/#profile" class="nav-link">Profile</a>' : ''}
         ${isLoggedIn
           ? '<a href="#" class="nav-link" id="logoutLink">Logout</a>'
@@ -88,7 +88,9 @@ export async function renderNavbar(container) {
       </div>
     </nav>
   `;
+}
 
+function bindNavbar(container, isLoggedIn) {
   // Toggle menu on small screens
   const menu = document.getElementById('menu');
   const toggle = document.getElementById('menuToggle');
@@ -110,7 +112,25 @@ export async function renderNavbar(container) {
   }
 
   highlightActiveLink();
-  window.addEventListener('hashchange', highlightActiveLink);
+  if (!hasHashListener) {
+    window.addEventListener('hashchange', highlightActiveLink);
+    hasHashListener = true;
+  }
+}
+
+export function renderNavbar(container) {
+  // Render immediately for fast paint
+  container.innerHTML = navbarHtml(false, false);
+  bindNavbar(container, false);
+
+  // Update nav after async auth check
+  checkLoginStatus().then(({ isLoggedIn, isEmployer }) => {
+    if (!isLoggedIn) {
+      return;
+    }
+    container.innerHTML = navbarHtml(true, isEmployer);
+    bindNavbar(container, true);
+  });
 }
 
 function highlightActiveLink() {
@@ -128,12 +148,15 @@ function highlightActiveLink() {
 
 async function checkLoginStatus() {
   try {
-    const res = await fetch('/wp-json/customapi/v1/profile?_=' + Date.now(), {
+    const res = await fetch('/wp-json/customapi/v1/sessions?_=' + Date.now(), {
       method: 'GET',
       credentials: 'include',
     });
-    return res.ok;
+    if (!res.ok) return { isLoggedIn: false, isEmployer: false };
+    const data = await res.json();
+    const roles = Array.isArray(data?.roles) ? data.roles : [];
+    return { isLoggedIn: true, isEmployer: roles.includes('employer') };
   } catch {
-    return false;
+    return { isLoggedIn: false, isEmployer: false };
   }
 }

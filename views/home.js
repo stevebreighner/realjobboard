@@ -3,13 +3,30 @@
 import { CONFIG } from '../config.js';
 export function renderHome(container) {
   container.innerHTML = `
+    <style>
+      .home-hero {
+        background-image: url('/views/jobboard.webp');
+        background-size: cover;
+        background-position: center top;
+      }
+
+      @media (min-width: 1024px) {
+        .home-hero {
+          background-position: center 30%;
+        }
+      }
+    </style>
     <!-- Hero Section -->
-    <div class="flex flex-col items-center justify-center text-center min-h-screen bg-gradient-to-br from-indigo-600 to-purple-500 text-white p-8">
-      <h1 class="text-4xl md:text-6xl font-bold mb-4">Welcome to ${CONFIG.COMPANY_NAME}</h1>
-      <p class="text-xl md:text-2xl mb-6">Privacy focused Job Search for finding the best talent and getting hired.</p>
-      <div class="flex gap-4">
-        <a href="/#post" class="bg-white text-indigo-600 font-semibold px-6 py-3 rounded-xl shadow hover:bg-gray-100 transition">Post a ${CONFIG.COMPANY_BUSINESS_THING}</a>
-        <a href="/#list" class="border border-white px-6 py-3 rounded-xl hover:bg-white hover:text-indigo-600 transition">Browse ${CONFIG.COMPANY_BUSINESS_THING_PLURAL}</a>
+    <div class="home-hero relative flex flex-col items-center justify-center text-center min-h-screen text-white p-8 bg-no-repeat">
+      <div class="absolute inset-0 bg-black/40"></div>
+      <div class="relative z-10">
+        <h1 class="text-4xl md:text-6xl font-bold mb-4">Welcome to ${CONFIG.COMPANY_NAME}</h1>
+        <p class="text-xl md:text-2xl mb-3">Privacy focused Job Search for finding the best talent and getting hired.</p>
+        <p class="text-base md:text-lg text-white/90 mb-6">Your data stays private — resumes and files are encrypted by default.</p>
+        <div class="flex gap-4 justify-center">
+          <a id="postCta" href="/#post" class="bg-white text-indigo-600 font-semibold px-6 py-3 rounded-xl shadow hover:bg-gray-100 transition" style="display:none;">Post a ${CONFIG.COMPANY_BUSINESS_THING}</a>
+          <a href="/#list" class="border border-white px-6 py-3 rounded-xl hover:bg-white hover:text-indigo-600 transition">Browse ${CONFIG.COMPANY_BUSINESS_THING_PLURAL}</a>
+        </div>
       </div>
     </div>
 
@@ -49,4 +66,18 @@ export function renderHome(container) {
       </div>
     </section>
   `;
+
+  const postCta = container.querySelector('#postCta');
+  fetch('/wp-json/customapi/v1/user-profile?_=' + Date.now(), {
+    method: 'GET',
+    credentials: 'include',
+  })
+    .then(res => (res.ok ? res.json() : null))
+    .then(data => {
+      const roles = Array.isArray(data?.roles) ? data.roles : [];
+      if (postCta && roles.includes('employer')) {
+        postCta.style.display = 'inline-block';
+      }
+    })
+    .catch(() => {});
 }

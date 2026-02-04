@@ -1,5 +1,19 @@
 <?php
+
+
+error_log("functions.php loaded");
+add_action('rest_api_init', function() {
+    error_log("rest_api_init hook fired");
+});
 // Helper to get HTTP Origin header safely
+add_action('rest_api_init', function() {
+  global $wp_rest_server;
+  if ( $wp_rest_server ) {
+      error_log(print_r($wp_rest_server->get_routes(), true));
+  }
+});
+
+
 if (!function_exists('get_http_origin')) {
   function get_http_origin() {
     if (isset($_SERVER['HTTP_ORIGIN'])) {
@@ -86,6 +100,8 @@ add_filter('upload_mimes', function($mimes) {
 add_action('rest_api_init', function () {
   $routes = [
     ['register',      'POST', 'customapi_register_user'],
+    ['verify-email',  'GET',  'customapi_verify_email'],
+    ['resend-verification', 'POST', 'customapi_resend_verification'],
     ['login',         'POST', 'customapi_login_user'],
     ['me',     'GET',  'customapi_get_user_jobs'],
     ['apply-job', 'POST', 'customapi_apply_to_job'],
@@ -99,6 +115,8 @@ add_action('rest_api_init', function () {
       ['check-application', 'GET', 'customapi_check_application'],
       ['user-jobs', 'GET', 'customapi_user_jobs'],
       ['user-job-detail', 'GET', 'customapi_user_job_detail'],
+      ['user-job-update', 'POST', 'customapi_user_job_update'],
+      ['user-job-delete', 'POST', 'customapi_user_job_delete'],
            // ---END New routes for resumes / covers ---
     ['create-post',     'POST',  'customapi_create_post'],
     // ['user-jobs',     'GET',  'customapi_get_user_jobs'],
@@ -149,15 +167,38 @@ add_filter('wp_mail_from_name', function ($name) {
 // end override wp emails
 
 function customapi_get_session() {
-  return isset($_SESSION['user'])
-    ? $_SESSION['user']
-    : new WP_Error('unauthorized', 'Not logged in', ['status' => 403]);
+  if (!isset($_SESSION['user'])) {
+    return new WP_Error('unauthorized', 'Not logged in', ['status' => 403]);
+  }
+
+  $user_id = intval($_SESSION['user']['id'] ?? 0);
+  $user = $user_id ? get_userdata($user_id) : null;
+  $roles = $user && !empty($user->roles) ? $user->roles : [];
+
+  $session = $_SESSION['user'];
+  $session['roles'] = $roles;
+  return $session;
 }
 
 function customapi_ping() {
   return rest_ensure_response(['status' => 'ok', 'timestamp' => time()]);
 }
  
+function customapi_is_employer($user_id = null) {
+  if (!$user_id) {
+    if (empty($_SESSION['user']['id'])) {
+      return false;
+    }
+    $user_id = intval($_SESSION['user']['id']);
+  }
+
+  $user = get_userdata($user_id);
+  if (!$user || empty($user->roles)) {
+    return false;
+  }
+
+  return in_array('employer', (array) $user->roles, true);
+}
 
 
 // ⚙️ DEV-ONLY — Toggle current user's role and dump all users
