@@ -4,9 +4,89 @@ if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
 
+function customapi_extract_resume_text($file_path, $mime) {
+  if (!$file_path || !file_exists($file_path)) {
+    return '';
+  }
+
+  $text = '';
+  if ($mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+    if (class_exists('ZipArchive')) {
+      $zip = new ZipArchive();
+      if ($zip->open($file_path) === true) {
+        $data = $zip->getFromName('word/document.xml');
+        $zip->close();
+        if ($data !== false) {
+          $text = wp_strip_all_tags($data);
+        }
+      }
+    }
+  } elseif ($mime === 'application/pdf') {
+    if (function_exists('shell_exec')) {
+      $tmp = tempnam(sys_get_temp_dir(), 'pdftext_');
+      if ($tmp) {
+        @shell_exec('pdftotext ' . escapeshellarg($file_path) . ' ' . escapeshellarg($tmp) . ' 2>/dev/null');
+        if (file_exists($tmp)) {
+          $text = file_get_contents($tmp) ?: '';
+          @unlink($tmp);
+        }
+      }
+    }
+  }
+
+  $text = preg_replace('/\s+/', ' ', (string) $text);
+  return trim($text);
+}
+
 
 // REGISTER
 function customapi_register_user($request) {
+  $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+  $honeypot = trim($request['website'] ?? '');
+  $ts = intval($request['ts'] ?? 0);
+  $turnstile_token = sanitize_text_field($request['turnstile_token'] ?? '');
+
+  if ($honeypot !== '') {
+      return new WP_Error('bot_detected', 'Invalid submission', ['status' => 400]);
+  }
+
+  if (!$ts || (time() - $ts) < 3) {
+      return new WP_Error('too_fast', 'Please take a moment before submitting.', ['status' => 400]);
+  }
+
+  $rate_key = 'reg_rate_' . md5($ip);
+  $rate_count = (int) get_transient($rate_key);
+  if ($rate_count >= 5) {
+      return new WP_Error('rate_limited', 'Too many registrations. Try again later.', ['status' => 429]);
+  }
+  set_transient($rate_key, $rate_count + 1, 10 * MINUTE_IN_SECONDS);
+
+  if (empty($turnstile_token)) {
+      return new WP_Error('captcha_required', 'Please complete the captcha.', ['status' => 400]);
+  }
+
+  if (!defined('TURNSTILE_SECRET') || !TURNSTILE_SECRET) {
+      return new WP_Error('captcha_config', 'Captcha is not configured.', ['status' => 500]);
+  }
+
+  $verify = wp_remote_post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
+      'timeout' => 10,
+      'body' => [
+          'secret' => TURNSTILE_SECRET,
+          'response' => $turnstile_token,
+          'remoteip' => $ip,
+      ],
+  ]);
+
+  if (is_wp_error($verify)) {
+      return new WP_Error('captcha_error', 'Captcha verification failed.', ['status' => 502]);
+  }
+
+  $verify_body = json_decode(wp_remote_retrieve_body($verify), true);
+  if (empty($verify_body['success'])) {
+      return new WP_Error('captcha_invalid', 'Captcha verification failed.', ['status' => 400]);
+  }
+
   $username = sanitize_text_field($request['username']);
   $email    = sanitize_email($request['email']);
   $password = $request['password'];
@@ -33,9 +113,35 @@ function customapi_register_user($request) {
 
   // Assign the role
   $user = new WP_User($user_id);
-  $user->set_role($role); // make sure "employer" and "employee" exist as roles in WP
+  if (!get_role('pending')) add_role('pending', 'Pending');
+  if (!get_role('employer')) add_role('employer', 'Employer');
+  if (!get_role('employee')) add_role('employee', 'Employee');
 
-  return ['message' => '✅ Registered', 'user_id' => $user_id, 'role' => $role];
+  $user->set_role('pending');
+  update_user_meta($user_id, 'desired_role', $role);
+  update_user_meta($user_id, 'email_verified', 0);
+  if ($role === 'employer') {
+      update_user_meta($user_id, 'employer_verified', 0);
+  }
+  $address_fields = ['street1', 'street2', 'city', 'state', 'zip', 'country'];
+  foreach ($address_fields as $field) {
+      if (isset($request[$field])) {
+          update_user_meta($user_id, $field, sanitize_text_field($request[$field]));
+      }
+  }
+  customapi_set_user_hashes($user_id, $email, $username);
+
+  $token = bin2hex(random_bytes(32));
+  $token_hash = hash('sha256', $token);
+  update_user_meta($user_id, 'email_verify_token', $token_hash);
+  update_user_meta($user_id, 'email_verify_expires', time() + DAY_IN_SECONDS);
+
+  $verify_url = home_url("/wp-json/customapi/v1/verify-email?uid=$user_id&token=$token");
+  $subject = 'Verify your email';
+  $message = "Hi $username,\n\nPlease verify your email by clicking the link below:\n$verify_url\n\nThis link expires in 24 hours.";
+  wp_mail($email, $subject, $message);
+
+  return ['message' => '✅ Registered. Check your email to verify your account.', 'user_id' => $user_id, 'role' => $role];
 }
 
 
@@ -51,6 +157,21 @@ function customapi_login_user($request) {
   }
 
   $user_id = $user->ID;
+  customapi_set_user_hashes($user_id, $user->user_email, $user->user_login);
+  $verified = get_user_meta($user_id, 'email_verified', true);
+
+  // Back-compat: allow existing users created before verification was added
+  if ($verified === '') {
+    $roles = (array) $user->roles;
+    if (!in_array('pending', $roles, true)) {
+      update_user_meta($user_id, 'email_verified', 1);
+      $verified = 1;
+    }
+  }
+
+  if (!$verified) {
+    return new WP_Error('email_not_verified', 'Please verify your email before logging in.', ['status' => 403]);
+  }
 
   // 👇 Check if user needs 2FA and hasn't verified in last 24h
   $last_verified = get_user_meta($user_id, '2fa_last_verified', true);
@@ -69,7 +190,82 @@ function customapi_login_user($request) {
   return ['message' => '✅ Login successful', 'user' => $_SESSION['user']];
 }
 
-function customapi_get_user_profile() {
+function customapi_verify_email($request) {
+  $user_id = intval($request['uid'] ?? 0);
+  $token = sanitize_text_field($request['token'] ?? '');
+
+  if (!$user_id || !$token) {
+    return new WP_Error('invalid_request', 'Invalid verification link.', ['status' => 400]);
+  }
+
+  $stored_hash = get_user_meta($user_id, 'email_verify_token', true);
+  $expires = intval(get_user_meta($user_id, 'email_verify_expires', true));
+
+  if (!$stored_hash || !$expires || time() > $expires) {
+    return new WP_Error('expired', 'Verification link expired. Please register again.', ['status' => 400]);
+  }
+
+  if (!hash_equals($stored_hash, hash('sha256', $token))) {
+    return new WP_Error('invalid_token', 'Invalid verification link.', ['status' => 400]);
+  }
+
+  update_user_meta($user_id, 'email_verified', 1);
+  delete_user_meta($user_id, 'email_verify_token');
+  delete_user_meta($user_id, 'email_verify_expires');
+
+  $desired_role = get_user_meta($user_id, 'desired_role', true);
+  if (!in_array($desired_role, ['employer', 'employee'])) {
+    $desired_role = 'subscriber';
+  }
+
+  $user = new WP_User($user_id);
+  $user->set_role($desired_role);
+  if ($desired_role === 'employer' && get_user_meta($user_id, 'employer_verified', true) === '') {
+    update_user_meta($user_id, 'employer_verified', 0);
+  }
+
+  return ['message' => '✅ Email verified. You can now log in.'];
+}
+
+function customapi_resend_verification($request) {
+  $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+  $email = sanitize_email($request['email'] ?? '');
+
+  if (!$email) {
+    return new WP_Error('missing_email', 'Email is required.', ['status' => 400]);
+  }
+
+  $rate_key = 'resend_rate_' . md5($ip);
+  $rate_count = (int) get_transient($rate_key);
+  if ($rate_count >= 5) {
+    return new WP_Error('rate_limited', 'Too many requests. Try again later.', ['status' => 429]);
+  }
+  set_transient($rate_key, $rate_count + 1, 10 * MINUTE_IN_SECONDS);
+
+  $user = get_user_by('email', $email);
+  if (!$user) {
+    return ['message' => 'If that email exists, a verification link has been sent.'];
+  }
+
+  $verified = get_user_meta($user->ID, 'email_verified', true);
+  if ($verified) {
+    return ['message' => 'If that email exists, a verification link has been sent.'];
+  }
+
+  $token = bin2hex(random_bytes(32));
+  $token_hash = hash('sha256', $token);
+  update_user_meta($user->ID, 'email_verify_token', $token_hash);
+  update_user_meta($user->ID, 'email_verify_expires', time() + DAY_IN_SECONDS);
+
+  $verify_url = home_url("/wp-json/customapi/v1/verify-email?uid={$user->ID}&token=$token");
+  $subject = 'Verify your email';
+  $message = "Hi {$user->user_login},\n\nPlease verify your email by clicking the link below:\n$verify_url\n\nThis link expires in 24 hours.";
+  wp_mail($email, $subject, $message);
+
+  return ['message' => 'If that email exists, a verification link has been sent.'];
+}
+
+function customapi_get_user_profile(WP_REST_Request $request = null) {
     // Ensure the user is logged in
     if (!isset($_SESSION['user'])) {
         return new WP_Error('unauthorized', 'Login required', ['status' => 403]);
@@ -78,6 +274,10 @@ function customapi_get_user_profile() {
     $user_id = $_SESSION['user']['id'];
     $user = get_userdata($user_id);
     $_SESSION['user']['roles'] = $user->roles;
+    $light = false;
+    if ($request) {
+        $light = (bool) $request->get_param('light');
+    }
 
     // Fetch user data
     $user_profile = [
@@ -89,33 +289,42 @@ function customapi_get_user_profile() {
         'first_name'   => get_user_meta($user_id, 'first_name', true),
         'last_name'    => get_user_meta($user_id, 'last_name', true),
         'company'      => get_user_meta($user_id, 'company', true),
+        'company_site' => get_user_meta($user_id, 'company_site', true),
+        'company_key'  => get_user_meta($user_id, 'company_key', true),
         'dob'          => get_user_meta($user_id, 'dob', true),
+        'hide_email'   => (bool) get_user_meta($user_id, 'hide_email', true),
+        'employer_verified' => (bool) get_user_meta($user_id, 'employer_verified', true),
         'roles'        => $user->roles,
     ];
 
-    // Fetch resumes and decrypt them
-    $resumes = get_user_meta($user_id, 'user_resumes', true) ?: [];
+    if (!$light) {
+        // Fetch resumes and decrypt them
+        $resumes = get_user_meta($user_id, 'user_resumes', true) ?: [];
 
-    // Retrieve encryption key
-    $encryption_key = get_encryption_key($user_id);
+        // Retrieve encryption key
+        $encryption_key = get_encryption_key($user_id);
 
-    foreach ($resumes as $key => $resume) {
-        // Decrypt each resume file
-        $decrypted_file_path = decrypt_file($resume['url'], $encryption_key);
+        foreach ($resumes as $key => $resume) {
+            // Decrypt each resume file
+            $decrypted_file_path = decrypt_file($resume['url'], $encryption_key);
 
-        if ($decrypted_file_path === false) {
-            // If decryption fails, remove this resume from the list
-            unset($resumes[$key]);
-            // Optionally log or add an error message here
-        } else {
-            // Update the URL to point to the decrypted file
-            $resumes[$key]['url'] = esc_url($decrypted_file_path);
+            if ($decrypted_file_path === false) {
+                // If decryption fails, remove this resume from the list
+                unset($resumes[$key]);
+                // Optionally log or add an error message here
+            } else {
+                // Update the URL to point to the decrypted file
+                $resumes[$key]['url'] = esc_url($decrypted_file_path);
+            }
         }
-    }
 
-    // Add decrypted resumes to the user profile
-    $user_profile['resumes'] = $resumes;
-    $user_profile['cover_letters'] = get_user_meta($user_id, 'user_covers', true) ?: [];
+        // Add decrypted resumes to the user profile
+        $user_profile['resumes'] = $resumes;
+        $user_profile['cover_letters'] = get_user_meta($user_id, 'user_covers', true) ?: [];
+    } else {
+        $user_profile['resumes'] = [];
+        $user_profile['cover_letters'] = [];
+    }
 
     return $user_profile;
 }
@@ -180,11 +389,16 @@ function customapi_user_profile_update() {
     $user_id = $_SESSION['user']['id'];
 
     // Simple text/meta fields
-    $fields = ['first_name', 'last_name', 'dob', 'company'];
+    $fields = ['first_name', 'last_name', 'dob', 'company', 'company_site', 'company_key'];
     foreach ($fields as $field) {
         if (isset($_POST[$field])) {
             update_user_meta($user_id, $field, sanitize_text_field($_POST[$field]));
         }
+    }
+    if (isset($_POST['hide_email'])) {
+        update_user_meta($user_id, 'hide_email', 1);
+    } else {
+        update_user_meta($user_id, 'hide_email', 0);
     }
 
     require_once(ABSPATH . 'wp-admin/includes/file.php');
@@ -233,6 +447,7 @@ function customapi_user_profile_update() {
                 if (isset($upload['url'])) {
                     // Retrieve the encryption key for the user
                     $encryption_key = get_encryption_key($user_id);
+                    $resume_text = customapi_extract_resume_text($upload['file'], $file['type']);
 
                     // Encrypt the uploaded file before saving
                     $encrypted_file_path = encrypt_file($upload['file'], $encryption_key);
@@ -249,6 +464,7 @@ function customapi_user_profile_update() {
                         'url'  => esc_url($encrypted_file_path),
                         'name' => basename($encrypted_file_path),
                         'time' => time(),
+                        'text' => $resume_text,
                     ];
 
                     update_user_meta($user_id, 'user_resumes', $resumes);
@@ -270,6 +486,7 @@ function customapi_user_profile_update() {
             if (isset($upload['url'])) {
                 // Retrieve the encryption key for the user
                 $encryption_key = get_encryption_key($user_id);
+                $resume_text = customapi_extract_resume_text($upload['file'], $file['type']);
 
                 // Encrypt the uploaded file before saving
                 $encrypted_file_path = encrypt_file($upload['file'], $encryption_key);
@@ -286,6 +503,7 @@ function customapi_user_profile_update() {
                     'url'  => esc_url($encrypted_file_path),
                     'name' => basename($encrypted_file_path),
                     'time' => time(),
+                    'text' => $resume_text,
                 ];
 
                 update_user_meta($user_id, 'user_resumes', $resumes);

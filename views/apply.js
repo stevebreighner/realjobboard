@@ -10,6 +10,10 @@ export async function renderApply(container, jobId) {
       const statusRes = await fetch(`/wp-json/customapi/v1/check-application?jobId=${jobId}`, {
         credentials: "include"
       });
+      if (statusRes.status === 401 || statusRes.status === 403) {
+        window.location.hash = "#login";
+        return;
+      }
       const statusData = await statusRes.json();
   
       if (statusData.already_applied) {
@@ -35,6 +39,10 @@ export async function renderApply(container, jobId) {
       const profileRes = await fetch("/wp-json/customapi/v1/user-profile?_=" + Date.now(), {
         credentials: "include"
       });
+      if (profileRes.status === 401 || profileRes.status === 403) {
+        window.location.hash = "#login";
+        return;
+      }
       const profileData = await profileRes.json();
       if (!profileRes.ok) throw new Error(profileData.message || "Failed to fetch profile");
   
@@ -44,6 +52,11 @@ export async function renderApply(container, jobId) {
       // --- Render form ---
       container.innerHTML = `
         <h1 class="text-2xl font-bold mb-4">Apply for: ${jobTitle}</h1>
+        <div id="applyMessage" class="mb-4 text-sm"></div>
+        <div class="mb-4 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-3">
+          Privacy note: Employers may contact you using the details you provide. If you choose to hide your email, they will only see your resume link.
+          <a class="text-blue-600 hover:underline ml-2" href="/#support?subject=Report%20Abuse&context=apply:${jobId}">Report abuse</a>
+        </div>
         <form id="applyForm" class="space-y-6">
           <div>
                   <p class="mt-4">
@@ -109,13 +122,17 @@ export async function renderApply(container, jobId) {
       // --- Handle submission ---
       document.getElementById("applyForm")?.addEventListener("submit", async (e) => {
         e.preventDefault();
-  
+
+        const messageEl = document.getElementById("applyMessage");
         const formData = new FormData(e.target);
         const selectedResume = formData.get("resume");
         const selectedCover = formData.get("cover_letter");
-  
+
         if (!selectedResume || !selectedCover) {
-          alert("⚠️ Please select both a resume and a cover letter.");
+          if (messageEl) {
+            messageEl.className = "mb-4 text-sm text-amber-700";
+            messageEl.textContent = "Please select both a resume and a cover letter.";
+          }
           return;
         }
   
@@ -126,11 +143,18 @@ export async function renderApply(container, jobId) {
             body: JSON.stringify({ jobId, resume: selectedResume, cover_letter: selectedCover }),
             credentials: "include"
           });
-  
+
           const result = await response.json();
+          if (response.status === 401) {
+            window.location.hash = "#login";
+            return;
+          }
           if (!response.ok) throw new Error(result.message || "Failed to submit application");
-  
-          container.innerHTML = `<p class="text-green-600">✅ Application submitted successfully!</p>
+
+      container.innerHTML = `<p class="text-green-600">✅ Application submitted successfully!</p>
+            <div class="mt-4 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-3">
+              If you experience any issues with an employer, you can <a class="text-blue-600 hover:underline" href="/#support?subject=Report%20Abuse&context=apply:${jobId}">report abuse</a>.
+            </div>
             <p><a href="/#list-detail?id=${jobId}" class="text-blue-600 hover:underline">← Back to Job Detail</a></p>`;
         } catch (err) {
           container.innerHTML += `<p class="text-red-600">❌ Error: ${err.message}</p>`;

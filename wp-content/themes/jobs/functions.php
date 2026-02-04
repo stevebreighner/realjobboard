@@ -1,5 +1,19 @@
 <?php
+
+
+error_log("functions.php loaded");
+add_action('rest_api_init', function() {
+    error_log("rest_api_init hook fired");
+});
 // Helper to get HTTP Origin header safely
+add_action('rest_api_init', function() {
+  global $wp_rest_server;
+  if ( $wp_rest_server ) {
+      error_log(print_r($wp_rest_server->get_routes(), true));
+  }
+});
+
+
 if (!function_exists('get_http_origin')) {
   function get_http_origin() {
     if (isset($_SERVER['HTTP_ORIGIN'])) {
@@ -49,6 +63,13 @@ add_action('init', function () {
   }
 }, 1);
 
+// Ensure custom admin role exists
+add_action('init', function () {
+  if (!get_role('site_admin')) {
+    add_role('site_admin', 'Site Admin');
+  }
+});
+
 // CORS for REST API responses
 add_action('rest_api_init', function () {
   add_filter('rest_pre_serve_request', function ($served, $result, $request, $server) {
@@ -86,6 +107,8 @@ add_filter('upload_mimes', function($mimes) {
 add_action('rest_api_init', function () {
   $routes = [
     ['register',      'POST', 'customapi_register_user'],
+    ['verify-email',  'GET',  'customapi_verify_email'],
+    ['resend-verification', 'POST', 'customapi_resend_verification'],
     ['login',         'POST', 'customapi_login_user'],
     ['me',     'GET',  'customapi_get_user_jobs'],
     ['apply-job', 'POST', 'customapi_apply_to_job'],
@@ -99,6 +122,8 @@ add_action('rest_api_init', function () {
       ['check-application', 'GET', 'customapi_check_application'],
       ['user-jobs', 'GET', 'customapi_user_jobs'],
       ['user-job-detail', 'GET', 'customapi_user_job_detail'],
+      ['user-job-update', 'POST', 'customapi_user_job_update'],
+      ['user-job-delete', 'POST', 'customapi_user_job_delete'],
            // ---END New routes for resumes / covers ---
     ['create-post',     'POST',  'customapi_create_post'],
     // ['user-jobs',     'GET',  'customapi_get_user_jobs'],
@@ -125,6 +150,8 @@ add_action('rest_api_init', function () {
     ['magic-login',   'GET',  'customapi_handle_magic_login'],
     ['ping',     'GET',  'customapi_ping'],
     ['checklist',     'POST', 'customapi_save_checklist'],
+    ['employer-click', 'POST', 'customapi_employer_click'],
+    ['employer-reset-learning', 'POST', 'customapi_employer_reset_learning'],
   ];
 
   foreach ($routes as [$endpoint, $method, $callback]) {
@@ -148,21 +175,135 @@ add_filter('wp_mail_from_name', function ($name) {
 });
 // end override wp emails
 
+// Send HTML for the Loginizer 2FA email (only when we include the marker)
+add_filter('wp_mail', function ($args) {
+  if (!empty($args['message']) && strpos($args['message'], '<!--loginizer-2fa-->') !== false) {
+    $headers = $args['headers'] ?? [];
+    if (!is_array($headers)) {
+      $headers = [$headers];
+    }
+    $headers[] = 'Content-Type: text/html; charset=UTF-8';
+    $args['headers'] = $headers;
+  }
+  return $args;
+});
+
+// Customize Loginizer 2FA email template (only if not already set)
+add_action('init', function () {
+  $option = get_option('loginizer_2fa_email_template');
+  if (!is_array($option)) {
+    $option = [];
+  }
+
+  $hasSubject = !empty($option['2fa_email_sub']);
+  $hasMessage = !empty($option['2fa_email_msg']);
+  if ($hasSubject && $hasMessage) {
+    return;
+  }
+
+  $option['2fa_email_sub'] = 'Your one-time code for $site_name';
+  $option['2fa_email_msg'] = '<!--loginizer-2fa--><div style="font-family:Arial, sans-serif; background:#f7f7fb; padding:24px;">
+  <div style="max-width:560px; margin:0 auto; background:#ffffff; border-radius:12px; padding:24px; border:1px solid #e5e7eb;">
+    <h2 style="margin:0 0 8px; font-size:20px; color:#111827;">Sign-in code</h2>
+    <p style="margin:0 0 16px; color:#374151;">Hi $email,</p>
+    <p style="margin:0 0 16px; color:#374151;">Use this one-time code to finish logging in to <strong>$site_name</strong>:</p>
+    <div style="font-size:28px; letter-spacing:6px; font-weight:700; text-align:center; background:#f3f4f6; padding:14px; border-radius:10px; margin:16px 0; color:#111827;">
+      $otp
+    </div>
+    <p style="margin:0 0 16px; color:#6b7280; font-size:13px;">This code expires in 10 minutes.</p>
+    <p style="margin:0 0 16px; color:#374151;">If you did not request this, you can safely ignore this email.</p>
+    <p style="margin:0; color:#6b7280; font-size:12px;">Need help? Visit $site_url</p>
+  </div>
+</div>';
+
+  update_option('loginizer_2fa_email_template', $option);
+});
+
 function customapi_get_session() {
-  return isset($_SESSION['user'])
-    ? $_SESSION['user']
-    : new WP_Error('unauthorized', 'Not logged in', ['status' => 403]);
+  if (!isset($_SESSION['user'])) {
+    return new WP_Error('unauthorized', 'Not logged in', ['status' => 403]);
+  }
+
+  $user_id = intval($_SESSION['user']['id'] ?? 0);
+  $user = $user_id ? get_userdata($user_id) : null;
+  $roles = $user && !empty($user->roles) ? $user->roles : [];
+
+  $session = $_SESSION['user'];
+  $session['roles'] = $roles;
+  return $session;
 }
 
 function customapi_ping() {
   return rest_ensure_response(['status' => 'ok', 'timestamp' => time()]);
 }
  
+function customapi_is_employer($user_id = null) {
+  if (!$user_id) {
+    if (empty($_SESSION['user']['id'])) {
+      return false;
+    }
+    $user_id = intval($_SESSION['user']['id']);
+  }
+
+  $user = get_userdata($user_id);
+  if (!$user || empty($user->roles)) {
+    return false;
+  }
+
+  return in_array('employer', (array) $user->roles, true);
+}
+
+function customapi_is_site_admin($user_id = null) {
+  if (!$user_id) {
+    if (empty($_SESSION['user']['id'])) {
+      return false;
+    }
+    $user_id = intval($_SESSION['user']['id']);
+  }
+
+  $user = get_userdata($user_id);
+  if (!$user || empty($user->roles)) {
+    return false;
+  }
+
+  return in_array('site_admin', (array) $user->roles, true) || in_array('administrator', (array) $user->roles, true);
+}
+
+function customapi_is_employer_verified($user_id = null) {
+  if (!$user_id) {
+    if (empty($_SESSION['user']['id'])) {
+      return false;
+    }
+    $user_id = intval($_SESSION['user']['id']);
+  }
+  $user = get_userdata($user_id);
+  if (!$user || empty($user->roles)) {
+    return false;
+  }
+  if (!in_array('employer', (array) $user->roles, true)) {
+    return true;
+  }
+  return (bool) get_user_meta($user_id, 'employer_verified', true);
+}
+
+function customapi_set_user_hashes($user_id, $email, $username) {
+  $email_norm = strtolower(trim((string) $email));
+  $user_norm = strtolower(trim((string) $username));
+  if ($email_norm !== '') {
+    update_user_meta($user_id, 'email_hash', hash('sha256', $email_norm));
+  }
+  if ($user_norm !== '') {
+    update_user_meta($user_id, 'username_hash', hash('sha256', $user_norm));
+  }
+}
 
 
 // ⚙️ DEV-ONLY — Toggle current user's role and dump all users
 add_action('template_redirect', function() {
   if (!is_user_logged_in() || !isset($_GET['switch_role']) || $_GET['switch_role'] !== 'toggle') {
+      return;
+  }
+  if (!customapi_is_site_admin()) {
       return;
   }
 
@@ -225,6 +366,8 @@ require_once get_template_directory() . '/customapi_posts.php';
 // require_once get_template_directory() . '/customapi_get_user_jobs.php';
 require_once get_template_directory() . '/customapi_get_lists.php';
 require_once get_template_directory() . '/customapi_apply.php';
+require_once get_template_directory() . '/customapi_admin.php';
+require_once get_template_directory() . '/customapi_contact.php';
 // require_once get_template_directory() . '/customapi_resume.php';
 // require_once get_template_directory() . '/customapi_magic_link.php';
 

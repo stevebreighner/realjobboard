@@ -6,6 +6,12 @@ if (session_status() === PHP_SESSION_NONE) {
     if (!isset($_SESSION['user'])) {
         return new WP_Error('unauthorized', 'Login required', ['status' => 403]);
     }
+    if (!customapi_is_employer($_SESSION['user']['id'])) {
+        return new WP_Error('forbidden', 'Employer account required', ['status' => 403]);
+    }
+    if (!customapi_is_employer_verified($_SESSION['user']['id'])) {
+        return new WP_Error('forbidden', 'Employer verification required', ['status' => 403]);
+    }
 
     $params = $request->get_json_params();
     if (empty($params['title'])) {
@@ -14,12 +20,16 @@ if (session_status() === PHP_SESSION_NONE) {
 
     $title   = sanitize_text_field($params['title']);
     $content = isset($params['description']) ? wp_kses_post($params['description']) : '';
+    $status  = isset($params['status']) ? sanitize_text_field($params['status']) : 'publish';
+    if (!in_array($status, ['publish', 'draft'], true)) {
+        $status = 'publish';
+    }
 
     $post_id = wp_insert_post([
         'post_type'    => 'post',
         'post_title'   => $title,
         'post_content' => $content,
-        'post_status'  => 'publish',
+        'post_status'  => $status,
         'post_author'  => $_SESSION['user']['id']
     ]);
 
@@ -27,11 +37,27 @@ if (session_status() === PHP_SESSION_NONE) {
         return new WP_Error('post_error', 'Failed to insert post', ['status' => 500]);
     }
 
+    $user_id = intval($_SESSION['user']['id']);
+    $company_default = get_user_meta($user_id, 'company', true);
+    $company_site_default = get_user_meta($user_id, 'company_site', true);
+    $company_key_default = get_user_meta($user_id, 'company_key', true);
+
     // Store all other fields as meta
     foreach ($params as $key => $value) {
         if (!in_array($key, ['title', 'description'])) {
             update_post_meta($post_id, sanitize_key($key), sanitize_text_field($value));
         }
+    }
+
+    // Inherit company data from employer profile when not provided
+    if (empty($params['company']) && !empty($company_default)) {
+        update_post_meta($post_id, 'company', sanitize_text_field($company_default));
+    }
+    if (empty($params['company_site']) && !empty($company_site_default)) {
+        update_post_meta($post_id, 'company_site', esc_url_raw($company_site_default));
+    }
+    if (empty($params['company_key']) && !empty($company_key_default)) {
+        update_post_meta($post_id, 'company_key', sanitize_text_field($company_key_default));
     }
 
     return [

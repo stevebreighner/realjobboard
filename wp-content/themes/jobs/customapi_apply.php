@@ -4,7 +4,13 @@
 
 // Check status before applying
 function customapi_check_application(WP_REST_Request $request) {
-  $user_id = get_current_user_id();
+  if (session_status() !== PHP_SESSION_ACTIVE) {
+      session_start();
+  }
+  if (empty($_SESSION['user']['id'])) {
+      return new WP_Error('unauthorized', 'You must be logged in to apply.', ['status' => 401]);
+  }
+  $user_id = intval($_SESSION['user']['id']);
   $job_id = intval($request->get_param('jobId'));
   if (!$job_id) {
       return new WP_Error('missing_job', 'Job ID is required.', ['status' => 400]);
