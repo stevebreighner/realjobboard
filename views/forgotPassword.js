@@ -1,9 +1,9 @@
 export function renderForgotPassword(container) {
   container.innerHTML = `
-    <h1>Forgot Password</h1>
-    <form onsubmit="handleForgotPassword(event)">
-      <input type="email" id="forgot_email" placeholder="Email" required />
-      <button type="submit">Send Reset Link</button>
+    <h1 class="text-2xl font-bold mb-4">Forgot Password</h1>
+    <form class="space-y-4" onsubmit="handleForgotPassword(event)">
+      <input type="email" id="forgot_email" placeholder="Email" class="w-full p-2 border rounded" required />
+      <button type="submit" class="text-purple px-4 py-2 rounded">Send Reset Link</button>
     </form>
   `;
 }

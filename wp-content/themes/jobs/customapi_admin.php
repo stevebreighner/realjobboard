@@ -51,6 +51,10 @@ function customapi_admin_list_users() {
       'roles' => $u->roles,
       'registered' => $u->user_registered,
       'email_verified' => (bool) get_user_meta($u->ID, 'email_verified', true),
+      'employer_verified' => (bool) get_user_meta($u->ID, 'employer_verified', true),
+      'company' => get_user_meta($u->ID, 'company', true),
+      'company_site' => get_user_meta($u->ID, 'company_site', true),
+      'company_key' => get_user_meta($u->ID, 'company_key', true),
     ];
   }, $users);
 
@@ -79,9 +83,12 @@ function customapi_admin_get_user(WP_REST_Request $request) {
     'roles' => $user->roles,
     'registered' => $user->user_registered,
     'email_verified' => (bool) get_user_meta($user->ID, 'email_verified', true),
+    'employer_verified' => (bool) get_user_meta($user->ID, 'employer_verified', true),
     'first_name' => get_user_meta($user->ID, 'first_name', true),
     'last_name' => get_user_meta($user->ID, 'last_name', true),
     'company' => get_user_meta($user->ID, 'company', true),
+    'company_site' => get_user_meta($user->ID, 'company_site', true),
+    'company_key' => get_user_meta($user->ID, 'company_key', true),
     'dob' => get_user_meta($user->ID, 'dob', true),
     'street1' => get_user_meta($user->ID, 'street1', true),
     'street2' => get_user_meta($user->ID, 'street2', true),
@@ -126,6 +133,9 @@ function customapi_admin_create_user(WP_REST_Request $request) {
   $user = new WP_User($user_id);
   $user->set_role($role);
   update_user_meta($user_id, 'email_verified', 1);
+  if ($role === 'employer') {
+    update_user_meta($user_id, 'employer_verified', 0);
+  }
   customapi_set_user_hashes($user_id, $email, $username);
   customapi_admin_log('user_create', [
     'user_id' => $user_id,
@@ -157,7 +167,7 @@ function customapi_admin_update_user(WP_REST_Request $request) {
     $user_obj->set_role($role);
   }
 
-  $meta_fields = ['first_name', 'last_name', 'company', 'dob', 'street1', 'street2', 'city', 'state', 'zip', 'country'];
+  $meta_fields = ['first_name', 'last_name', 'company', 'company_site', 'company_key', 'dob', 'street1', 'street2', 'city', 'state', 'zip', 'country'];
   foreach ($meta_fields as $field) {
     if (array_key_exists($field, $params)) {
       update_user_meta($user_id, $field, sanitize_text_field($params[$field]));
@@ -167,11 +177,15 @@ function customapi_admin_update_user(WP_REST_Request $request) {
   if (array_key_exists('email_verified', $params)) {
     update_user_meta($user_id, 'email_verified', $params['email_verified'] ? 1 : 0);
   }
+  if (array_key_exists('employer_verified', $params)) {
+    update_user_meta($user_id, 'employer_verified', $params['employer_verified'] ? 1 : 0);
+  }
 
   customapi_admin_log('user_update', [
     'user_id' => $user_id,
     'role' => $role ?: null,
     'email_verified' => array_key_exists('email_verified', $params) ? (bool) $params['email_verified'] : null,
+    'employer_verified' => array_key_exists('employer_verified', $params) ? (bool) $params['employer_verified'] : null,
   ]);
 
   return rest_ensure_response(['success' => true]);

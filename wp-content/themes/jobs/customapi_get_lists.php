@@ -1,5 +1,98 @@
 <?php
 
+function customapi_tokenize_text($text) {
+  $text = strtolower(wp_strip_all_tags((string) $text));
+  $text = preg_replace('/[^a-z0-9\s]/', ' ', $text);
+  $tokens = preg_split('/\s+/', $text);
+  $stop = ['the','and','for','with','that','this','you','your','are','was','were','from','have','has','had','not','but','all','any','can','will','our','their','they','them','his','her','she','him','its','about','into','over','under','more','most','some','such','than','then','when','what','which','who','whom','why','how','a','an','to','in','of','on','at','as','by','or','is','it','be','we','i','me','my'];
+  $tokens = array_values(array_filter($tokens, function($t) use ($stop) {
+    return $t !== '' && strlen($t) > 2 && !in_array($t, $stop, true);
+  }));
+  return array_values(array_unique($tokens));
+}
+
+function customapi_get_resume_text_for_application($job_id, $app_user_id) {
+  $applicants = get_post_meta($job_id, 'job_applicants', true);
+  if (!is_array($applicants)) return '';
+  $resume_url = '';
+  foreach ($applicants as $app) {
+    if (intval($app['user_id'] ?? 0) === intval($app_user_id)) {
+      $resume_url = $app['resume'] ?? '';
+      break;
+    }
+  }
+  if (!$resume_url) return '';
+  $user_resumes = get_user_meta($app_user_id, 'user_resumes', true);
+  if (!is_array($user_resumes)) return '';
+  foreach ($user_resumes as $r) {
+    if (!empty($r['url']) && $r['url'] === $resume_url) {
+      return $r['text'] ?? '';
+    }
+  }
+  return '';
+}
+
+function customapi_update_employer_preferences($employer_id, $tokens) {
+  $prefs = get_user_meta($employer_id, 'employer_pref_keywords', true);
+  if (!is_array($prefs)) $prefs = [];
+  foreach ($tokens as $t) {
+    if (!isset($prefs[$t])) $prefs[$t] = 0;
+    $prefs[$t] = (int) $prefs[$t] + 1;
+  }
+  arsort($prefs);
+  $prefs = array_slice($prefs, 0, 200, true);
+  update_user_meta($employer_id, 'employer_pref_keywords', $prefs);
+  update_user_meta($employer_id, 'employer_pref_updated', time());
+}
+
+function customapi_employer_click(WP_REST_Request $request) {
+  if (empty($_SESSION['user']['id'])) {
+    return new WP_Error('unauthorized', 'You must be logged in.', ['status' => 401]);
+  }
+  $employer_id = intval($_SESSION['user']['id']);
+  if (!customapi_is_employer($employer_id)) {
+    return new WP_Error('forbidden', 'Employer account required', ['status' => 403]);
+  }
+
+  $job_id = intval($request->get_param('job_id'));
+  $app_user_id = intval($request->get_param('user_id'));
+  if (!$job_id || !$app_user_id) {
+    return new WP_Error('missing_fields', 'job_id and user_id required', ['status' => 400]);
+  }
+
+  $post = get_post($job_id);
+  if (!$post || (int) $post->post_author !== $employer_id) {
+    return new WP_Error('forbidden', 'Not your job post', ['status' => 403]);
+  }
+
+  $resume_text = customapi_get_resume_text_for_application($job_id, $app_user_id);
+  if (!$resume_text) {
+    return rest_ensure_response(['success' => false, 'message' => 'Resume text not found.']);
+  }
+
+  $tokens = customapi_tokenize_text($resume_text);
+  if (!empty($tokens)) {
+    customapi_update_employer_preferences($employer_id, $tokens);
+  }
+
+  return rest_ensure_response(['success' => true]);
+}
+
+function customapi_employer_reset_learning(WP_REST_Request $request) {
+  if (empty($_SESSION['user']['id'])) {
+    return new WP_Error('unauthorized', 'You must be logged in.', ['status' => 401]);
+  }
+  $employer_id = intval($_SESSION['user']['id']);
+  if (!customapi_is_employer($employer_id)) {
+    return new WP_Error('forbidden', 'Employer account required', ['status' => 403]);
+  }
+
+  delete_user_meta($employer_id, 'employer_pref_keywords');
+  delete_user_meta($employer_id, 'employer_pref_updated');
+
+  return rest_ensure_response(['success' => true]);
+}
+
 // USER JOBS
 function customapi_get_list(WP_REST_Request $request) {
   $search = sanitize_text_field($request->get_param('search'));
@@ -194,15 +287,76 @@ function customapi_user_job_detail(WP_REST_Request $request) {
         $applicants = [];
     }
 
+    // Simple keyword match score between job description and resume text
+    $job_text = wp_strip_all_tags($post->post_content);
+    $job_text = strtolower($job_text);
+    $job_text = preg_replace('/[^a-z0-9\s]/', ' ', $job_text);
+    $job_tokens = preg_split('/\s+/', $job_text);
+    $stop = ['the','and','for','with','that','this','you','your','are','was','were','from','have','has','had','not','but','all','any','can','will','our','their','they','them','his','her','she','him','its','about','into','over','under','more','most','some','such','than','then','when','what','which','who','whom','why','how','a','an','to','in','of','on','at','as','by','or','is','it','be','we','i','me','my'];
+    $job_tokens = array_values(array_filter($job_tokens, function($t) use ($stop) {
+        return $t !== '' && strlen($t) > 2 && !in_array($t, $stop, true);
+    }));
+    $job_set = array_unique($job_tokens);
+    $pref = get_user_meta($user_id, 'employer_pref_keywords', true);
+    if (!is_array($pref)) $pref = [];
+
     // Format applicants to include name + link
     $formattedApplicants = [];
     foreach ($applicants as $app) {
         $appUser = get_user_by('ID', intval($app['user_id']));
         if ($appUser) {
+            $hide_email = (bool) get_user_meta($appUser->ID, 'hide_email', true);
+            $city = get_user_meta($appUser->ID, 'city', true);
+            $state = get_user_meta($appUser->ID, 'state', true);
+            $zip = get_user_meta($appUser->ID, 'zip', true);
+            $resume_text = '';
+            $user_resumes = get_user_meta($appUser->ID, 'user_resumes', true);
+            if (is_array($user_resumes) && !empty($app['resume'])) {
+                foreach ($user_resumes as $r) {
+                    if (!empty($r['url']) && $r['url'] === $app['resume']) {
+                        $resume_text = $r['text'] ?? '';
+                        break;
+                    }
+                }
+            }
+            $score = 0;
+            $pref_boost = 0;
+            if (!empty($resume_text) && !empty($job_set)) {
+                $rt = strtolower($resume_text);
+                $rt = preg_replace('/[^a-z0-9\s]/', ' ', $rt);
+                $rtokens = preg_split('/\s+/', $rt);
+                $rtokens = array_values(array_filter($rtokens, function($t) use ($stop) {
+                    return $t !== '' && strlen($t) > 2 && !in_array($t, $stop, true);
+                }));
+                $rset = array_unique($rtokens);
+                $overlap = array_intersect($job_set, $rset);
+                $score = (int) round((count($overlap) / max(1, count($job_set))) * 100);
+                if (!empty($pref) && !empty($rset)) {
+                    $pref_sum = 0;
+                    foreach ($rset as $t) {
+                        if (isset($pref[$t])) {
+                            $pref_sum += (int) $pref[$t];
+                        }
+                    }
+                    if ($pref_sum > 0) {
+                        $pref_boost = (int) min(20, round(log(1 + $pref_sum) * 3));
+                    }
+                }
+            }
+            $total_score = min(100, $score + $pref_boost);
             $formattedApplicants[] = [
                 'id'       => $appUser->ID,
                 'name'     => $appUser->display_name,
+                'email'    => $hide_email ? '' : $appUser->user_email,
+                'hide_email' => $hide_email,
+                'city'     => $city ?: '',
+                'state'    => $state ?: '',
+                'zip'      => $zip ?: '',
                 'resume'   => $app['resume'] ?? '',
+                'resume_text' => $resume_text,
+                'match_score' => $total_score,
+                'base_match_score' => $score,
+                'pref_score' => $pref_boost,
                 'cover'    => $app['cover_letter'] ?? '',
                 'time'     => $app['time'] ?? 0,
                 'link'     => "/#application?jobId={$job_id}&userId={$appUser->ID}"
@@ -226,6 +380,9 @@ function customapi_user_job_update(WP_REST_Request $request) {
     $user_id = intval($_SESSION['user']['id']);
     if (!customapi_is_employer($user_id)) {
         return new WP_Error('forbidden', 'Employer account required', ['status' => 403]);
+    }
+    if (!customapi_is_employer_verified($user_id)) {
+        return new WP_Error('forbidden', 'Employer verification required', ['status' => 403]);
     }
 
     $job_id = intval($request->get_param('id'));

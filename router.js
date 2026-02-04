@@ -11,6 +11,8 @@ import { renderResetPassword } from './views/resetPassword.js';
 import { render2FA } from './views/2fa.js';
 import { renderSupport } from './views/support.js';
 import { renderHome } from './views/home.js';
+import { renderPrivacy } from './views/privacy.js';
+import { renderTerms } from './views/terms.js';
 // specific to job board
 import { renderApply } from './views/apply.js';
 import { renderResume } from './views/resume.js';
@@ -18,6 +20,9 @@ import { renderMyJobPosts } from './views/myJobPosts.js';
 import { renderMyJobPostDetail } from './views/myJobPostDetail.js';
 import { getSessionCached } from './utils/session.js';
 import { renderAdmin } from './views/admin.js';
+import { renderEmployers } from './views/employers.js';
+import { renderEmployees } from './views/employees.js';
+import { renderSpeed } from './views/speed.js';
 
 function parseHash() {
   const rawHash = window.location.hash.slice(1);
@@ -42,6 +47,8 @@ export async function router() {
   console.log('Hash path:', path);
   console.log('Normalized path:', normalizedPath);
   console.log('Params:', params);
+  const scrollToTop = () => window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  scrollToTop();
   if (protectedRoutes.includes(normalizedPath)) {
     const session = await getSessionCached({ maxAgeMs: 30000 });
     if (!session) {
@@ -66,48 +73,81 @@ export async function router() {
 
   switch (normalizedPath) {
     case 'home':
-      return renderHome(app);
+      renderHome(app);
+      return scrollToTop();
     case 'login':
-      return renderLogin(app);
+      renderLogin(app);
+      return scrollToTop();
        case 'about':
-      return renderAbout(app);
+      renderAbout(app);
+      return scrollToTop();
     case 'register':
-      return renderRegister(app);
+      renderRegister(app);
+      return scrollToTop();
     case 'list':
-      return renderList(app);
+      renderList(app);
+      return scrollToTop();
       case 'listDetail':
         if (params.id) {
-          return renderListDetail(app, params.id);
+          renderListDetail(app, params.id);
+          return scrollToTop();
         }
         app.innerHTML = '<h1 class="text-xl">Missing ID for List Detail</h1>';
         return;
         case 'myJobPosts':
-  return renderMyJobPosts(app);
+  renderMyJobPosts(app);
+  return scrollToTop();
 case 'myJobPostDetail':
-  return renderMyJobPostDetail(app, params.id);
+  renderMyJobPostDetail(app, params.id);
+  return scrollToTop();
     case 'post':
-      return renderPost(app);
+      renderPost(app);
+      return scrollToTop();
     case 'profile':
-      return renderProfile(app);
+      renderProfile(app);
+      return scrollToTop();
     case 'admin':
-      return renderAdmin(app);
+      renderAdmin(app);
+      return scrollToTop();
     case 'updatePassword':
-      return renderUpdatePassword(app);
+      renderUpdatePassword(app);
+      return scrollToTop();
     case 'forgotPassword':
-      return renderForgotPassword(app);
+      renderForgotPassword(app);
+      return scrollToTop();
     case 'resetPassword':
-      return renderResetPassword(app, params);
-      case 'support':
-        return renderSupport(app);
+      renderResetPassword(app, params);
+      return scrollToTop();
+    case 'support':
+      renderSupport(app, params);
+      return scrollToTop();
+    case 'privacy':
+      renderPrivacy(app);
+      return scrollToTop();
+    case 'terms':
+      renderTerms(app);
+      return scrollToTop();
+    case 'employers':
+      renderEmployers(app);
+      return scrollToTop();
+    case 'employees':
+      renderEmployees(app);
+      return scrollToTop();
+    case 'speed':
+      renderSpeed(app);
+      return scrollToTop();
         case '2fa':
-          return render2FA(app);
+          render2FA(app);
+          return scrollToTop();
           // specific to jobboard
           case 'resume':
-            return renderResume(app);
+            renderResume(app);
+            return scrollToTop();
         
           case 'apply':
   if (params.id) {
-    return renderApply(app, params.id);
+    renderApply(app, params.id);
+    return scrollToTop();
   }
   app.innerHTML = '<h1 class="text-xl">Missing Job ID for Apply</h1>';
   return;

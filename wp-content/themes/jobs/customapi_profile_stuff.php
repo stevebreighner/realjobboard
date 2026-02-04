@@ -4,6 +4,40 @@ if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
 
+function customapi_extract_resume_text($file_path, $mime) {
+  if (!$file_path || !file_exists($file_path)) {
+    return '';
+  }
+
+  $text = '';
+  if ($mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+    if (class_exists('ZipArchive')) {
+      $zip = new ZipArchive();
+      if ($zip->open($file_path) === true) {
+        $data = $zip->getFromName('word/document.xml');
+        $zip->close();
+        if ($data !== false) {
+          $text = wp_strip_all_tags($data);
+        }
+      }
+    }
+  } elseif ($mime === 'application/pdf') {
+    if (function_exists('shell_exec')) {
+      $tmp = tempnam(sys_get_temp_dir(), 'pdftext_');
+      if ($tmp) {
+        @shell_exec('pdftotext ' . escapeshellarg($file_path) . ' ' . escapeshellarg($tmp) . ' 2>/dev/null');
+        if (file_exists($tmp)) {
+          $text = file_get_contents($tmp) ?: '';
+          @unlink($tmp);
+        }
+      }
+    }
+  }
+
+  $text = preg_replace('/\s+/', ' ', (string) $text);
+  return trim($text);
+}
+
 
 // REGISTER
 function customapi_register_user($request) {
@@ -86,6 +120,15 @@ function customapi_register_user($request) {
   $user->set_role('pending');
   update_user_meta($user_id, 'desired_role', $role);
   update_user_meta($user_id, 'email_verified', 0);
+  if ($role === 'employer') {
+      update_user_meta($user_id, 'employer_verified', 0);
+  }
+  $address_fields = ['street1', 'street2', 'city', 'state', 'zip', 'country'];
+  foreach ($address_fields as $field) {
+      if (isset($request[$field])) {
+          update_user_meta($user_id, $field, sanitize_text_field($request[$field]));
+      }
+  }
   customapi_set_user_hashes($user_id, $email, $username);
 
   $token = bin2hex(random_bytes(32));
@@ -177,6 +220,9 @@ function customapi_verify_email($request) {
 
   $user = new WP_User($user_id);
   $user->set_role($desired_role);
+  if ($desired_role === 'employer' && get_user_meta($user_id, 'employer_verified', true) === '') {
+    update_user_meta($user_id, 'employer_verified', 0);
+  }
 
   return ['message' => '✅ Email verified. You can now log in.'];
 }
@@ -243,7 +289,11 @@ function customapi_get_user_profile(WP_REST_Request $request = null) {
         'first_name'   => get_user_meta($user_id, 'first_name', true),
         'last_name'    => get_user_meta($user_id, 'last_name', true),
         'company'      => get_user_meta($user_id, 'company', true),
+        'company_site' => get_user_meta($user_id, 'company_site', true),
+        'company_key'  => get_user_meta($user_id, 'company_key', true),
         'dob'          => get_user_meta($user_id, 'dob', true),
+        'hide_email'   => (bool) get_user_meta($user_id, 'hide_email', true),
+        'employer_verified' => (bool) get_user_meta($user_id, 'employer_verified', true),
         'roles'        => $user->roles,
     ];
 
@@ -339,11 +389,16 @@ function customapi_user_profile_update() {
     $user_id = $_SESSION['user']['id'];
 
     // Simple text/meta fields
-    $fields = ['first_name', 'last_name', 'dob', 'company'];
+    $fields = ['first_name', 'last_name', 'dob', 'company', 'company_site', 'company_key'];
     foreach ($fields as $field) {
         if (isset($_POST[$field])) {
             update_user_meta($user_id, $field, sanitize_text_field($_POST[$field]));
         }
+    }
+    if (isset($_POST['hide_email'])) {
+        update_user_meta($user_id, 'hide_email', 1);
+    } else {
+        update_user_meta($user_id, 'hide_email', 0);
     }
 
     require_once(ABSPATH . 'wp-admin/includes/file.php');
@@ -392,6 +447,7 @@ function customapi_user_profile_update() {
                 if (isset($upload['url'])) {
                     // Retrieve the encryption key for the user
                     $encryption_key = get_encryption_key($user_id);
+                    $resume_text = customapi_extract_resume_text($upload['file'], $file['type']);
 
                     // Encrypt the uploaded file before saving
                     $encrypted_file_path = encrypt_file($upload['file'], $encryption_key);
@@ -408,6 +464,7 @@ function customapi_user_profile_update() {
                         'url'  => esc_url($encrypted_file_path),
                         'name' => basename($encrypted_file_path),
                         'time' => time(),
+                        'text' => $resume_text,
                     ];
 
                     update_user_meta($user_id, 'user_resumes', $resumes);
@@ -429,6 +486,7 @@ function customapi_user_profile_update() {
             if (isset($upload['url'])) {
                 // Retrieve the encryption key for the user
                 $encryption_key = get_encryption_key($user_id);
+                $resume_text = customapi_extract_resume_text($upload['file'], $file['type']);
 
                 // Encrypt the uploaded file before saving
                 $encrypted_file_path = encrypt_file($upload['file'], $encryption_key);
@@ -445,6 +503,7 @@ function customapi_user_profile_update() {
                     'url'  => esc_url($encrypted_file_path),
                     'name' => basename($encrypted_file_path),
                     'time' => time(),
+                    'text' => $resume_text,
                 ];
 
                 update_user_meta($user_id, 'user_resumes', $resumes);

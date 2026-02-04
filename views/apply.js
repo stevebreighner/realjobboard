@@ -53,6 +53,10 @@ export async function renderApply(container, jobId) {
       container.innerHTML = `
         <h1 class="text-2xl font-bold mb-4">Apply for: ${jobTitle}</h1>
         <div id="applyMessage" class="mb-4 text-sm"></div>
+        <div class="mb-4 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-3">
+          Privacy note: Employers may contact you using the details you provide. If you choose to hide your email, they will only see your resume link.
+          <a class="text-blue-600 hover:underline ml-2" href="/#support?subject=Report%20Abuse&context=apply:${jobId}">Report abuse</a>
+        </div>
         <form id="applyForm" class="space-y-6">
           <div>
                   <p class="mt-4">
@@ -147,7 +151,10 @@ export async function renderApply(container, jobId) {
           }
           if (!response.ok) throw new Error(result.message || "Failed to submit application");
 
-          container.innerHTML = `<p class="text-green-600">✅ Application submitted successfully!</p>
+      container.innerHTML = `<p class="text-green-600">✅ Application submitted successfully!</p>
+            <div class="mt-4 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-3">
+              If you experience any issues with an employer, you can <a class="text-blue-600 hover:underline" href="/#support?subject=Report%20Abuse&context=apply:${jobId}">report abuse</a>.
+            </div>
             <p><a href="/#list-detail?id=${jobId}" class="text-blue-600 hover:underline">← Back to Job Detail</a></p>`;
         } catch (err) {
           container.innerHTML += `<p class="text-red-600">❌ Error: ${err.message}</p>`;

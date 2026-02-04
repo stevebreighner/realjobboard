@@ -45,6 +45,13 @@ export function renderProfile(container) {
     <label for="company" class="block font-semibold">Company</label>
     <input type="text" id="company" name="company" class="w-full p-2 border rounded" /><br />
 
+    <label for="company_site" class="block font-semibold">Company Website</label>
+    <input type="url" id="company_site" name="company_site" class="w-full p-2 border rounded" placeholder="https://example.com" /><br />
+
+    <label for="company_key" class="block font-semibold">Company Team Key (optional)</label>
+    <input type="text" id="company_key" name="company_key" class="w-full p-2 border rounded" placeholder="Shared key for your company" />
+    <p class="text-xs text-gray-500 mb-4">Use the same key across team members to group accounts later.</p>
+
     <label for="first_name" class="block font-semibold">First Name</label>
     <input type="text" id="first_name" name="first_name" class="w-full p-2 border rounded" /><br />
 
@@ -54,24 +61,36 @@ export function renderProfile(container) {
     <label for="dob" class="block font-semibold">Date of Birth</label>
     <input type="date" id="dob" name="dob" class="w-full p-2 border rounded" /><br />
 
-    <h3 class="text-lg font-semibold mt-4">Address (USA Only)</h3>
-    <label for="street1" class="block font-semibold">Street Address</label>
-    <input type="text" id="street1" name="street1" class="w-full p-2 border rounded" required /><br />
+    <div class="mt-4">
+      <button type="button" id="toggleAddressBtn" class="text-sm text-indigo-600 hover:underline">
+        Hide Address Details
+      </button>
+    </div>
+    <div id="addressSection">
+      <h3 class="text-lg font-semibold mt-2">Address (USA Only)</h3>
+      <label for="street1" class="block font-semibold">Street Address</label>
+      <input type="text" id="street1" name="street1" class="w-full p-2 border rounded" required /><br />
 
-    <label for="street2" class="block font-semibold">Unit/Suite (optional)</label>
-    <input type="text" id="street2" name="street2" class="w-full p-2 border rounded" /><br />
+      <label for="street2" class="block font-semibold">Unit/Suite (optional)</label>
+      <input type="text" id="street2" name="street2" class="w-full p-2 border rounded" /><br />
 
-    <label for="city" class="block font-semibold">City</label>
-    <input type="text" id="city" name="city" class="w-full p-2 border rounded" required /><br />
+      <label for="city" class="block font-semibold">City</label>
+      <input type="text" id="city" name="city" class="w-full p-2 border rounded" required /><br />
 
-    <label for="state" class="block font-semibold">State (2-letter)</label>
-    <input type="text" id="state" name="state" class="w-full p-2 border rounded" required maxlength="2" /><br />
+      <label for="state" class="block font-semibold">State (2-letter)</label>
+      <input type="text" id="state" name="state" class="w-full p-2 border rounded" required maxlength="2" /><br />
 
-    <label for="zip" class="block font-semibold">ZIP Code</label>
-    <input type="text" id="zip" name="zip" class="w-full p-2 border rounded" required /><br />
+      <label for="zip" class="block font-semibold">ZIP Code</label>
+      <input type="text" id="zip" name="zip" class="w-full p-2 border rounded" required /><br />
 
-    <label for="country" class="block font-semibold">Country</label>
-    <input type="text" id="country" name="country" class="w-full p-2 border rounded" required /><br />
+      <label for="country" class="block font-semibold">Country</label>
+      <input type="text" id="country" name="country" class="w-full p-2 border rounded" required /><br />
+    </div>
+
+    <label class="flex items-center space-x-2">
+      <input type="checkbox" id="hide_email" name="hide_email" />
+      <span class="text-sm">Hide my email from employers</span>
+    </label>
 
     <p id="profileError" class="text-sm text-red-600"></p>
     <button type="submit" class="text-purple px-4 py-2 rounded">Save</button>
@@ -86,6 +105,8 @@ export function renderProfile(container) {
   const roleLabel     = container.querySelector('#roleLabel');
   const previewImg    = container.querySelector('#avatarPreview');
   const profileStatus = container.querySelector('#profileStatus');
+  const toggleAddressBtn = container.querySelector('#toggleAddressBtn');
+  const addressSection = container.querySelector('#addressSection');
 
   // Fetch profile + role info
   function applyProfileData(data) {
@@ -94,6 +115,8 @@ export function renderProfile(container) {
     document.getElementById('first_name').value = data.first_name || '';
     document.getElementById('last_name').value  = data.last_name || '';
     document.getElementById('company').value  = data.company || '';
+    document.getElementById('company_site').value  = data.company_site || '';
+    document.getElementById('company_key').value  = data.company_key || '';
     document.getElementById('dob').value        = data.dob || '';
     document.getElementById('street1').value    = data.street1 || '';
     document.getElementById('street2').value    = data.street2 || '';
@@ -101,14 +124,16 @@ export function renderProfile(container) {
     document.getElementById('state').value      = data.state || '';
     document.getElementById('zip').value        = data.zip || '';
     document.getElementById('country').value    = data.country || 'United States';
+    document.getElementById('hide_email').checked = !!data.hide_email;
     previewImg.src = data.avatar_url || '/default-avatar.svg';
 
     // Determine role + links
     const roles = data.roles || []; // backend should return roles array
     if (roles.includes('employer')) {
-      roleLabel.textContent = "Employer";
+      const verified = data.employer_verified;
+      roleLabel.textContent = verified ? "Employer (Verified)" : "Employer (Pending Verification)";
       jobboardLinks.innerHTML = `
-        <p class="mt-2"><a href="/#my-job-posts" class="text-blue-600">Manage Job Applications</a></p>
+        <p class="mt-2"><a href="/#my-job-posts" class="text-blue-600">Manage My Openings</a></p>
       `;
     } else {
       roleLabel.textContent = "Job Seeker";
@@ -147,6 +172,23 @@ export function renderProfile(container) {
   }
 
   getProfileInfo();
+
+  let addressCollapsed = false;
+  const updateAddressVisibility = () => {
+    if (!addressSection || !toggleAddressBtn) return;
+    if (addressCollapsed) {
+      addressSection.classList.add('hidden');
+      toggleAddressBtn.textContent = 'Show Address Details';
+    } else {
+      addressSection.classList.remove('hidden');
+      toggleAddressBtn.textContent = 'Hide Address Details';
+    }
+  };
+  updateAddressVisibility();
+  toggleAddressBtn?.addEventListener('click', () => {
+    addressCollapsed = !addressCollapsed;
+    updateAddressVisibility();
+  });
 }
 async function handleProfileUpdate(event) {
   event.preventDefault();

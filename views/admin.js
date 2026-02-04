@@ -40,6 +40,14 @@ export async function renderAdmin(container) {
 
       <div class="mb-10">
         <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Company Groups</h2>
+          <span class="text-xs text-gray-500">Grouped by Company Team Key</span>
+        </div>
+        <div id="companyGroups" class="space-y-2 text-sm"></div>
+      </div>
+
+      <div class="mb-10">
+        <div class="flex items-center justify-between mb-2">
           <h2 class="text-xl font-semibold">Jobs</h2>
           <div class="flex items-center space-x-3">
             <button id="exportJobs" class="text-sm text-indigo-600 hover:underline">Export CSV</button>
@@ -62,6 +70,7 @@ export async function renderAdmin(container) {
   const noticeEl = container.querySelector('#adminNotice');
   const usersContainer = container.querySelector('#usersContainer');
   const jobsContainer = container.querySelector('#jobsContainer');
+  const companyGroups = container.querySelector('#companyGroups');
   const refreshUsersBtn = container.querySelector('#refreshUsers');
   const refreshJobsBtn = container.querySelector('#refreshJobs');
   const exportUsersBtn = container.querySelector('#exportUsers');
@@ -89,12 +98,35 @@ export async function renderAdmin(container) {
       return;
     }
 
+    const groups = {};
+    data.forEach(u => {
+      const key = (u.company_key || '').trim();
+      const groupKey = key || '(No Team Key)';
+      if (!groups[groupKey]) {
+        groups[groupKey] = [];
+      }
+      groups[groupKey].push(u);
+    });
+    const groupEntries = Object.entries(groups).sort((a, b) => b[1].length - a[1].length);
+    companyGroups.innerHTML = groupEntries.length
+      ? groupEntries.map(([key, members]) => `
+          <div class="border rounded p-3">
+            <div class="font-semibold">${key}</div>
+            <div class="text-xs text-gray-600">Members: ${members.length}</div>
+            <div class="text-xs text-gray-600 mt-1">
+              ${members.map(m => m.username).join(', ')}
+            </div>
+          </div>
+        `).join('')
+      : '<p class="text-gray-500">No groups yet.</p>';
+
     usersContainer.innerHTML = data.map(u => `
       <div class="border rounded p-3">
         <div class="flex items-center justify-between">
           <div>
             <div class="font-semibold">${u.username}</div>
             <div class="text-xs text-gray-500">Role: ${u.roles?.join(', ') || ''}</div>
+            ${u.roles?.includes('employer') ? `<div class="text-xs ${u.employer_verified ? 'text-green-700' : 'text-amber-700'}">Employer ${u.employer_verified ? 'Verified' : 'Pending'}</div>` : ''}
           </div>
           <div class="flex items-center space-x-2">
             <button class="text-sm text-indigo-600 hover:underline" data-action="toggle" data-id="${u.id}">Show details</button>
@@ -192,11 +224,17 @@ export async function renderAdmin(container) {
           <div>First Name: ${data.first_name || ''}</div>
           <div>Last Name: ${data.last_name || ''}</div>
           <div>Company: ${data.company || ''}</div>
+          <div>Company Site: ${data.company_site || ''}</div>
           <div>Verified: ${data.email_verified ? 'Yes' : 'No'}</div>
           <div>Email: ${data.email || ''}</div>
           <div>City: ${data.city || ''}</div>
           <div>State: ${data.state || ''}</div>
           <div>ZIP: ${data.zip || ''}</div>
+        </div>
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+          <input class="p-2 border rounded text-sm" id="company-${userId}" placeholder="Company" value="${data.company || ''}" />
+          <input class="p-2 border rounded text-sm" id="company-site-${userId}" placeholder="Company Website" value="${data.company_site || ''}" />
+          <input class="p-2 border rounded text-sm md:col-span-2" id="company-key-${userId}" placeholder="Company Team Key" value="${data.company_key || ''}" />
         </div>
         <div class="mt-3 flex items-center space-x-2">
           <select class="p-2 border rounded text-sm" id="role-${userId}">
@@ -207,6 +245,10 @@ export async function renderAdmin(container) {
           <label class="text-sm flex items-center space-x-2">
             <input type="checkbox" id="verified-${userId}" ${data.email_verified ? 'checked' : ''} />
             <span>Verified</span>
+          </label>
+          <label class="text-sm flex items-center space-x-2">
+            <input type="checkbox" id="employer-verified-${userId}" ${data.employer_verified ? 'checked' : ''} />
+            <span>Employer Verified</span>
           </label>
           <button class="text-sm text-purple px-3 py-1 rounded" data-action="save" data-id="${userId}">Save</button>
         </div>
@@ -238,6 +280,10 @@ export async function renderAdmin(container) {
     if (action === 'save') {
       const roleSel = container.querySelector(`#role-${userId}`);
       const verified = container.querySelector(`#verified-${userId}`);
+      const employerVerified = container.querySelector(`#employer-verified-${userId}`);
+      const company = container.querySelector(`#company-${userId}`);
+      const companySite = container.querySelector(`#company-site-${userId}`);
+      const companyKey = container.querySelector(`#company-key-${userId}`);
       const msg = container.querySelector(`#saveMsg-${userId}`);
       const res = await fetch('/wp-json/customapi/v1/admin/user-update', {
         method: 'POST',
@@ -247,6 +293,10 @@ export async function renderAdmin(container) {
           userId: Number(userId),
           role: roleSel?.value,
           email_verified: verified?.checked || false,
+          employer_verified: employerVerified?.checked || false,
+          company: company?.value || '',
+          company_site: companySite?.value || '',
+          company_key: companyKey?.value || '',
         }),
       });
       const data = await res.json();

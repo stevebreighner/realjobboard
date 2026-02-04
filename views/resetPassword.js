@@ -45,7 +45,7 @@ window.handleResetPassword = async function(event) {
 
     if (response.ok) {
       alert('✅ Password reset successfully!');
-      window.location.hash = '/#login';
+      window.location.hash = '#login';
     } else {
       alert('❌ Error: ' + (data.message || 'Unknown error'));
     }

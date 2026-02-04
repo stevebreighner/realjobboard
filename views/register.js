@@ -1,18 +1,41 @@
-import { CONFIG } from '../config.js'; // optional if you want to use config constants
+import { CONFIG, US_STATES } from '../config.js'; // optional if you want to use config constants
 
 export function renderRegister(container) {
   container.innerHTML = `
     <h1 class="text-2xl font-bold mb-4">Register</h1>
     <form id="registerForm" class="space-y-4">
+      <input type="text" name="website" autocomplete="off" tabindex="-1" style="display:none" />
+      <input type="hidden" name="ts" value="${Math.floor(Date.now() / 1000)}" />
       <input type="text" name="username" placeholder="Username" class="w-full p-2 border rounded" required />
       <input type="email" name="email" placeholder="Email" class="w-full p-2 border rounded" required />
-      <input type="password" name="password" placeholder="Password" class="w-full p-2 border rounded" required />
+      <div class="relative w-full">
+        <input type="password" id="registerPassword" name="password" placeholder="Password" class="w-full p-2 border rounded pr-10" required />
+        <button type="button" id="toggleRegisterPassword" class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-500 bg-transparent border-0 p-0 m-0 w-auto" style="width:auto;">
+          <svg id="registerEyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
       
       <select name="role" class="w-full p-2 border rounded" required>
         <option value="" disabled selected>Select Role</option>
         <option value="employee">Employee</option>
         <option value="employer">Employer</option>
       </select>
+
+      <h3 class="text-lg font-semibold mt-2">Address (USA Only)</h3>
+      <input type="text" name="street1" placeholder="Street Address" class="w-full p-2 border rounded" required />
+      <input type="text" name="street2" placeholder="Unit/Suite (optional)" class="w-full p-2 border rounded" />
+      <input type="text" name="city" placeholder="City" class="w-full p-2 border rounded" required />
+      <select name="state" class="w-full p-2 border rounded" required>
+        <option value="" disabled selected>State</option>
+        ${US_STATES.map(s => `<option value="${s.code}">${s.name}</option>`).join('')}
+      </select>
+      <input type="text" name="zip" placeholder="ZIP Code" class="w-full p-2 border rounded" required />
+      <input type="text" name="country" placeholder="Country" class="w-full p-2 border rounded" value="United States" required />
+
+      <div id="turnstile-container"></div>
 
       <button type="submit" class="text-purple px-4 py-2 rounded">Register</button>
     </form>
@@ -22,9 +45,66 @@ export function renderRegister(container) {
   `;
 
   const form = container.querySelector('#registerForm');
+  const turnstileContainer = container.querySelector('#turnstile-container');
+  const passwordInput = container.querySelector('#registerPassword');
+  const togglePasswordBtn = container.querySelector('#toggleRegisterPassword');
+  const zipInput = container.querySelector('input[name="zip"]');
+  const cityInput = container.querySelector('input[name="city"]');
+  const stateSelect = container.querySelector('select[name="state"]');
+  let turnstileWidgetId = null;
+
+  if (!window.turnstile) {
+    const script = document.createElement('script');
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      if (CONFIG.TURNSTILE_SITE_KEY && turnstileContainer) {
+        turnstileWidgetId = window.turnstile.render(turnstileContainer, {
+          sitekey: CONFIG.TURNSTILE_SITE_KEY
+        });
+      }
+    };
+    document.head.appendChild(script);
+  }
+
+  togglePasswordBtn.addEventListener('click', () => {
+    const isHidden = passwordInput.type === 'password';
+    passwordInput.type = isHidden ? 'text' : 'password';
+    const eyeIcon = container.querySelector('#registerEyeIcon');
+    if (eyeIcon) {
+      eyeIcon.innerHTML = isHidden
+        ? '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.72 21.72 0 0 1 5.17-6.11M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a21.76 21.76 0 0 1-3.17 4.11"/><path d="M1 1l22 22"/><path d="M9.9 9.9a3 3 0 0 0 4.24 4.24"/>'
+        : '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>';
+    }
+  });
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = Object.fromEntries(new FormData(form).entries());
+    const country = (formData.country || '').trim();
+    const state = (formData.state || '').trim();
+    const zip = (formData.zip || '').trim();
+    const usaValues = ['usa', 'us', 'united states', 'united states of america'];
+    if (!usaValues.includes(country.toLowerCase())) {
+      alert('USA only: please enter United States.');
+      return;
+    }
+    if (!state || !US_STATES.some(s => s.code === state)) {
+      alert('Please select a valid state.');
+      return;
+    }
+    if (zip && !/^\d{5}(-\d{4})?$/.test(zip)) {
+      alert('ZIP must be 5 digits (or 5+4).');
+      return;
+    }
+    if (window.turnstile && turnstileWidgetId !== null) {
+      formData.turnstile_token = window.turnstile.getResponse(turnstileWidgetId);
+    }
+    if (!formData.turnstile_token) {
+      alert('Please complete the captcha.');
+      return;
+    }
 
     try {
       const response = await fetch('/wp-json/customapi/v1/register', {
@@ -36,7 +116,7 @@ export function renderRegister(container) {
       const data = await response.json();
 
       if (response.ok) {
-        alert('✅ Registered successfully!');
+        alert('✅ Registered! Check your email to verify your account before logging in.');
         window.location.hash = '#/login';
       } else {
         alert('❌ Registration failed: ' + (data.message || 'Unknown error'));
@@ -46,4 +126,29 @@ export function renderRegister(container) {
       alert('❌ Registration error. Check console.');
     }
   });
+
+  const setupZipLookup = () => {
+    if (!zipInput || !cityInput || !stateSelect) return;
+    const lookup = async () => {
+      const zip = (zipInput.value || '').trim();
+      if (!/^\d{5}$/.test(zip)) return;
+      try {
+        const res = await fetch(`https://api.zippopotam.us/us/${zip}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const place = data.places && data.places[0];
+        if (!place) return;
+        if (!cityInput.value) cityInput.value = place['place name'] || '';
+        const stateCode = place['state abbreviation'];
+        if (stateCode) {
+          stateSelect.value = stateCode;
+        }
+      } catch (err) {
+        // silent fail
+      }
+    };
+    zipInput.addEventListener('blur', lookup);
+    zipInput.addEventListener('change', lookup);
+  };
+  setupZipLookup();
 }
