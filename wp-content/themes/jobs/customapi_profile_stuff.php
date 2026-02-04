@@ -4,6 +4,65 @@ if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
 
+function customapi_validate_us_address($street1, $city, $state, $zip, $country, $require_street = true) {
+  $usa_values = ['usa', 'us', 'united states', 'united states of america'];
+  $country_norm = strtolower(trim((string) $country));
+  if (!in_array($country_norm, $usa_values, true)) {
+    return new WP_Error('invalid_country', 'USA only: please enter United States.', ['status' => 400]);
+  }
+
+  $city = trim((string) $city);
+  $state = strtoupper(trim((string) $state));
+  $zip = trim((string) $zip);
+  $street1 = trim((string) $street1);
+
+  if ($require_street) {
+    if (!$street1 || !preg_match('/\d+/', $street1) || !preg_match('/[a-zA-Z]{2,}/', $street1)) {
+      return new WP_Error('invalid_street', 'Street address must include a number and street name.', ['status' => 400]);
+    }
+  } elseif ($street1) {
+    if (!preg_match('/\d+/', $street1) || !preg_match('/[a-zA-Z]{2,}/', $street1)) {
+      return new WP_Error('invalid_street', 'Street address must include a number and street name.', ['status' => 400]);
+    }
+  }
+
+  if (!$city) {
+    return new WP_Error('missing_city', 'City is required.', ['status' => 400]);
+  }
+  if (!$state || !preg_match('/^[A-Z]{2}$/', $state)) {
+    return new WP_Error('missing_state', 'Please select a valid state.', ['status' => 400]);
+  }
+  if (!$zip || !preg_match('/^\d{5}(-\d{4})?$/', $zip)) {
+    return new WP_Error('invalid_zip', 'ZIP must be 5 digits (or 5+4).', ['status' => 400]);
+  }
+
+  $verify = wp_remote_get('https://api.zippopotam.us/us/' . urlencode(substr($zip, 0, 5)), ['timeout' => 10]);
+  if (is_wp_error($verify)) {
+    return new WP_Error('zip_verify_failed', 'Unable to verify ZIP code. Please try again.', ['status' => 502]);
+  }
+  $body = json_decode(wp_remote_retrieve_body($verify), true);
+  if (empty($body['places'])) {
+    return new WP_Error('zip_invalid', 'ZIP code not found.', ['status' => 400]);
+  }
+
+  $city_norm = strtolower($city);
+  $state_norm = strtoupper($state);
+  $matched = false;
+  foreach ($body['places'] as $place) {
+    $place_city = strtolower($place['place name'] ?? '');
+    $place_state = strtoupper($place['state abbreviation'] ?? '');
+    if ($place_city === $city_norm && $place_state === $state_norm) {
+      $matched = true;
+      break;
+    }
+  }
+  if (!$matched) {
+    return new WP_Error('zip_mismatch', 'City and state do not match the ZIP code.', ['status' => 400]);
+  }
+
+  return true;
+}
+
 function customapi_extract_resume_text($file_path, $mime) {
   if (!$file_path || !file_exists($file_path)) {
     return '';
@@ -91,6 +150,9 @@ function customapi_register_user($request) {
   $email    = sanitize_email($request['email']);
   $password = $request['password'];
   $role     = sanitize_text_field($request['role']); // "employer" or "employee"
+  $company_site = sanitize_text_field($request['company_site'] ?? '');
+  $company_email = sanitize_email($request['company_email'] ?? '');
+  $company_name = sanitize_text_field($request['company'] ?? '');
 
   if (!$username || !$email || !$password || !$role) {
       return new WP_Error('missing_fields', 'All fields required', ['status' => 400]);
@@ -98,6 +160,34 @@ function customapi_register_user($request) {
 
   if (!in_array($role, ['employer', 'employee'])) {
       return new WP_Error('invalid_role', 'Role must be employer or employee', ['status' => 400]);
+  }
+
+  if ($role === 'employer') {
+      if (empty($company_site) || empty($company_email)) {
+          return new WP_Error('missing_company', 'Company website and company email are required for employers.', ['status' => 400]);
+      }
+      $free_domains = ['gmail.com','yahoo.com','outlook.com','hotmail.com','icloud.com','aol.com','proton.me','protonmail.com'];
+      $email_domain = '';
+      if (strpos($company_email, '@') !== false) {
+          $email_domain = strtolower(substr(strrchr($company_email, '@'), 1));
+      }
+      if (!$email_domain || in_array($email_domain, $free_domains, true)) {
+          return new WP_Error('invalid_company_email', 'Please use a company email address.', ['status' => 400]);
+      }
+      $host = '';
+      $parsed = wp_parse_url($company_site);
+      if (!empty($parsed['host'])) {
+          $host = preg_replace('/^www\./', '', strtolower($parsed['host']));
+      } else {
+          // attempt with https:// if missing scheme
+          $parsed = wp_parse_url('https://' . ltrim($company_site, '/'));
+          if (!empty($parsed['host'])) {
+              $host = preg_replace('/^www\./', '', strtolower($parsed['host']));
+          }
+      }
+      if (!$host || substr($email_domain, -strlen($host)) !== $host) {
+          return new WP_Error('domain_mismatch', 'Company email must match website domain.', ['status' => 400]);
+      }
   }
 
   if (email_exists($email)) {
@@ -123,13 +213,59 @@ function customapi_register_user($request) {
   if ($role === 'employer') {
       update_user_meta($user_id, 'employer_verified', 0);
   }
+  if ($role === 'employer') {
+      if ($company_name) {
+          update_user_meta($user_id, 'company', $company_name);
+      }
+      if ($company_site) {
+          update_user_meta($user_id, 'company_site', $company_site);
+      }
+      if ($company_email) {
+          update_user_meta($user_id, 'company_email', $company_email);
+      }
+  }
   $address_fields = ['street1', 'street2', 'city', 'state', 'zip', 'country'];
+  $address = [
+      'street1' => $request['street1'] ?? '',
+      'city' => $request['city'] ?? '',
+      'state' => $request['state'] ?? '',
+      'zip' => $request['zip'] ?? '',
+      'country' => $request['country'] ?? '',
+  ];
+  $addr_check = customapi_validate_us_address(
+      $address['street1'],
+      $address['city'],
+      $address['state'],
+      $address['zip'],
+      $address['country'],
+      true
+  );
+  if (is_wp_error($addr_check)) {
+      return $addr_check;
+  }
   foreach ($address_fields as $field) {
       if (isset($request[$field])) {
           update_user_meta($user_id, $field, sanitize_text_field($request[$field]));
       }
   }
   customapi_set_user_hashes($user_id, $email, $username);
+
+  if (function_exists('customapi_notify_site_admins')) {
+      $role_label = $role === 'employer' ? 'Employer' : 'Employee';
+      $company_info = $role === 'employer'
+        ? "Company: {$company_name}\nCompany Email: {$company_email}\nCompany Site: {$company_site}\n"
+        : '';
+      customapi_notify_site_admins(
+        'New registration (' . $role_label . ')',
+        "User: {$username}\nEmail: {$email}\nRole: {$role_label}\n{$company_info}User ID: {$user_id}"
+      );
+      if ($role === 'employer') {
+          customapi_notify_site_admins(
+            'Employer verification required',
+            "Employer signup needs verification.\nUser: {$username}\nEmail: {$email}\nCompany Email: {$company_email}\nCompany Site: {$company_site}\nUser ID: {$user_id}"
+          );
+      }
+  }
 
   $token = bin2hex(random_bytes(32));
   $token_hash = hash('sha256', $token);
@@ -399,6 +535,24 @@ function customapi_user_profile_update() {
         update_user_meta($user_id, 'hide_email', 1);
     } else {
         update_user_meta($user_id, 'hide_email', 0);
+    }
+
+    $street1 = sanitize_text_field($_POST['street1'] ?? '');
+    $city = sanitize_text_field($_POST['city'] ?? '');
+    $state = sanitize_text_field($_POST['state'] ?? '');
+    $zip = sanitize_text_field($_POST['zip'] ?? '');
+    $country = sanitize_text_field($_POST['country'] ?? '');
+    if ($street1 || $city || $state || $zip || $country) {
+        $addr_check = customapi_validate_us_address($street1, $city, $state, $zip, $country, true);
+        if (is_wp_error($addr_check)) {
+            return $addr_check;
+        }
+        update_user_meta($user_id, 'street1', $street1);
+        update_user_meta($user_id, 'street2', sanitize_text_field($_POST['street2'] ?? ''));
+        update_user_meta($user_id, 'city', $city);
+        update_user_meta($user_id, 'state', $state);
+        update_user_meta($user_id, 'zip', $zip);
+        update_user_meta($user_id, 'country', $country);
     }
 
     require_once(ABSPATH . 'wp-admin/includes/file.php');

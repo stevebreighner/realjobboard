@@ -69,7 +69,8 @@ export function renderProfile(container) {
     <div id="addressSection">
       <h3 class="text-lg font-semibold mt-2">Address (USA Only)</h3>
       <label for="street1" class="block font-semibold">Street Address</label>
-      <input type="text" id="street1" name="street1" class="w-full p-2 border rounded" required /><br />
+      <input type="text" id="street1" name="street1" class="w-full p-2 border rounded" required />
+      <p class="text-xs text-gray-500 mt-1">Include a street number and name (e.g., 111 N Main St).</p><br />
 
       <label for="street2" class="block font-semibold">Unit/Suite (optional)</label>
       <input type="text" id="street2" name="street2" class="w-full p-2 border rounded" /><br />
@@ -110,21 +111,30 @@ export function renderProfile(container) {
 
   // Fetch profile + role info
   function applyProfileData(data) {
-    document.getElementById('username').value   = data.username || '';
-    document.getElementById('email').value      = data.email || '';
-    document.getElementById('first_name').value = data.first_name || '';
-    document.getElementById('last_name').value  = data.last_name || '';
-    document.getElementById('company').value  = data.company || '';
-    document.getElementById('company_site').value  = data.company_site || '';
-    document.getElementById('company_key').value  = data.company_key || '';
-    document.getElementById('dob').value        = data.dob || '';
-    document.getElementById('street1').value    = data.street1 || '';
-    document.getElementById('street2').value    = data.street2 || '';
-    document.getElementById('city').value       = data.city || '';
-    document.getElementById('state').value      = data.state || '';
-    document.getElementById('zip').value        = data.zip || '';
-    document.getElementById('country').value    = data.country || 'United States';
-    document.getElementById('hide_email').checked = !!data.hide_email;
+    const setValue = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.value = value ?? '';
+    };
+    const setChecked = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.checked = !!value;
+    };
+
+    setValue('username', data.username || '');
+    setValue('email', data.email || '');
+    setValue('first_name', data.first_name || '');
+    setValue('last_name', data.last_name || '');
+    setValue('company', data.company || '');
+    setValue('company_site', data.company_site || '');
+    setValue('company_key', data.company_key || '');
+    setValue('dob', data.dob || '');
+    setValue('street1', data.street1 || '');
+    setValue('street2', data.street2 || '');
+    setValue('city', data.city || '');
+    setValue('state', data.state || '');
+    setValue('zip', data.zip || '');
+    setValue('country', data.country || 'United States');
+    setChecked('hide_email', data.hide_email);
     previewImg.src = data.avatar_url || '/default-avatar.svg';
 
     // Determine role + links

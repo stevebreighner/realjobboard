@@ -364,6 +364,9 @@ function customapi_user_job_detail(WP_REST_Request $request) {
         }
     }
 
+    $meta = get_post_meta($job_id);
+    $flat_meta = array_map(function($v) { return $v[0]; }, $meta);
+
     return rest_ensure_response([
         'id'          => $post->ID,
         'title'       => get_the_title($post),
@@ -371,6 +374,7 @@ function customapi_user_job_detail(WP_REST_Request $request) {
         'raw_content' => $post->post_content,
         'date'        => get_the_date('', $post),
         'applicants'  => $formattedApplicants,
+        'meta'        => $flat_meta,
     ]);
 }
 function customapi_user_job_update(WP_REST_Request $request) {
@@ -421,6 +425,42 @@ function customapi_user_job_update(WP_REST_Request $request) {
     $result = wp_update_post($update, true);
     if (is_wp_error($result)) {
         return $result;
+    }
+
+    $meta_fields = [
+        'field',
+        'rate_type',
+        'rate_min',
+        'rate_max',
+        'street1',
+        'street2',
+        'city',
+        'state',
+        'zip',
+        'country',
+    ];
+    $meta_updates = [];
+    foreach ($meta_fields as $field) {
+        $val = $request->get_param($field);
+        if ($val !== null) {
+            $meta_updates[$field] = sanitize_text_field($val);
+        }
+    }
+    if (!empty($meta_updates)) {
+        $street1 = $meta_updates['street1'] ?? '';
+        $city = $meta_updates['city'] ?? '';
+        $state = $meta_updates['state'] ?? '';
+        $zip = $meta_updates['zip'] ?? '';
+        $country = $meta_updates['country'] ?? '';
+        if (function_exists('customapi_validate_us_address')) {
+            $addr_check = customapi_validate_us_address($street1, $city, $state, $zip, $country, false);
+            if (is_wp_error($addr_check)) {
+                return $addr_check;
+            }
+        }
+        foreach ($meta_updates as $key => $value) {
+            update_post_meta($job_id, $key, $value);
+        }
     }
 
     return rest_ensure_response(['message' => 'Job updated', 'id' => $job_id]);

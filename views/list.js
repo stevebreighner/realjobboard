@@ -74,6 +74,10 @@ export function renderList(container) {
   const normalize = (val) => (val || '').toString().toLowerCase();
   const getMetaValue = (item, key) =>
     (item?.meta && item.meta[key] != null ? item.meta[key] : item?.[key]) ?? '';
+  const isFeatured = (item) => {
+    const raw = getMetaValue(item, 'job_featured');
+    return ['1', 'true', 'yes'].includes(String(raw).toLowerCase());
+  };
   const buildLocation = (item) => {
     const street1 = getMetaValue(item, 'street1');
     const street2 = getMetaValue(item, 'street2');
@@ -123,7 +127,15 @@ export function renderList(container) {
       return true;
     });
 
-    renderItems(filtered);
+    const sorted = [...filtered].sort((a, b) => {
+      const featureDiff = (isFeatured(b) ? 1 : 0) - (isFeatured(a) ? 1 : 0);
+      if (featureDiff !== 0) return featureDiff;
+      const dateA = new Date(a.date || 0).getTime();
+      const dateB = new Date(b.date || 0).getTime();
+      return dateB - dateA;
+    });
+
+    renderItems(sorted);
   };
 
   [searchInput, filterField, filterCity, filterState, filterZip, filterRateType, filterRateMin, filterRateMax].forEach(input => {
@@ -164,9 +176,13 @@ export function renderList(container) {
               const rateMin = getMetaValue(item, 'rate_min');
               const rateMax = getMetaValue(item, 'rate_max');
               const location = buildLocation(item);
+              const featured = isFeatured(item);
               return `
                 <div class="border rounded p-4 shadow">
-                  <h2 class="text-lg font-semibold">${item.title || item.name}</h2>
+                  <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold">${item.title || item.name}</h2>
+                    ${featured ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">Featured</span>` : ''}
+                  </div>
                   <p class="text-sm text-gray-600">${item.summary || ''}</p>
                   ${field ? `<p class="text-sm text-gray-600">Field: ${field}</p>` : ''}
                   ${(rateType || rateMin || rateMax) ? `<p class="text-sm text-gray-600">Rate: ${rateMin || ''}${rateMax ? `–${rateMax}` : ''} ${rateType || ''}</p>` : ''}

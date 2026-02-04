@@ -24,8 +24,19 @@ export function renderRegister(container) {
         <option value="employer">Employer</option>
       </select>
 
+      <div id="employerFields" class="hidden border rounded p-3 bg-white">
+        <h3 class="text-base font-semibold mb-2">Employer Details</h3>
+        <input type="text" name="company" placeholder="Company Name" class="w-full p-2 border rounded mb-2" />
+        <input type="url" name="company_site" placeholder="Company Website (https://...)" class="w-full p-2 border rounded mb-2" />
+        <input type="email" name="company_email" placeholder="Company Email (name@company.com)" class="w-full p-2 border rounded" />
+        <p class="text-xs text-gray-500 mt-2">Employer accounts require a company email that matches your website domain.</p>
+      </div>
+
       <h3 class="text-lg font-semibold mt-2">Address (USA Only)</h3>
-      <input type="text" name="street1" placeholder="Street Address" class="w-full p-2 border rounded" required />
+      <div>
+        <input type="text" name="street1" placeholder="Street Address" class="w-full p-2 border rounded" required />
+        <p class="text-xs text-gray-500 mt-1">Include a street number and name (e.g., 111 N Main St).</p>
+      </div>
       <input type="text" name="street2" placeholder="Unit/Suite (optional)" class="w-full p-2 border rounded" />
       <input type="text" name="city" placeholder="City" class="w-full p-2 border rounded" required />
       <select name="state" class="w-full p-2 border rounded" required>
@@ -48,6 +59,8 @@ export function renderRegister(container) {
   const turnstileContainer = container.querySelector('#turnstile-container');
   const passwordInput = container.querySelector('#registerPassword');
   const togglePasswordBtn = container.querySelector('#toggleRegisterPassword');
+  const roleSelect = container.querySelector('select[name="role"]');
+  const employerFields = container.querySelector('#employerFields');
   const zipInput = container.querySelector('input[name="zip"]');
   const cityInput = container.querySelector('input[name="city"]');
   const stateSelect = container.querySelector('select[name="state"]');
@@ -79,6 +92,14 @@ export function renderRegister(container) {
     }
   });
 
+  const updateEmployerFields = () => {
+    if (!roleSelect || !employerFields) return;
+    const isEmployer = roleSelect.value === 'employer';
+    employerFields.classList.toggle('hidden', !isEmployer);
+  };
+  roleSelect?.addEventListener('change', updateEmployerFields);
+  updateEmployerFields();
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = Object.fromEntries(new FormData(form).entries());
@@ -98,12 +119,65 @@ export function renderRegister(container) {
       alert('ZIP must be 5 digits (or 5+4).');
       return;
     }
+    const street1 = (formData.street1 || '').trim();
+    if (!street1 || !/\d+/.test(street1) || !/[a-zA-Z]{2,}/.test(street1)) {
+      alert('Street address must include a number and street name.');
+      return;
+    }
+    try {
+      const zipRes = await fetch(`https://api.zippopotam.us/us/${zip.substring(0, 5)}`);
+      if (!zipRes.ok) {
+        alert('ZIP code not found.');
+        return;
+      }
+      const zipData = await zipRes.json();
+      const places = zipData.places || [];
+      const cityNorm = (formData.city || '').trim().toLowerCase();
+      const stateNorm = (formData.state || '').trim().toUpperCase();
+      const match = places.some(p =>
+        (p['place name'] || '').toLowerCase() === cityNorm &&
+        (p['state abbreviation'] || '').toUpperCase() === stateNorm
+      );
+      if (!match) {
+        alert('City and state do not match the ZIP code.');
+        return;
+      }
+    } catch (err) {
+      alert('Unable to verify ZIP code. Please try again.');
+      return;
+    }
     if (window.turnstile && turnstileWidgetId !== null) {
       formData.turnstile_token = window.turnstile.getResponse(turnstileWidgetId);
     }
     if (!formData.turnstile_token) {
       alert('Please complete the captcha.');
       return;
+    }
+
+    if (formData.role === 'employer') {
+      const companySite = (formData.company_site || '').trim();
+      const companyEmail = (formData.company_email || '').trim().toLowerCase();
+      if (!companySite || !companyEmail) {
+        alert('Employer accounts require a company website and company email.');
+        return;
+      }
+      const freeDomains = ['gmail.com','yahoo.com','outlook.com','hotmail.com','icloud.com','aol.com','proton.me','protonmail.com'];
+      const emailDomain = companyEmail.split('@')[1] || '';
+      if (!emailDomain || freeDomains.includes(emailDomain)) {
+        alert('Please use a company email address (not Gmail/Yahoo/etc).');
+        return;
+      }
+      try {
+        const url = new URL(companySite.startsWith('http') ? companySite : `https://${companySite}`);
+        const host = url.hostname.replace(/^www\./, '');
+        if (!host || !emailDomain.endsWith(host)) {
+          alert('Company email must match your website domain.');
+          return;
+        }
+      } catch (err) {
+        alert('Please enter a valid company website URL.');
+        return;
+      }
     }
 
     try {

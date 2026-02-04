@@ -27,6 +27,10 @@ export async function renderMyJobPostDetail(container, jobId) {
     let rateType = getMeta('rate_type');
     let rateMin = getMeta('rate_min');
     let rateMax = getMeta('rate_max');
+    const paymentStatus = getMeta('job_payment_status') || '';
+    const tierLabel = getMeta('job_tier_label') || '';
+    const tierId = getMeta('job_tier') || 'standard';
+    const isFeatured = String(getMeta('job_featured') || '').toLowerCase() === '1';
     const addressLine = [street1, street2].filter(Boolean).join(' ');
     const cityState = [city, state].filter(Boolean).join(', ');
     const locationLine = [cityState, zip].filter(Boolean).join(' ');
@@ -49,7 +53,15 @@ export async function renderMyJobPostDetail(container, jobId) {
         </div>
 
         <div id="jobView">
+          ${paymentStatus && paymentStatus !== 'paid' ? `
+            <div class="mb-4 border border-amber-200 bg-amber-50 text-amber-900 rounded p-3">
+              <div class="font-semibold">Payment required</div>
+              <div class="text-sm">This job is saved as a draft until payment is completed.</div>
+              <button id="payNowBtn" class="mt-2 text-sm text-purple px-3 py-1 rounded">Pay now</button>
+            </div>
+          ` : ''}
           <div class="text-gray-700 mb-4" id="jobContent">${data.content}</div>
+          ${(tierLabel || paymentStatus) ? `<p class="text-sm text-gray-600 mb-1">Tier: ${tierLabel || tierId}${isFeatured ? ' • Featured' : ''}</p>` : ''}
           <p class="text-sm text-gray-600 mb-1 ${jobField ? '' : 'hidden'}" id="jobField">Field: ${jobField || ''}</p>
           <p class="text-sm text-gray-600 mb-1 ${rateType || rateMin || rateMax ? '' : 'hidden'}" id="jobRate">Rate: ${rateMin || ''}${rateMax ? `–${rateMax}` : ''} ${rateType || ''}</p>
           <p class="text-sm text-gray-600 mb-2 ${locationFull ? '' : 'hidden'}" id="jobLocation">${locationFull || ''}</p>
@@ -88,7 +100,8 @@ export async function renderMyJobPostDetail(container, jobId) {
 
           <h3 class="text-sm font-semibold mb-1">Location (USA Only)</h3>
           <label class="block text-sm font-semibold mb-1">Street Address (optional)</label>
-          <input id="editStreet1" class="w-full p-2 border rounded mb-3" value="${street1 || ''}" />
+          <input id="editStreet1" class="w-full p-2 border rounded" value="${street1 || ''}" />
+          <p class="text-xs text-gray-500 mb-3">Include a street number and name (e.g., 111 N Main St).</p>
 
           <label class="block text-sm font-semibold mb-1">Unit/Suite (optional)</label>
           <input id="editStreet2" class="w-full p-2 border rounded mb-3" value="${street2 || ''}" />
@@ -160,7 +173,8 @@ export async function renderMyJobPostDetail(container, jobId) {
 
           <h3 class="text-sm font-semibold mb-1">Location (USA Only)</h3>
           <label class="block text-sm font-semibold mb-1">Street Address (optional)</label>
-          <input id="createStreet1" class="w-full p-2 border rounded mb-3" placeholder="Street address (optional)" />
+          <input id="createStreet1" class="w-full p-2 border rounded" placeholder="Street address (optional)" />
+          <p class="text-xs text-gray-500 mb-3">Include a street number and name (e.g., 111 N Main St).</p>
 
           <label class="block text-sm font-semibold mb-1">Unit/Suite (optional)</label>
           <input id="createStreet2" class="w-full p-2 border rounded mb-3" placeholder="Unit / Suite (optional)" />
@@ -248,6 +262,7 @@ export async function renderMyJobPostDetail(container, jobId) {
     const editPreviewBtn = container.querySelector('#editPreviewBtn');
     const editPreview = container.querySelector('#editPreview');
     const editMessage = container.querySelector('#jobEditMessage');
+    const payNowBtn = container.querySelector('#payNowBtn');
     const createTitle = container.querySelector('#createTitle');
     const createField = container.querySelector('#createField');
     const createContent = container.querySelector('#createContent');
@@ -273,6 +288,36 @@ export async function renderMyJobPostDetail(container, jobId) {
     const applicantsContainer = container.querySelector('#applicantsContainer');
     const resetLearningBtn = container.querySelector('#resetLearningBtn');
     const learningPanel = container.querySelector('#learningPanel');
+
+    if (payNowBtn) {
+      payNowBtn.addEventListener('click', async () => {
+        try {
+          const configRes = await fetch('/wp-json/customapi/v1/stripe-config');
+          const stripeConfig = await configRes.json();
+          if (!stripeConfig?.publishableKey) {
+            alert('Stripe is not configured yet. Please contact support.');
+            return;
+          }
+          const checkoutRes = await fetch('/wp-json/customapi/v1/stripe-checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ job_id: jobId, tier: tierId })
+          });
+          const checkoutData = await checkoutRes.json();
+          if (!checkoutRes.ok || !checkoutData.sessionId) {
+            alert('❌ Payment setup failed: ' + (checkoutData.message || checkoutData.error || 'Unknown error'));
+            return;
+          }
+          const stripe = Stripe(stripeConfig.publishableKey);
+          const { error } = await stripe.redirectToCheckout({ sessionId: checkoutData.sessionId });
+          if (error) {
+            alert(error.message || 'Stripe checkout failed.');
+          }
+        } catch (err) {
+          alert('❌ Payment setup failed. Please try again.');
+        }
+      });
+    }
 
     const setupZipLookup = (zipInput, cityInput, stateSelect) => {
       if (!zipInput || !cityInput || !stateSelect) return;
@@ -404,11 +449,17 @@ export async function renderMyJobPostDetail(container, jobId) {
       renderApplicants(filtered);
     });
 
-    const isValidUsaLocation = ({ city, state, zip, country }, messageEl) => {
+    const isValidUsaLocation = async ({ street1, city, state, zip, country }, messageEl) => {
       const usaValues = ['usa', 'us', 'united states', 'united states of america'];
       if (!usaValues.includes((country || '').trim().toLowerCase())) {
         if (messageEl) messageEl.textContent = 'USA only: please enter United States.';
         return false;
+      }
+      if (street1) {
+        if (!/\d+/.test(street1) || !/[a-zA-Z]{2,}/.test(street1)) {
+          if (messageEl) messageEl.textContent = 'Street address must include a number and street name.';
+          return false;
+        }
       }
       if (!city) {
         if (messageEl) messageEl.textContent = 'City is required.';
@@ -420,6 +471,28 @@ export async function renderMyJobPostDetail(container, jobId) {
       }
       if (!zip || !/^\d{5}(-\d{4})?$/.test(zip)) {
         if (messageEl) messageEl.textContent = 'ZIP must be 5 digits (or 5+4).';
+        return false;
+      }
+      try {
+        const res = await fetch(`https://api.zippopotam.us/us/${zip.substring(0, 5)}`);
+        if (!res.ok) {
+          if (messageEl) messageEl.textContent = 'ZIP code not found.';
+          return false;
+        }
+        const data = await res.json();
+        const places = data.places || [];
+        const cityNorm = city.trim().toLowerCase();
+        const stateNorm = state.trim().toUpperCase();
+        const match = places.some(p =>
+          (p['place name'] || '').toLowerCase() === cityNorm &&
+          (p['state abbreviation'] || '').toUpperCase() === stateNorm
+        );
+        if (!match) {
+          if (messageEl) messageEl.textContent = 'City and state do not match the ZIP code.';
+          return false;
+        }
+      } catch (err) {
+        if (messageEl) messageEl.textContent = 'Unable to verify ZIP code. Please try again.';
         return false;
       }
       return true;
@@ -510,12 +583,13 @@ export async function renderMyJobPostDetail(container, jobId) {
       }
 
       const editLocation = {
+        street1: editStreet1.value.trim(),
         city: editCity.value.trim(),
         state: editState.value.trim(),
         zip: editZip.value.trim(),
         country: editCountry.value.trim(),
       };
-      if (!isValidUsaLocation(editLocation, editMessage)) {
+      if (!await isValidUsaLocation(editLocation, editMessage)) {
         editMessage.className = 'text-sm text-red-600';
         return;
       }
@@ -627,12 +701,13 @@ export async function renderMyJobPostDetail(container, jobId) {
       }
 
       const createLocation = {
+        street1: createStreet1.value.trim(),
         city: createCity.value.trim(),
         state: createState.value.trim(),
         zip: createZip.value.trim(),
         country: createCountry.value.trim(),
       };
-      if (!isValidUsaLocation(createLocation, createMessage)) {
+      if (!await isValidUsaLocation(createLocation, createMessage)) {
         createMessage.className = 'text-sm text-red-600';
         return;
       }

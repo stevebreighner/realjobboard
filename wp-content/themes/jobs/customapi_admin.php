@@ -177,8 +177,17 @@ function customapi_admin_update_user(WP_REST_Request $request) {
   if (array_key_exists('email_verified', $params)) {
     update_user_meta($user_id, 'email_verified', $params['email_verified'] ? 1 : 0);
   }
+  $prev_employer_verified = get_user_meta($user_id, 'employer_verified', true);
   if (array_key_exists('employer_verified', $params)) {
     update_user_meta($user_id, 'employer_verified', $params['employer_verified'] ? 1 : 0);
+    $new_val = $params['employer_verified'] ? 1 : 0;
+    if ((string)$prev_employer_verified !== (string)$new_val && function_exists('customapi_notify_site_admins')) {
+      $user_label = $user->user_email ?: $user_id;
+      customapi_notify_site_admins(
+        'Employer verification updated',
+        "User: {$user_label}\nEmployer Verified: " . ($new_val ? 'Yes' : 'No')
+      );
+    }
   }
 
   customapi_admin_log('user_update', [
@@ -248,6 +257,8 @@ function customapi_admin_update_job(WP_REST_Request $request) {
     return new WP_Error('missing_id', 'Job ID required', ['status' => 400]);
   }
 
+  $post = get_post($job_id);
+  $prev_status = $post ? $post->post_status : '';
   $update = ['ID' => $job_id];
   if (isset($params['title'])) {
     $update['post_title'] = sanitize_text_field($params['title']);
@@ -275,6 +286,16 @@ function customapi_admin_update_job(WP_REST_Request $request) {
     'status' => $params['status'] ?? null,
     'title' => $params['title'] ?? null,
   ]);
+
+  if (isset($params['status']) && $params['status'] === 'publish' && $prev_status !== 'publish') {
+    if (function_exists('customapi_notify_site_admins')) {
+      $title = get_the_title($job_id);
+      customapi_notify_site_admins(
+        'Job approved',
+        "Job: {$title}\nPost ID: {$job_id}\nStatus: publish"
+      );
+    }
+  }
 
   return rest_ensure_response(['success' => true]);
 }

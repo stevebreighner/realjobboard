@@ -1,5 +1,5 @@
 <?php
-// Run on post save to create Stripe checkout session for 'job' CPT
+// Legacy hook retained for older CPT flows (no-op for SPA flow)
 add_action('save_post_job', 'jobs_create_stripe_checkout_for_job', 10, 3);
 
 function jobs_create_stripe_checkout_for_job($post_id, $post, $update) {
@@ -10,52 +10,9 @@ function jobs_create_stripe_checkout_for_job($post_id, $post, $update) {
     // Only for published jobs
     if ($post->post_status !== 'publish') return;
 
-    // Check if stripe_url already exists (avoid creating duplicate sessions)
-    if (get_post_meta($post_id, 'stripe_url', true)) return;
-
-    // Get price from post meta (assumed stored as a decimal number)
+    // Only run if explicit price meta exists
     $price = get_post_meta($post_id, 'price', true);
     if (!$price || !is_numeric($price)) return;
-
-    // Load Stripe PHP SDK
-    require_once get_template_directory() . '/stripe/vendor/autoload.php';
-
-    // Set your Stripe secret key (define this in wp-config.php or theme constants)
-    \Stripe\Stripe::setApiKey(defined('STRIPE_SECRET_KEY') ? STRIPE_SECRET_KEY : '');
-
-    if (!STRIPE_SECRET_KEY) {
-        error_log('Stripe secret key not defined!');
-        return;
-    }
-
-    $title = get_the_title($post_id);
-
-    try {
-        $session = \Stripe\Checkout\Session::create([
-            'payment_method_types' => ['card'],
-            'line_items' => [[
-                'price_data' => [
-                    'currency' => 'usd',
-                    'product_data' => ['name' => $title],
-                    'unit_amount' => intval(floatval($price) * 100), // amount in cents
-                ],
-                'quantity' => 1,
-            ]],
-            'mode' => 'payment',
-            'success_url' => home_url('/thank-you?session_id={CHECKOUT_SESSION_ID}'),
-            'cancel_url' => get_permalink($post_id),
-            'metadata' => [
-                'post_id' => $post_id,
-                'post_type' => $post->post_type,
-            ],
-        ]);
-
-        // Save session URL in post meta
-        update_post_meta($post_id, 'stripe_url', esc_url_raw($session->url));
-
-    } catch (Exception $e) {
-        error_log('Stripe checkout creation error: ' . $e->getMessage());
-    }
 }
 
 // Handle Stripe webhook for checkout.session.completed
@@ -63,6 +20,10 @@ function jobs_handle_stripe_webhook(WP_REST_Request $request) {
     require_once get_template_directory() . '/stripe/vendor/autoload.php';
 
     \Stripe\Stripe::setApiKey(defined('STRIPE_SECRET_KEY') ? STRIPE_SECRET_KEY : '');
+    if (!defined('STRIPE_SECRET_KEY') || !STRIPE_SECRET_KEY) {
+        wp_send_json_error(['error' => 'Stripe secret key not configured']);
+    }
+
 
     $endpoint_secret = defined('STRIPE_SECRET_SIGN') ? STRIPE_SECRET_SIGN : '';
 
@@ -85,12 +46,36 @@ function jobs_handle_stripe_webhook(WP_REST_Request $request) {
     if ($event->type === 'checkout.session.completed') {
         $session = $event->data->object;
         $post_id = $session->metadata->post_id ?? null;
+        $duration_days = isset($session->metadata->duration_days) ? intval($session->metadata->duration_days) : 0;
+        $featured = isset($session->metadata->featured) ? $session->metadata->featured : '0';
+        $tier = isset($session->metadata->tier) ? sanitize_text_field($session->metadata->tier) : '';
 
         if ($post_id) {
-            // Mark job as paid (for example, add post meta or change status)
             update_post_meta($post_id, 'job_payment_status', 'paid');
-            // You could also send email notifications or trigger other actions here
+            update_post_meta($post_id, 'job_paid_at', time());
+            if ($duration_days > 0) {
+                update_post_meta($post_id, 'job_expires_at', time() + ($duration_days * 86400));
+                update_post_meta($post_id, 'job_duration_days', $duration_days);
+            }
+            if ($tier) {
+                update_post_meta($post_id, 'job_tier', $tier);
+            }
+            update_post_meta($post_id, 'job_featured', $featured === '1' ? '1' : '0');
+
+            // Publish the job once paid
+            wp_update_post([
+                'ID' => $post_id,
+                'post_status' => 'publish',
+            ]);
+
             error_log("Stripe payment completed for job post ID: $post_id");
+            if (function_exists('customapi_notify_site_admins')) {
+                $title = get_the_title($post_id);
+                customapi_notify_site_admins(
+                    'Job payment received',
+                    "Job: {$title}\nPost ID: {$post_id}\nTier: {$tier}\nFeatured: {$featured}\nDuration days: {$duration_days}"
+                );
+            }
         }
     }
 
@@ -107,14 +92,22 @@ add_action('wp_ajax_nopriv_create_stripe_checkout', 'create_stripe_checkout');
 function create_stripe_checkout() {
     require_once get_template_directory() . '/stripe/vendor/autoload.php';
 
-    \Stripe\Stripe::setApiKey('sk_test_XXX'); // Your Stripe Secret Key
+    \Stripe\Stripe::setApiKey(defined('STRIPE_SECRET_KEY') ? STRIPE_SECRET_KEY : '');
+    if (!defined('STRIPE_SECRET_KEY') || !STRIPE_SECRET_KEY) {
+        wp_send_json_error(['error' => 'Stripe secret key not configured']);
+    }
 
     $job_id = intval($_POST['job_id']);
+    $tier_id = isset($_POST['tier']) ? sanitize_text_field($_POST['tier']) : 'standard';
     if (!$job_id) {
         wp_send_json_error(['error' => 'Invalid job ID']);
     }
 
-    $price = 4900; // in cents
+    if (!function_exists('customapi_get_job_tier')) {
+        wp_send_json_error(['error' => 'Pricing not configured']);
+    }
+    $tier = customapi_get_job_tier($tier_id);
+    $price = $tier['price_cents']; // in cents
     $job_title = get_the_title($job_id);
 
     try {
@@ -131,10 +124,15 @@ function create_stripe_checkout() {
                 'quantity' => 1,
             ]],
             'mode' => 'payment',
+            'allow_promotion_codes' => true,
             'success_url' => home_url('/success?session_id={CHECKOUT_SESSION_ID}'),
             'cancel_url' => home_url('/cancel'),
             'metadata' => [
-                'job_id' => $job_id,
+                'post_id' => $job_id,
+                'post_type' => get_post_type($job_id),
+                'tier' => $tier['id'],
+                'duration_days' => $tier['duration_days'],
+                'featured' => $tier['featured'] ? '1' : '0',
                 'user_id' => get_current_user_id()
             ]
         ]);

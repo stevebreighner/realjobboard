@@ -152,6 +152,8 @@ add_action('rest_api_init', function () {
     ['checklist',     'POST', 'customapi_save_checklist'],
     ['employer-click', 'POST', 'customapi_employer_click'],
     ['employer-reset-learning', 'POST', 'customapi_employer_reset_learning'],
+    ['stripe-config', 'GET', 'customapi_stripe_config'],
+    ['stripe-checkout', 'POST', 'customapi_stripe_checkout'],
   ];
 
   foreach ($routes as [$endpoint, $method, $callback]) {
@@ -174,6 +176,29 @@ add_filter('wp_mail_from_name', function ($name) {
   return defined('EMAIL_FROM_NAME') ? EMAIL_FROM_NAME : $name;
 });
 // end override wp emails
+
+function customapi_get_site_admin_emails() {
+  $admins = get_users([
+    'role__in' => ['site_admin', 'administrator'],
+    'fields' => ['user_email'],
+  ]);
+  $emails = [];
+  foreach ($admins as $u) {
+    if (!empty($u->user_email)) {
+      $emails[] = $u->user_email;
+    }
+  }
+  return array_values(array_unique($emails));
+}
+
+function customapi_notify_site_admins($subject, $message) {
+  $emails = customapi_get_site_admin_emails();
+  if (empty($emails)) {
+    return false;
+  }
+  $full_subject = '[Admin] ' . $subject;
+  return wp_mail($emails, $full_subject, $message);
+}
 
 // Send HTML for the Loginizer 2FA email (only when we include the marker)
 add_filter('wp_mail', function ($args) {
@@ -361,7 +386,9 @@ add_action('wp_footer', function() {
   }
 });
 require_once get_template_directory() . '/encrypt.php';
+require_once get_template_directory() . '/inc/stripe-job.php';
 require_once get_template_directory() . '/customapi_profile_stuff.php';
+require_once get_template_directory() . '/customapi_stripe.php';
 require_once get_template_directory() . '/customapi_posts.php';
 // require_once get_template_directory() . '/customapi_get_user_jobs.php';
 require_once get_template_directory() . '/customapi_get_lists.php';

@@ -40,14 +40,26 @@ export function renderMyJobPosts(container) {
       console.error(err);
     });
 
+  const getMeta = (job, key) => (job?.meta && job.meta[key] != null ? job.meta[key] : job?.[key]) ?? '';
+  const isFeatured = (job) => ['1', 'true', 'yes'].includes(String(getMeta(job, 'job_featured') || '').toLowerCase());
+  const isPaid = (job) => String(getMeta(job, 'job_payment_status') || '').toLowerCase() === 'paid';
+
   function renderJobs(jobs) {
     jobsContainer.innerHTML = jobs.length
       ? jobs
           .map(job => {
             const id = job.id || job._id || job.slug;
+            const featured = isFeatured(job);
+            const paid = isPaid(job);
             return `
               <div class="border rounded p-4 shadow">
-                <h2 class="text-lg font-semibold">${job.title || job.name}</h2>
+                <div class="flex items-center justify-between">
+                  <h2 class="text-lg font-semibold">${job.title || job.name}</h2>
+                  <div class="flex items-center space-x-2">
+                    ${featured ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">Featured</span>` : ''}
+                    ${!paid ? `<span class="text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded">Unpaid</span>` : ''}
+                  </div>
+                </div>
                 <p class="text-sm text-gray-600">${job.summary || ''}</p>
                 <a href="/#my-job-post-detail?id=${id}" class="text-indigo-600 text-sm mt-2 inline-block hover:underline">
                   View Job

@@ -1,6 +1,10 @@
 // config.js
 
 const APP_DOMAIN = 'jobs.stephenbreighner.com';
+// const JOB_PRICE_STANDARD = 149;
+// const JOB_PRICE_PREMIUM = 299;
+const JOB_PRICE_STANDARD = 0.01;
+const JOB_PRICE_PREMIUM = 0.02;
 
 export const US_STATES = [
   { code: 'AL', name: 'Alabama' },
@@ -65,6 +69,24 @@ export const CONFIG = {
     COMPANY_SUPPORT_EMAIL: `support@${APP_DOMAIN}`, // or "Pets"
     SUBMIT_LABEL: 'Apply Now', // or 'Submit Offer', etc.
     TURNSTILE_SITE_KEY: '0x4AAAAAACXQm_OHceB7I6bi',
+    JOB_POSTING_TIERS: [
+      {
+        id: 'standard',
+        label: 'Standard',
+        price: JOB_PRICE_STANDARD,
+        durationDays: 30,
+        featured: false,
+        blurb: 'Great for most openings.',
+      },
+      {
+        id: 'premium',
+        label: 'Premium',
+        price: JOB_PRICE_PREMIUM,
+        durationDays: 60,
+        featured: true,
+        blurb: 'Featured placement + verified badge.',
+      },
+    ],
   
     fields: [
       { name: 'title', label: 'Title', type: 'text', required: true },
