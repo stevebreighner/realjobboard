@@ -1,3 +1,5 @@
+import { getUserProfileCached, getUserProfileCachedAny } from '../utils/session.js';
+
 export function renderList(container) {
  
 
@@ -72,9 +74,20 @@ export function renderList(container) {
           <option value="company">Company A–Z</option>
           <option value="title">Job Title A–Z</option>
         </select>
+        <select id="distanceSelect" class="w-full md:w-52 p-2 border rounded">
+          <option value="">Distance: Any</option>
+          <option value="5">Within 5 miles</option>
+          <option value="10">Within 10 miles</option>
+          <option value="25">Within 25 miles</option>
+          <option value="50">Within 50 miles</option>
+          <option value="100">Within 100 miles</option>
+        </select>
       </div>
       <p class="text-xs text-gray-500 mb-4">
         Tip: use comma-separated search terms to rank results by match count (e.g. "react, node, aws").
+      </p>
+      <p id="distanceHint" class="text-xs text-gray-500 mb-4 hidden">
+        Add your ZIP in Profile to enable distance filtering.
       </p>
 
       <div id="itemsContainer" class="grid gap-6 md:grid-cols-2"></div>
@@ -91,6 +104,8 @@ export function renderList(container) {
   const filterRateMin = container.querySelector('#filterRateMin');
   const filterRateMax = container.querySelector('#filterRateMax');
   const sortSelect = container.querySelector('#sortSelect');
+  const distanceSelect = container.querySelector('#distanceSelect');
+  const distanceHint = container.querySelector('#distanceHint');
 
   const normalize = (val) => (val || '').toString().toLowerCase();
   const getMetaValue = (item, key) =>
@@ -129,6 +144,8 @@ export function renderList(container) {
   };
 
   let items = [];
+  let userZip = '';
+  let userCoords = null;
 
   const isNewListing = (item) => {
     const ts = new Date(item.date || 0).getTime();
@@ -137,7 +154,44 @@ export function renderList(container) {
     return days <= 7;
   };
 
-  const applyFilters = () => {
+  const zipCacheKey = (zip) => `zip_coords_${zip}`;
+  const getZipCoords = async (zip) => {
+    const key = zipCacheKey(zip);
+    try {
+      const cached = localStorage.getItem(key);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.lat && parsed.lng) return parsed;
+      }
+    } catch (err) {}
+    try {
+      const res = await fetch(`https://api.zippopotam.us/us/${zip}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const place = data?.places?.[0];
+      if (!place) return null;
+      const coords = { lat: parseFloat(place.latitude), lng: parseFloat(place.longitude) };
+      localStorage.setItem(key, JSON.stringify(coords));
+      return coords;
+    } catch (err) {
+      return null;
+    }
+  };
+
+  const toRadians = (deg) => (deg * Math.PI) / 180;
+  const distanceMiles = (a, b) => {
+    if (!a || !b) return null;
+    const R = 3958.8;
+    const dLat = toRadians(b.lat - a.lat);
+    const dLng = toRadians(b.lng - a.lng);
+    const lat1 = toRadians(a.lat);
+    const lat2 = toRadians(b.lat);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+    const c = 2 * Math.asin(Math.sqrt(h));
+    return R * c;
+  };
+
+  const applyFilters = async () => {
     const rawQuery = searchInput.value || '';
     const query = normalize(rawQuery);
     const terms = rawQuery
@@ -152,6 +206,7 @@ export function renderList(container) {
     const rateTypeQuery = normalize(filterRateType.value);
     const minRateQuery = normalize(filterRateMin.value);
     const maxRateQuery = normalize(filterRateMax.value);
+    const radiusMiles = parseFloat(distanceSelect?.value || '');
 
     const filtered = items.filter(item => {
       const searchText = getSearchText(item);
@@ -176,8 +231,35 @@ export function renderList(container) {
       return true;
     });
 
+    if (!isNaN(radiusMiles) && radiusMiles > 0 && userZip && userCoords) {
+      const distancePromises = filtered.map(async (item) => {
+        const jobZip = (getMetaValue(item, 'zip') || '').toString().trim();
+        if (!jobZip) {
+          item.__distanceMiles = null;
+          return item;
+        }
+        const jobCoords = await getZipCoords(jobZip);
+        if (!jobCoords) {
+          item.__distanceMiles = null;
+          return item;
+        }
+        const miles = distanceMiles(userCoords, jobCoords);
+        item.__distanceMiles = miles;
+        return item;
+      });
+      const withDistances = await Promise.all(distancePromises);
+      items = items.map(item => {
+        const match = withDistances.find(x => (x.id || x._id || x.slug) === (item.id || item._id || item.slug));
+        return match || item;
+      });
+    }
+
+    const filteredWithRadius = (!isNaN(radiusMiles) && radiusMiles > 0 && userZip && userCoords)
+      ? filtered.filter(item => typeof item.__distanceMiles === 'number' && item.__distanceMiles <= radiusMiles)
+      : filtered;
+
     const sortMode = sortSelect?.value || 'featured';
-    const sorted = [...filtered].sort((a, b) => {
+    const sorted = [...filteredWithRadius].sort((a, b) => {
       if (useMulti) {
         const countDiff = (b.__matchCount || 0) - (a.__matchCount || 0);
         if (countDiff !== 0) return countDiff;
@@ -211,9 +293,10 @@ export function renderList(container) {
   };
 
   [searchInput, filterField, filterCity, filterState, filterZip, filterRateType, filterRateMin, filterRateMax].forEach(input => {
-    input.addEventListener('input', applyFilters);
+    input.addEventListener('input', () => applyFilters());
   });
-  sortSelect?.addEventListener('change', applyFilters);
+  sortSelect?.addEventListener('change', () => applyFilters());
+  distanceSelect?.addEventListener('change', () => applyFilters());
 
   const cached = window.__preload?.list;
   const cacheFresh = cached && (Date.now() - cached.ts) < 60000;
@@ -237,6 +320,27 @@ export function renderList(container) {
       console.error(err);
     });
 
+    async function loadUserZip() {
+      const cached = getUserProfileCachedAny({ light: true });
+      if (cached?.zip) {
+        userZip = String(cached.zip || '').trim();
+      } else {
+        const profile = await getUserProfileCached({ light: true });
+        userZip = String(profile?.zip || '').trim();
+      }
+      if (userZip) {
+        userCoords = await getZipCoords(userZip);
+        if (distanceSelect) distanceSelect.disabled = false;
+        if (distanceHint) distanceHint.classList.add('hidden');
+      } else {
+        if (distanceSelect) distanceSelect.disabled = true;
+        if (distanceHint) distanceHint.classList.remove('hidden');
+      }
+      applyFilters();
+    }
+
+    loadUserZip();
+
     function renderItems(items) {
       itemsContainer.innerHTML = items.length
         ? items
@@ -250,6 +354,9 @@ export function renderList(container) {
               const rateMin = getMetaValue(item, 'rate_min');
               const rateMax = getMetaValue(item, 'rate_max');
               const location = buildLocation(item);
+              const distanceLabel = (typeof item.__distanceMiles === 'number')
+                ? `${item.__distanceMiles.toFixed(1)} mi away`
+                : '';
               const featured = isFeatured(item);
               const isNew = isNewListing(item);
               return `
@@ -285,6 +392,12 @@ export function renderList(container) {
                         <circle cx="12" cy="11" r="2"></circle>
                       </svg>
                       ${location}
+                    </span>` : ''}
+                    ${distanceLabel ? `<span class="px-3 py-1.5 rounded-full bg-slate-100 inline-flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.36-6.36-2.83 2.83M9.47 14.53l-2.83 2.83m0-11.32 2.83 2.83m8.06 8.06 2.83 2.83" />
+                      </svg>
+                      ${distanceLabel}
                     </span>` : ''}
                   </div>
                   <div class="mt-5 flex items-center justify-between text-base">

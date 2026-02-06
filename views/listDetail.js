@@ -1,5 +1,5 @@
 import { CONFIG } from '../config.js';
-import { getSessionCached } from '../utils/session.js';
+import { getSessionCached, getUserProfileCached, getUserProfileCachedAny } from '../utils/session.js';
 
 export async function renderListDetail(container, id) {
   try {
@@ -88,6 +88,62 @@ export async function renderListDetail(container, id) {
     const session = await getSessionCached({ maxAgeMs: 30000 });
     const isLoggedIn = !!session;
 
+    const getZipCoords = async (zipCode) => {
+      if (!zipCode) return null;
+      const key = `zip_coords_${zipCode}`;
+      try {
+        const cached = localStorage.getItem(key);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.lat && parsed.lng) return parsed;
+        }
+      } catch (err) {}
+      try {
+        const res = await fetch(`https://api.zippopotam.us/us/${zipCode}`);
+        if (!res.ok) return null;
+        const data = await res.json();
+        const place = data?.places?.[0];
+        if (!place) return null;
+        const coords = { lat: parseFloat(place.latitude), lng: parseFloat(place.longitude) };
+        localStorage.setItem(key, JSON.stringify(coords));
+        return coords;
+      } catch (err) {
+        return null;
+      }
+    };
+
+    const distanceMiles = (a, b) => {
+      if (!a || !b) return null;
+      const toRadians = (deg) => (deg * Math.PI) / 180;
+      const R = 3958.8;
+      const dLat = toRadians(b.lat - a.lat);
+      const dLng = toRadians(b.lng - a.lng);
+      const lat1 = toRadians(a.lat);
+      const lat2 = toRadians(b.lat);
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+      const c = 2 * Math.asin(Math.sqrt(h));
+      return R * c;
+    };
+
+    const applyDistance = async () => {
+      if (!zip) return;
+      const cached = getUserProfileCachedAny({ light: true });
+      let userZip = String(cached?.zip || '').trim();
+      if (!userZip) {
+        const profile = await getUserProfileCached({ light: true });
+        userZip = String(profile?.zip || '').trim();
+      }
+      if (!userZip) return;
+      const [userCoords, jobCoords] = await Promise.all([getZipCoords(userZip), getZipCoords(zip)]);
+      if (!userCoords || !jobCoords) return;
+      const miles = distanceMiles(userCoords, jobCoords);
+      if (typeof miles !== 'number') return;
+      const locEl = document.getElementById('jobLocationLine');
+      if (locEl) {
+        locEl.innerHTML = `<strong>Location:</strong> ${locationLine} • ${miles.toFixed(1)} mi away`;
+      }
+    };
+
     container.innerHTML = `
       <div class="flex items-center justify-between mb-4">
         <h1 class="text-2xl font-bold">${data.title}</h1>
@@ -106,7 +162,7 @@ export async function renderListDetail(container, id) {
         </p>
       ` : ''}
       ${locationLine.trim() ? `
-        <p class="text-sm text-gray-700 mb-2"><strong>Location:</strong> ${locationLine}</p>
+        <p class="text-sm text-gray-700 mb-2" id="jobLocationLine"><strong>Location:</strong> ${locationLine}</p>
       ` : ''}
       <div class="prose mb-4">${data.description}</div>
       <div class="mb-4 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-3">
@@ -153,6 +209,8 @@ export async function renderListDetail(container, id) {
     document.getElementById('submitAction')?.addEventListener('click', () => {
       window.location.hash = `#apply?id=${id}`;
     });
+
+    applyDistance();
 
     const messageForm = document.getElementById('employerMessageForm');
     const statusEl = document.getElementById('employerMessageStatus');
