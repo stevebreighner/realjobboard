@@ -392,8 +392,39 @@ export function renderList(container) {
       `).join('') : '<div class="text-sm text-gray-500">No alerts yet.</div>';
     }
 
+    async function handlePendingAlertSave() {
+      const pendingRaw = sessionStorage.getItem('pendingJobAlert');
+      if (!pendingRaw) return;
+      const session = await getSessionCached({ maxAgeMs: 0, force: true });
+      if (!session) return;
+      let pending = null;
+      try {
+        pending = JSON.parse(pendingRaw);
+      } catch (err) {
+        sessionStorage.removeItem('pendingJobAlert');
+        return;
+      }
+      try {
+        const res = await fetch('/wp-json/customapi/v1/job-alerts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ label: pending.label, criteria: pending.criteria }),
+        });
+        const data = await res.json();
+        if (res.ok && Array.isArray(data.alerts)) {
+          alerts = data.alerts;
+          renderAlerts();
+        }
+      } catch (err) {
+        // ignore
+      } finally {
+        sessionStorage.removeItem('pendingJobAlert');
+      }
+    }
+
     loadSavedJobs();
-    loadAlerts();
+    loadAlerts().finally(handlePendingAlertSave);
 
     saveAlertBtn?.addEventListener('click', async () => {
       const criteria = {
@@ -408,6 +439,13 @@ export function renderList(container) {
         radius: distanceSelect?.value || '',
       };
       const label = criteria.query ? `Alert: ${criteria.query}` : 'Alert: Current filters';
+      const session = await getSessionCached({ maxAgeMs: 0, force: true });
+      if (!session) {
+        sessionStorage.setItem('pendingJobAlert', JSON.stringify({ label, criteria }));
+        sessionStorage.setItem('postLoginRedirect', '#list');
+        window.location.hash = '#login';
+        return;
+      }
       try {
         const res = await fetch('/wp-json/customapi/v1/job-alerts', {
           method: 'POST',
