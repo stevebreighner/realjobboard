@@ -17,6 +17,13 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     background: #fff;
     border-bottom: 1px solid #ddd;
   }
+  .logo-slot {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+  }
   .logo {
     display: inline-flex;
     align-items: center;
@@ -76,6 +83,12 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
       display: block;
     }
 
+    .logo-slot {
+      position: static;
+      transform: none;
+      margin-right: auto;
+    }
+
     .menu {
       flex-direction: column;
       align-items: flex-start;
@@ -110,10 +123,12 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
 
 
     <nav class="navbar">
-      <a href="/#home" class="logo" aria-label="${CONFIG.COMPANY_NAME}">
-        <img src="${CONFIG.LOGO_URL || '/logo.svg'}" alt="${CONFIG.COMPANY_NAME} logo" />
-        <span class="sr-only">${CONFIG.COMPANY_NAME}</span>
-      </a>
+      <div class="logo-slot">
+        <a href="/#home" class="logo" aria-label="${CONFIG.COMPANY_NAME}">
+          <img src="${CONFIG.LOGO_URL || '/logo.svg'}" alt="${CONFIG.COMPANY_NAME} logo" />
+          <span class="sr-only">${CONFIG.COMPANY_NAME}</span>
+        </a>
+      </div>
       <button id="menuToggle" class="menu-toggle" aria-label="Menu">☰</button>
       <div id="menu" class="menu">
         <a href="/#list" class="nav-link">${CONFIG.COMPANY_BUSINESS_THING_PLURAL}</a>
