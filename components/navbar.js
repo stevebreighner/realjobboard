@@ -39,9 +39,15 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     padding: 5px;
     background: none;
     border: none;
+    outline: none;
     font-size: 1.5rem;
     color: #4f46e5;
     cursor: pointer;
+  }
+  .menu-toggle:focus,
+  .menu-toggle:focus-visible {
+    outline: none;
+    box-shadow: none;
   }
 
   @media (max-width: 640px) {
@@ -50,7 +56,6 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     }
 
     .menu {
-      display: none;
       flex-direction: column;
       align-items: flex-start;
       position: absolute;
@@ -61,10 +66,19 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
       padding: 0.75rem 1rem;
       border-top: 1px solid #ddd;
       z-index: 1000;
+      max-height: 0;
+      opacity: 0;
+      transform: translateY(-6px);
+      overflow: hidden;
+      pointer-events: none;
+      transition: max-height 0.35s ease, opacity 0.2s ease, transform 0.2s ease;
     }
 
     .menu.show {
-      display: flex;
+      max-height: 320px;
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
     }
 
     .navbar a {
