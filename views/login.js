@@ -102,7 +102,13 @@ export function renderLogin(container) {
         const session = await getSessionCached({ force: true });
         notifyAuthChanged(session);
         renderNavbar(document.getElementById('navbar'));
-        window.location.hash = '#profile';
+        const redirect = sessionStorage.getItem('postLoginRedirect');
+        if (redirect) {
+          sessionStorage.removeItem('postLoginRedirect');
+          window.location.hash = redirect;
+        } else {
+          window.location.hash = '#home';
+        }
       }
     } else {
       messageEl.className = 'mt-4 text-sm text-red-600';
@@ -127,7 +133,13 @@ export function renderLogin(container) {
       const session = await getSessionCached({ force: true });
       notifyAuthChanged(session);
       renderNavbar(document.getElementById('navbar'));
-      window.location.hash = '#profile';
+      const redirect = sessionStorage.getItem('postLoginRedirect');
+      if (redirect) {
+        sessionStorage.removeItem('postLoginRedirect');
+        window.location.hash = redirect;
+      } else {
+        window.location.hash = '#home';
+      }
     } else {
       messageEl.className = 'mt-4 text-sm text-red-600';
       messageEl.textContent = `2FA verification failed: ${message || 'Invalid code'}`;

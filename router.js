@@ -18,6 +18,7 @@ import { renderApply } from './views/apply.js';
 import { renderResume } from './views/resume.js';
 import { renderMyJobPosts } from './views/myJobPosts.js';
 import { renderMyJobPostDetail } from './views/myJobPostDetail.js';
+import { renderMyApplications } from './views/myApplications.js';
 import { getSessionCached } from './utils/session.js';
 import { renderAdmin } from './views/admin.js';
 import { renderEmployers } from './views/employers.js';
@@ -35,7 +36,7 @@ function kebabToCamel(str) {
   return str.replace(/-([a-z])/g, (_, char) => char.toUpperCase());
 }
 
-const protectedRoutes = ['profile', 'updatePassword','post','apply','resume', 'myJobPosts', 'myJobPostDetail', 'admin'];
+const protectedRoutes = ['profile', 'updatePassword','post','apply','resume', 'myJobPosts', 'myJobPostDetail', 'myApplications', 'admin'];
 const employerRoutes = ['post', 'myJobPosts', 'myJobPostDetail'];
 const adminRoutes = ['admin'];
 
@@ -52,6 +53,9 @@ export async function router() {
   if (protectedRoutes.includes(normalizedPath)) {
     const session = await getSessionCached({ maxAgeMs: 30000 });
     if (!session) {
+      if (window.location.hash && window.location.hash !== '#login') {
+        sessionStorage.setItem('postLoginRedirect', window.location.hash);
+      }
       window.location.hash = '#login';
       return;
     }
@@ -99,6 +103,9 @@ export async function router() {
   return scrollToTop();
 case 'myJobPostDetail':
   renderMyJobPostDetail(app, params.id);
+  return scrollToTop();
+case 'myApplications':
+  renderMyApplications(app);
   return scrollToTop();
     case 'post':
       renderPost(app);
