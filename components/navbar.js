@@ -17,6 +17,27 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     background: #fff;
     border-bottom: 1px solid #ddd;
   }
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .logo img {
+    width: 28px;
+    height: 28px;
+    display: block;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 
   .navbar a {
     color: #4f46e5;
@@ -89,7 +110,10 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
 
 
     <nav class="navbar">
-      <a href="/#home" class="logo">${CONFIG.COMPANY_NAME}</a>
+      <a href="/#home" class="logo" aria-label="${CONFIG.COMPANY_NAME}">
+        <img src="/wp-content/themes/jobs/assets/email-logo.svg" alt="${CONFIG.COMPANY_NAME} logo" />
+        <span class="sr-only">${CONFIG.COMPANY_NAME}</span>
+      </a>
       <button id="menuToggle" class="menu-toggle" aria-label="Menu">☰</button>
       <div id="menu" class="menu">
         ${!isLoggedIn ? '<a href="/#home" class="nav-link">Home</a>' : ''}
