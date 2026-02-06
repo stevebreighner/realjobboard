@@ -251,13 +251,11 @@ export async function renderMyJobPostDetail(container, jobId) {
             <label class="block text-xs text-gray-600 mb-1">Quick template</label>
             <select id="messageTemplate" class="w-full p-2 border rounded mb-3">
               <option value="" selected>Choose a template...</option>
-              <option value="Thanks for applying. We are reviewing your application and will be in touch soon.">Application received</option>
-              <option value="We’d like to schedule a quick interview. Please reply with a few times that work for you this week.">Interview request</option>
-              <option value="Could you share a few more details about your recent experience with this role?">Request more info</option>
-              <option value="We appreciate your time. We are moving forward with other candidates at this stage.">Not selected</option>
             </select>
             <textarea id="messageBody" class="w-full p-2 border rounded mb-3" rows="5" placeholder="Write your message"></textarea>
+            <div id="messagePreview" class="border rounded p-3 bg-slate-50 text-sm text-slate-700 mb-3 hidden"></div>
             <div class="flex items-center justify-end space-x-3">
+              <button id="messagePreviewBtn" class="px-3 py-2 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Preview</button>
               <button id="messageCancelBtn" class="px-3 py-2 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
               <button id="messageSendBtn" class="px-3 py-2 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700">Send</button>
             </div>
@@ -326,6 +324,8 @@ export async function renderMyJobPostDetail(container, jobId) {
     const messageCancelBtn = container.querySelector('#messageCancelBtn');
     const messageSendBtn = container.querySelector('#messageSendBtn');
     const messageTemplate = container.querySelector('#messageTemplate');
+    const messagePreview = container.querySelector('#messagePreview');
+    const messagePreviewBtn = container.querySelector('#messagePreviewBtn');
     let messageTargetUserId = null;
     const deleteCancelBtn = container.querySelector('#deleteCancelBtn');
     const deleteConfirmBtn = container.querySelector('#deleteConfirmBtn');
@@ -571,11 +571,58 @@ export async function renderMyJobPostDetail(container, jobId) {
       }).catch(() => {});
     });
 
+    const fallbackTemplates = [
+      { title: 'Application received', body: 'Thanks for applying. We are reviewing your application and will be in touch soon.' },
+      { title: 'Interview request', body: 'We’d like to schedule a quick interview. Please reply with a few times that work for you this week.' },
+      { title: 'Request more info', body: 'Could you share a few more details about your recent experience with this role?' },
+      { title: 'Not selected', body: 'We appreciate your time. We are moving forward with other candidates at this stage.' },
+    ];
+
+    const loadTemplates = async () => {
+      if (!messageTemplate) return;
+      try {
+        const res = await fetch('/wp-json/customapi/v1/email-templates', { credentials: 'include' });
+        const data = await res.json();
+        const templates = Array.isArray(data) ? data.filter(t => t.scope === 'employer') : [];
+        const list = templates.length ? templates : fallbackTemplates;
+        messageTemplate.innerHTML = `<option value="" selected>Choose a template...</option>` + list
+          .map(t => `<option value="${t.body.replace(/"/g, '&quot;')}">${t.title}</option>`)
+          .join('');
+      } catch (err) {
+        messageTemplate.innerHTML = `<option value="" selected>Choose a template...</option>` + fallbackTemplates
+          .map(t => `<option value="${t.body.replace(/"/g, '&quot;')}">${t.title}</option>`)
+          .join('');
+      }
+    };
+    loadTemplates();
+
     messageTemplate?.addEventListener('change', () => {
       const val = messageTemplate.value || '';
       if (val && messageBody) {
         messageBody.value = val;
       }
+      updatePreview();
+    });
+
+    const updatePreview = () => {
+      if (!messagePreview) return;
+      const body = (messageBody?.value || '').trim();
+      if (!body) {
+        messagePreview.classList.add('hidden');
+        return;
+      }
+      const subject = `Application update: ${data.title || 'Job'}`;
+      messagePreview.innerHTML = `
+        <div class="font-semibold mb-1">Subject: ${subject}</div>
+        <div class="whitespace-pre-line">${body}</div>
+      `;
+    };
+
+    messageBody?.addEventListener('input', updatePreview);
+
+    messagePreviewBtn?.addEventListener('click', () => {
+      updatePreview();
+      messagePreview?.classList.toggle('hidden');
     });
 
     messageCancelBtn?.addEventListener('click', () => {

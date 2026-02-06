@@ -64,6 +64,19 @@ export async function renderAdmin(container) {
         </div>
         <div id="auditContainer" class="space-y-2 text-sm"></div>
       </div>
+
+      <div class="mb-10">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Email Templates</h2>
+          <div class="flex items-center space-x-3">
+            <button id="addTemplate" class="text-sm text-indigo-600 hover:underline">Add template</button>
+            <button id="saveTemplates" class="text-sm text-indigo-600 hover:underline">Save</button>
+          </div>
+        </div>
+        <p class="text-xs text-gray-500 mb-2">These templates appear in employer/applicant message dropdowns.</p>
+        <div id="templatesMsg" class="text-sm mb-2"></div>
+        <div id="templatesContainer" class="space-y-3"></div>
+      </div>
     </div>
   `;
 
@@ -81,6 +94,10 @@ export async function renderAdmin(container) {
   const createMsg = container.querySelector('#createUserMsg');
   const generateTestUserBtn = container.querySelector('#generateTestUser');
   const generatePasswordBtn = container.querySelector('#generatePassword');
+  const addTemplateBtn = container.querySelector('#addTemplate');
+  const saveTemplatesBtn = container.querySelector('#saveTemplates');
+  const templatesContainer = container.querySelector('#templatesContainer');
+  const templatesMsg = container.querySelector('#templatesMsg');
 
   const session = await getSessionCached({ maxAgeMs: 30000 });
   const roles = Array.isArray(session?.roles) ? session.roles : [];
@@ -97,7 +114,7 @@ export async function renderAdmin(container) {
 
   async function fetchUsers() {
     usersContainer.innerHTML = '<p class="text-sm text-gray-500">Loading users...</p>';
-    const res = await fetch('/wp-json/customapi/v1/admin/users', { credentials: 'include' });
+    const res = await fetch(`/wp-json/customapi/v1/admin/users?_=${Date.now()}`, { credentials: 'include' });
     const data = await res.json();
     if (!res.ok) {
       usersContainer.innerHTML = `<p class="text-sm text-red-600">${data.message || 'Failed to load users.'}</p>`;
@@ -148,7 +165,7 @@ export async function renderAdmin(container) {
 
   async function fetchJobs() {
     jobsContainer.innerHTML = '<p class="text-sm text-gray-500">Loading jobs...</p>';
-    const res = await fetch('/wp-json/customapi/v1/admin/jobs', { credentials: 'include' });
+    const res = await fetch(`/wp-json/customapi/v1/admin/jobs?_=${Date.now()}`, { credentials: 'include' });
     const data = await res.json();
     if (!res.ok) {
       jobsContainer.innerHTML = `<p class="text-sm text-red-600">${data.message || 'Failed to load jobs.'}</p>`;
@@ -186,7 +203,7 @@ export async function renderAdmin(container) {
 
   async function fetchAudit() {
     auditContainer.innerHTML = '<p class="text-gray-500">Loading audit log...</p>';
-    const res = await fetch('/wp-json/customapi/v1/admin/audit', { credentials: 'include' });
+    const res = await fetch(`/wp-json/customapi/v1/admin/audit?_=${Date.now()}`, { credentials: 'include' });
     const data = await res.json();
     if (!res.ok) {
       auditContainer.innerHTML = `<p class="text-red-600">${data.message || 'Failed to load audit log.'}</p>`;
@@ -203,6 +220,91 @@ export async function renderAdmin(container) {
         }).join('')
       : '<p class="text-gray-500">No audit entries yet.</p>';
   }
+
+  let emailTemplates = [];
+
+  const renderTemplates = () => {
+    templatesContainer.innerHTML = emailTemplates.length
+      ? emailTemplates.map((tpl, idx) => `
+          <div class="border rounded p-3">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <input class="p-2 border rounded text-sm" data-role="tpl-title" data-idx="${idx}" placeholder="Title" value="${tpl.title || ''}" />
+              <select class="p-2 border rounded text-sm" data-role="tpl-scope" data-idx="${idx}">
+                <option value="employer" ${tpl.scope === 'employer' ? 'selected' : ''}>Employer</option>
+                <option value="applicant" ${tpl.scope === 'applicant' ? 'selected' : ''}>Applicant</option>
+              </select>
+              <button class="text-sm text-red-600 hover:underline justify-self-start md:justify-self-end" data-action="delete-template" data-idx="${idx}">Delete</button>
+            </div>
+            <textarea class="mt-2 w-full p-2 border rounded text-sm" rows="3" data-role="tpl-body" data-idx="${idx}" placeholder="Template body">${tpl.body || ''}</textarea>
+          </div>
+        `).join('')
+      : '<p class="text-gray-500">No templates yet.</p>';
+  };
+
+  const fetchTemplates = async () => {
+    templatesMsg.textContent = 'Loading templates...';
+    templatesMsg.className = 'text-sm text-gray-500';
+    const res = await fetch(`/wp-json/customapi/v1/admin/email-templates?_=${Date.now()}`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) {
+      templatesMsg.textContent = data.message || 'Failed to load templates.';
+      templatesMsg.className = 'text-sm text-red-600';
+      return;
+    }
+    emailTemplates = Array.isArray(data) ? data : [];
+    templatesMsg.textContent = '';
+    renderTemplates();
+  };
+
+  templatesContainer.addEventListener('input', (e) => {
+    const target = e.target;
+    const idx = Number(target.dataset.idx || -1);
+    if (idx < 0 || !emailTemplates[idx]) return;
+    if (target.dataset.role === 'tpl-title') emailTemplates[idx].title = target.value;
+    if (target.dataset.role === 'tpl-body') emailTemplates[idx].body = target.value;
+  });
+
+  templatesContainer.addEventListener('change', (e) => {
+    const target = e.target;
+    const idx = Number(target.dataset.idx || -1);
+    if (idx < 0 || !emailTemplates[idx]) return;
+    if (target.dataset.role === 'tpl-scope') emailTemplates[idx].scope = target.value;
+  });
+
+  templatesContainer.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action="delete-template"]');
+    if (!btn) return;
+    const idx = Number(btn.dataset.idx || -1);
+    if (idx < 0) return;
+    emailTemplates.splice(idx, 1);
+    renderTemplates();
+  });
+
+  addTemplateBtn?.addEventListener('click', () => {
+    emailTemplates.push({ title: '', body: '', scope: 'employer', id: `tpl_${Date.now()}` });
+    renderTemplates();
+  });
+
+  saveTemplatesBtn?.addEventListener('click', async () => {
+    templatesMsg.textContent = 'Saving...';
+    templatesMsg.className = 'text-sm text-gray-500';
+    const res = await fetch('/wp-json/customapi/v1/admin/email-templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ templates: emailTemplates }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      templatesMsg.textContent = data.message || 'Save failed.';
+      templatesMsg.className = 'text-sm text-red-600';
+      return;
+    }
+    templatesMsg.textContent = 'Templates saved.';
+    templatesMsg.className = 'text-sm text-green-700';
+    emailTemplates = data.templates || emailTemplates;
+    renderTemplates();
+  });
 
   usersContainer.addEventListener('click', async (e) => {
     const btn = e.target.closest('button[data-action]');
@@ -395,11 +497,11 @@ export async function renderAdmin(container) {
       createMsg.className = 'text-sm text-red-600';
       return;
     }
-    createMsg.textContent = 'User created.';
+    createMsg.textContent = `User created (ID ${data.id || ''}). Refreshing list...`;
     createMsg.className = 'text-sm text-green-700';
     createForm.reset();
-    fetchUsers();
-    fetchAudit();
+    setTimeout(fetchUsers, 300);
+    setTimeout(fetchAudit, 300);
   });
 
   generatePasswordBtn.addEventListener('click', () => {
@@ -429,4 +531,5 @@ export async function renderAdmin(container) {
   fetchUsers();
   fetchJobs();
   fetchAudit();
+  fetchTemplates();
 }

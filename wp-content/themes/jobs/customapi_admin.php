@@ -37,6 +37,91 @@ function customapi_admin_get_audit() {
   return rest_ensure_response($log);
 }
 
+function customapi_default_email_templates() {
+  return [
+    [
+      'id' => 'applicant_received',
+      'title' => 'Application received',
+      'body' => 'Thanks for applying. We are reviewing your application and will be in touch soon.',
+      'scope' => 'employer',
+    ],
+    [
+      'id' => 'applicant_interview',
+      'title' => 'Interview request',
+      'body' => 'We’d like to schedule a quick interview. Please reply with a few times that work for you this week.',
+      'scope' => 'employer',
+    ],
+    [
+      'id' => 'applicant_more_info',
+      'title' => 'Request more info',
+      'body' => 'Could you share a few more details about your recent experience with this role?',
+      'scope' => 'employer',
+    ],
+    [
+      'id' => 'applicant_reject',
+      'title' => 'Not selected',
+      'body' => 'We appreciate your time. We are moving forward with other candidates at this stage.',
+      'scope' => 'employer',
+    ],
+    [
+      'id' => 'employer_question',
+      'title' => 'Question about the role',
+      'body' => 'Hi! I’m interested in this role and had a quick question about the day-to-day responsibilities.',
+      'scope' => 'applicant',
+    ],
+    [
+      'id' => 'employer_followup',
+      'title' => 'Follow-up',
+      'body' => 'Just following up on my application. Please let me know if there’s anything else I can provide.',
+      'scope' => 'applicant',
+    ],
+  ];
+}
+
+function customapi_admin_get_email_templates() {
+  $auth = customapi_require_site_admin();
+  if (is_wp_error($auth)) return $auth;
+  $templates = get_option('customapi_email_templates', []);
+  if (!is_array($templates) || empty($templates)) {
+    $templates = customapi_default_email_templates();
+  }
+  return rest_ensure_response(array_values($templates));
+}
+
+function customapi_admin_save_email_templates(WP_REST_Request $request) {
+  $auth = customapi_require_site_admin();
+  if (is_wp_error($auth)) return $auth;
+  $params = $request->get_json_params();
+  $templates = is_array($params['templates'] ?? null) ? $params['templates'] : [];
+  $clean = [];
+  foreach ($templates as $tpl) {
+    $title = sanitize_text_field($tpl['title'] ?? '');
+    $body = sanitize_textarea_field($tpl['body'] ?? '');
+    $scope = sanitize_text_field($tpl['scope'] ?? 'employer');
+    if (!$title || !$body) continue;
+    $clean[] = [
+      'id' => sanitize_text_field($tpl['id'] ?? uniqid('tpl_', true)),
+      'title' => $title,
+      'body' => $body,
+      'scope' => in_array($scope, ['employer', 'applicant'], true) ? $scope : 'employer',
+    ];
+  }
+  update_option('customapi_email_templates', $clean, false);
+  customapi_admin_log('email_templates_update', ['count' => count($clean)]);
+  return rest_ensure_response(['success' => true, 'templates' => $clean]);
+}
+
+function customapi_get_email_templates_public() {
+  if (empty($_SESSION['user']['id'])) {
+    return new WP_Error('unauthorized', 'Login required', ['status' => 401]);
+  }
+  $templates = get_option('customapi_email_templates', []);
+  if (!is_array($templates) || empty($templates)) {
+    $templates = customapi_default_email_templates();
+  }
+  return rest_ensure_response(array_values($templates));
+}
+
 function customapi_admin_list_users() {
   $auth = customapi_require_site_admin();
   if (is_wp_error($auth)) return $auth;
@@ -444,6 +529,22 @@ add_action('rest_api_init', function () {
   register_rest_route('customapi/v1', '/admin/export-jobs', [
     'methods' => 'GET',
     'callback' => 'customapi_admin_export_jobs',
+    'permission_callback' => '__return_true',
+  ]);
+
+  register_rest_route('customapi/v1', '/admin/email-templates', [
+    'methods' => 'GET',
+    'callback' => 'customapi_admin_get_email_templates',
+    'permission_callback' => '__return_true',
+  ]);
+  register_rest_route('customapi/v1', '/admin/email-templates', [
+    'methods' => 'POST',
+    'callback' => 'customapi_admin_save_email_templates',
+    'permission_callback' => '__return_true',
+  ]);
+  register_rest_route('customapi/v1', '/email-templates', [
+    'methods' => 'GET',
+    'callback' => 'customapi_get_email_templates_public',
     'permission_callback' => '__return_true',
   ]);
 });
