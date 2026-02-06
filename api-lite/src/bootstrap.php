@@ -14,10 +14,26 @@ spl_autoload_register(function ($class) {
   }
 });
 
-// Reuse WP DB settings to avoid duplication
+// Reuse WP DB settings without loading full WP
 $wpConfig = __DIR__ . '/../../wp-config.php';
 if (file_exists($wpConfig)) {
-  require_once $wpConfig;
+  $configRaw = file_get_contents($wpConfig);
+  if ($configRaw !== false) {
+    $defs = [
+      'DB_NAME' => null,
+      'DB_USER' => null,
+      'DB_PASSWORD' => null,
+      'DB_HOST' => null,
+    ];
+    foreach ($defs as $key => $_) {
+      if (!defined($key) && preg_match("/define\\(\\s*'{$key}'\\s*,\\s*'([^']*)'\\s*\\)\\s*;/", $configRaw, $m)) {
+        define($key, $m[1]);
+      }
+    }
+    if (preg_match('/\\$table_prefix\\s*=\\s*\\\'([^\\\']+)\\\'\\s*;/', $configRaw, $m)) {
+      $GLOBALS['DB_PREFIX'] = $m[1];
+    }
+  }
 }
 
 if (!defined('DB_HOST')) {
