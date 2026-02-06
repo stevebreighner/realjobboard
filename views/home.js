@@ -132,7 +132,7 @@ export function renderHome(container) {
 
     <!-- What We Do Section -->
     <section class="bg-white text-gray-800 py-16 px-6 md:px-12">
-      <h2 class="text-4xl font-bold text-center mb-12">What We Do</h2>
+      <div class="sr-only">What We Do</div>
       <div class="max-w-6xl mx-auto grid gap-12 md:grid-cols-3 text-center">
         <div class="p-6 shadow-md rounded-2xl hover:shadow-xl transition flex flex-col h-full">
           <div class="mx-auto h-8 w-8 text-indigo-600 mb-4">
