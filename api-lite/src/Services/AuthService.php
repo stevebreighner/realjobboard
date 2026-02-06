@@ -59,13 +59,18 @@ class AuthService {
   public function validatePassword(array $user, string $password): bool {
     if (!isset($user['password_hash'])) return false;
     $hash = $user['password_hash'];
-    if (str_starts_with($hash, '$2y$') || str_starts_with($hash, '$2a$') || str_starts_with($hash, '$2b$')) {
+    if ($this->startsWith($hash, '$2y$') || $this->startsWith($hash, '$2a$') || $this->startsWith($hash, '$2b$')) {
       return password_verify($password, $hash);
     }
-    if (str_starts_with($hash, '$P$') || str_starts_with($hash, '$H$')) {
+    if ($this->startsWith($hash, '$P$') || $this->startsWith($hash, '$H$')) {
       return $this->verifyWpHash($password, $hash);
     }
     return password_verify($password, $hash);
+  }
+
+  private function startsWith(string $haystack, string $needle): bool {
+    if ($needle === '') return true;
+    return strncmp($haystack, $needle, strlen($needle)) === 0;
   }
 
   private function verifyWpHash(string $password, string $storedHash): bool {
