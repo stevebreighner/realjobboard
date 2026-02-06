@@ -2,7 +2,7 @@ export function renderSpeed(container) {
   container.innerHTML = `
     <style>
       .hero-blue {
-        background: linear-gradient(135deg, #f472b6 0%, #fb7185 55%, #f9a8d4 100%);
+        background: linear-gradient(135deg, #0b5fa5 0%, #1e78d9 60%, #3aa0ff 100%);
       }
       .text-shadow {
         text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);

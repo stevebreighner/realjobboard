@@ -60,7 +60,7 @@ export function renderHome(container) {
         overflow: hidden;
       }
       .bg-hero-fun {
-        background: linear-gradient(135deg, #f472b6 0%, #fb7185 30%, #f9a8d4 60%, #fbcfe8 100%);
+        background: linear-gradient(135deg, #ff5f9e 0%, #ffcc5c 35%, #3be6d0 70%, #5b7cff 100%);
         background-size: 200% 200%;
         animation: heroShift 12s ease infinite;
       }
