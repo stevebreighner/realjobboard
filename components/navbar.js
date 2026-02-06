@@ -116,7 +116,6 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
       </a>
       <button id="menuToggle" class="menu-toggle" aria-label="Menu">☰</button>
       <div id="menu" class="menu">
-        ${!isLoggedIn ? '<a href="/#home" class="nav-link">Home</a>' : ''}
         <a href="/#list" class="nav-link">${CONFIG.COMPANY_BUSINESS_THING_PLURAL}</a>
         ${isEmployer ? `<a href="/#post" class="nav-link">Post a ${CONFIG.COMPANY_BUSINESS_THING}</a>` : ''}
         ${isSiteAdmin ? `<a href="/#admin" class="nav-link">Admin</a>` : ''}
