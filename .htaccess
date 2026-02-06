@@ -1,61 +1,16 @@
-# BEGIN LSCACHE
-## LITESPEED WP CACHE PLUGIN - Do not edit the contents of this block! ##
-<IfModule LiteSpeed>
-RewriteEngine on
-CacheLookup on
-RewriteRule .* - [E=Cache-Control:no-autoflush]
-RewriteRule litespeed/debug/.*\.log$ - [F,L]
-RewriteRule \.litespeed_conf\.dat - [F,L]
+SetEnv STRIPE_SECRET_KEY sk_test_51P3zmJHlusB1EIZ8UedPKPM7dgISnZ5xiUNIulWdWp4djeJ7pLlp7GGXe5c8JIxM4EkPZGoMeaArda5D6hIJRhxC00DgCr6cEG
+SetEnv STRIPE_SECRET_SIGN whsec_pNLT8Rb8mFqaDgNIxDrg1qiW84rAClPA
+SetEnv STRIPE_PUBLISHABLE_KEY pk_test_51SNbHAHub7eJ0QAmrJaBMPwH9GafwJ2MzjDSV1LsCTeBu8d7I6OuwmLrTfIlnfr1GxHsfwN7CCu2c0ysE1cq3ddU00u8dhocN1
 
-### marker ASYNC start ###
-RewriteCond %{REQUEST_URI} /wp-admin/admin-ajax\.php
-RewriteCond %{QUERY_STRING} action=async_litespeed
-RewriteRule .* - [E=noabort:1]
-### marker ASYNC end ###
-
-### marker DROPQS start ###
-CacheKeyModify -qs:fbclid
-CacheKeyModify -qs:gclid
-CacheKeyModify -qs:utm*
-CacheKeyModify -qs:_ga
-### marker DROPQS end ###
-
-</IfModule>
-## LITESPEED WP CACHE PLUGIN - Do not edit the contents of this block! ##
-# END LSCACHE
-# BEGIN NON_LSCACHE
-## LITESPEED WP CACHE PLUGIN - Do not edit the contents of this block! ##
-## LITESPEED WP CACHE PLUGIN - Do not edit the contents of this block! ##
-# END NON_LSCACHE
-
-# BEGIN WordPress
-# The directives (lines) between "BEGIN WordPress" and "END WordPress" are
-# dynamically generated, and should only be modified via WordPress filters.
-# Any changes to the directives between these markers will be overwritten.
 <IfModule mod_rewrite.c>
 RewriteEngine On
-RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
-RewriteBase /
-RewriteRule ^index\.php$ - [L]
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule . /index.php [L]
+RewriteRule ^api/?$ /api-lite/public/index.php [L,QSA]
+RewriteRule ^api/(.*)$ /api-lite/public/index.php [L,QSA]
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+RewriteRule ^ /index.html [L]
 </IfModule>
-
-# END WordPress
-
-# BEGIN Security Block
-# Block the include-only files.
-<IfModule mod_rewrite.c>
-RewriteEngine On
-RewriteBase /
-RewriteRule ^wp-admin/includes/ - [F,L]
-RewriteRule !^wp-includes/ - [S=3]
-RewriteRule ^wp-includes/[^/]+\.php$ - [F,L]
-RewriteRule ^wp-includes/js/tinymce/langs/.+\.php - [F,L]
-RewriteRule ^wp-includes/theme-compat/ - [F,L]
-</IfModule>
-
 # Disable directory listing
 Options All -Indexes
 
