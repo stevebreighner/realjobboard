@@ -64,6 +64,7 @@ export const CONFIG = {
     COMPANY_NAME: 'JobBoard', // or "PetFinder", etc.
     COMPANY_BUSINESS_THING: 'Job', // or "Pet", etc.
     COMPANY_BUSINESS_THING_PLURAL: 'Jobs', // or "Pets"
+    LOGO_URL: '/logo.svg',
     APP_DOMAIN,
     WEBSITE_URL: `https://${APP_DOMAIN}`, // or "Pets"
     COMPANY_SUPPORT_EMAIL: `support@${APP_DOMAIN}`, // or "Pets"

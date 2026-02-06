@@ -111,7 +111,7 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
 
     <nav class="navbar">
       <a href="/#home" class="logo" aria-label="${CONFIG.COMPANY_NAME}">
-        <img src="/wp-content/themes/jobs/assets/email-logo.svg" alt="${CONFIG.COMPANY_NAME} logo" />
+        <img src="${CONFIG.LOGO_URL || '/logo.svg'}" alt="${CONFIG.COMPANY_NAME} logo" />
         <span class="sr-only">${CONFIG.COMPANY_NAME}</span>
       </a>
       <button id="menuToggle" class="menu-toggle" aria-label="Menu">☰</button>
