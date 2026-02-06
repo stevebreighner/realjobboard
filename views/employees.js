@@ -1,46 +1,16 @@
 export function renderEmployees(container) {
   container.innerHTML = `
     <style>
-      .bg-hero-fun {
-        background: linear-gradient(135deg, #ff4d8d 0%, #ffb347 35%, #5cffd1 70%, #5b7cff 100%);
-        background-size: 200% 200%;
-        animation: heroShift 12s ease infinite;
-      }
-      .hero-fun-blob {
-        position: absolute;
-        border-radius: 999px;
-        filter: blur(20px);
-        opacity: 0.35;
-        mix-blend-mode: screen;
-      }
-      .hero-fun-blob.one {
-        width: 320px;
-        height: 320px;
-        background: #ff7ab6;
-        top: -120px;
-        left: -80px;
-      }
-      .hero-fun-blob.two {
-        width: 360px;
-        height: 360px;
-        background: #60a5fa;
-        bottom: -140px;
-        right: -120px;
-      }
-      @keyframes heroShift {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
+      .hero-blue {
+        background: linear-gradient(135deg, #f472b6 0%, #fb7185 55%, #f9a8d4 100%);
       }
       .text-shadow {
-        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
       }
     </style>
     <div class="max-w-5xl mx-auto px-4 py-10">
-      <div class="relative overflow-hidden text-white rounded-2xl p-6 md:p-8 mb-8 shadow bg-hero-fun">
-        <div class="hero-fun-blob one"></div>
-        <div class="hero-fun-blob two"></div>
-        <div class="absolute inset-0 bg-black/35 pointer-events-none"></div>
+      <div class="relative overflow-hidden text-white rounded-2xl p-6 md:p-8 mb-8 shadow hero-blue">
+        <div class="absolute inset-0 bg-black/20 pointer-events-none"></div>
         <div class="relative z-10 text-shadow">
           <div class="text-xs uppercase tracking-widest text-white/80 mb-2">Job Seekers</div>
           <h1 class="text-3xl md:text-4xl font-bold mb-3">Privacy that feels human.</h1>
