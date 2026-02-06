@@ -49,8 +49,11 @@ try {
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
   ]);
+  $GLOBALS['DB_PDO']->exec('SET sql_mode = "STRICT_ALL_TABLES"');
 } catch (Throwable $e) {
   http_response_code(500);
   echo json_encode(['error' => 'DB connection failed']);
   exit;
 }
+
+header('Content-Type: application/json; charset=utf-8');

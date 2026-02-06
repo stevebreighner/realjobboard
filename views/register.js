@@ -10,7 +10,7 @@ export function renderRegister(container) {
       <input type="email" name="email" placeholder="Email" class="w-full p-2 border rounded" required />
       <div class="relative w-full">
         <input type="password" id="registerPassword" name="password" placeholder="Password" class="w-full p-2 border rounded pr-10" required />
-        <button type="button" id="toggleRegisterPassword" class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-500 bg-transparent border-0 p-0 m-0 w-auto" style="width:auto;">
+        <button type="button" id="toggleRegisterPassword" class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-500 bg-transparent border-0 p-0 m-0" style="width:2rem;height:2rem;">
           <svg id="registerEyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/>
             <circle cx="12" cy="12" r="3"/>
@@ -181,19 +181,26 @@ export function renderRegister(container) {
     }
 
     try {
-      const response = await fetch('/wp-json/customapi/v1/register', {
+      const requestOpts = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
+        body: JSON.stringify(formData),
+        credentials: 'include',
+      };
 
-      const data = await response.json();
+      let response = await fetch('/wp-json/customapi/v1/register', requestOpts);
+      let data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        response = await fetch('/api/register', requestOpts);
+        data = await response.json().catch(() => ({}));
+      }
 
       if (response.ok) {
         alert('✅ Registered! Check your email to verify your account before logging in.');
         window.location.hash = '#/login';
       } else {
-        alert('❌ Registration failed: ' + (data.message || 'Unknown error'));
+        alert('❌ Registration failed: ' + (data.message || data.error || 'Unknown error'));
       }
     } catch (err) {
       console.error(err);

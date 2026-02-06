@@ -141,10 +141,16 @@ function bindNavbar(container, isLoggedIn) {
   if (isLoggedIn) {
     document.getElementById('logoutLink')?.addEventListener('click', async (e) => {
       e.preventDefault();
-      await fetch('/wp-json/customapi/v1/logout', {
+      let res = await fetch('/wp-json/customapi/v1/logout', {
         method: 'POST',
         credentials: 'include',
       });
+      if (!res.ok) {
+        await fetch('/api/logout', {
+          method: 'POST',
+          credentials: 'include',
+        });
+      }
       clearSessionCache();
       clearProfileCache();
       notifyAuthChanged(null);

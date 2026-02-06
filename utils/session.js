@@ -1,3 +1,5 @@
+import { CONFIG } from '../config.js';
+
 const PRELOAD_KEY = '__preload';
 
 function getCache(key, maxAgeMs) {
@@ -35,13 +37,28 @@ export function notifyAuthChanged(session = null) {
   window.dispatchEvent(event);
 }
 
+const API_BASE = CONFIG?.API_BASE ? CONFIG.API_BASE.replace(/\/$/, '') : '';
+
 export async function getSessionCached({ maxAgeMs = 30000, force = false } = {}) {
   if (!force) {
     const cached = getCache('session', maxAgeMs);
     if (cached) return cached;
   }
   try {
-    const res = await fetch('/wp-json/customapi/v1/sessions?_=' + Date.now(), {
+    const res = await fetch((API_BASE ? API_BASE : '') + '/wp-json/customapi/v1/sessions?_=' + Date.now(), {
+      method: 'GET',
+      credentials: 'include',
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setCache('session', data);
+      return data;
+    }
+  } catch {
+    // fall through
+  }
+  try {
+    const res = await fetch((API_BASE ? API_BASE : '') + '/api/session?_=' + Date.now(), {
       method: 'GET',
       credentials: 'include',
     });

@@ -67,6 +67,7 @@ export const CONFIG = {
     APP_DOMAIN,
     WEBSITE_URL: `https://${APP_DOMAIN}`, // or "Pets"
     COMPANY_SUPPORT_EMAIL: `support@${APP_DOMAIN}`, // or "Pets"
+    API_BASE: '',
     SUBMIT_LABEL: 'Apply Now', // or 'Submit Offer', etc.
     TURNSTILE_SITE_KEY: '0x4AAAAAACXQm_OHceB7I6bi',
     JOB_POSTING_TIERS: [
