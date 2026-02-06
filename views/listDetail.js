@@ -159,27 +159,47 @@ export async function renderListDetail(container, id) {
     const templateSelect = document.getElementById('applicantTemplate');
     let turnstileWidgetId = null;
     if (messageForm) {
-      const turnstileContainer = document.getElementById('turnstile-container');
-      if (!window.turnstile) {
-        const script = document.createElement('script');
-        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-        script.async = true;
-        script.defer = true;
-        script.onload = () => {
-          if (CONFIG.TURNSTILE_SITE_KEY && turnstileContainer) {
-            turnstileWidgetId = window.turnstile.render(turnstileContainer, {
-              sitekey: CONFIG.TURNSTILE_SITE_KEY,
-              theme: 'light',
-            });
+      const getDevFlags = async () => {
+        if (window.__dev_flags) return window.__dev_flags;
+        try {
+          const res = await fetch('/wp-json/customapi/v1/dev-flags?_=' + Date.now(), { credentials: 'include' });
+          const data = await res.json();
+          if (res.ok) {
+            window.__dev_flags = data;
+            return data;
           }
-        };
-        document.body.appendChild(script);
-      } else if (CONFIG.TURNSTILE_SITE_KEY && turnstileContainer) {
-        turnstileWidgetId = window.turnstile.render(turnstileContainer, {
-          sitekey: CONFIG.TURNSTILE_SITE_KEY,
-          theme: 'light',
-        });
-      }
+        } catch (err) {}
+        window.__dev_flags = { dev_mode: 0 };
+        return window.__dev_flags;
+      };
+      const turnstileContainer = document.getElementById('turnstile-container');
+      (async () => {
+        const devFlags = await getDevFlags();
+        if (devFlags.dev_mode) {
+          if (turnstileContainer) turnstileContainer.innerHTML = '<div class="text-xs text-gray-500">Dev mode: captcha disabled</div>';
+          return;
+        }
+        if (!window.turnstile) {
+          const script = document.createElement('script');
+          script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+          script.async = true;
+          script.defer = true;
+          script.onload = () => {
+            if (CONFIG.TURNSTILE_SITE_KEY && turnstileContainer) {
+              turnstileWidgetId = window.turnstile.render(turnstileContainer, {
+                sitekey: CONFIG.TURNSTILE_SITE_KEY,
+                theme: 'light',
+              });
+            }
+          };
+          document.body.appendChild(script);
+        } else if (CONFIG.TURNSTILE_SITE_KEY && turnstileContainer) {
+          turnstileWidgetId = window.turnstile.render(turnstileContainer, {
+            sitekey: CONFIG.TURNSTILE_SITE_KEY,
+            theme: 'light',
+          });
+        }
+      })();
 
       if (templateSelect) {
         const vars = {
@@ -231,13 +251,16 @@ export async function renderListDetail(container, id) {
         statusEl.className = 'text-sm text-gray-600';
         const formData = new FormData(messageForm);
         const payload = Object.fromEntries(formData.entries());
-        if (window.turnstile && turnstileWidgetId !== null) {
-          payload.turnstile_token = window.turnstile.getResponse(turnstileWidgetId);
-        }
-        if (!payload.turnstile_token) {
-          statusEl.textContent = 'Please complete the captcha.';
-          statusEl.className = 'text-sm text-red-600';
-          return;
+        const devFlags = await getDevFlags();
+        if (!devFlags.dev_mode) {
+          if (window.turnstile && turnstileWidgetId !== null) {
+            payload.turnstile_token = window.turnstile.getResponse(turnstileWidgetId);
+          }
+          if (!payload.turnstile_token) {
+            statusEl.textContent = 'Please complete the captcha.';
+            statusEl.className = 'text-sm text-red-600';
+            return;
+          }
         }
         try {
           const res = await fetch('/wp-json/customapi/v1/contact-employer', {

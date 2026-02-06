@@ -497,6 +497,34 @@ function customapi_admin_export_jobs() {
   ]);
 }
 
+function customapi_admin_get_flags() {
+  $auth = customapi_require_site_admin();
+  if (is_wp_error($auth)) return $auth;
+  $dev_mode = (int) get_option('customapi_dev_mode', 0);
+  return rest_ensure_response([
+    'dev_mode' => $dev_mode ? 1 : 0,
+  ]);
+}
+
+function customapi_admin_set_flags(WP_REST_Request $request) {
+  $auth = customapi_require_site_admin();
+  if (is_wp_error($auth)) return $auth;
+  $dev_mode = !empty($request['dev_mode']) ? 1 : 0;
+  update_option('customapi_dev_mode', $dev_mode, false);
+  customapi_admin_log('dev_mode_update', ['dev_mode' => $dev_mode]);
+  return rest_ensure_response([
+    'success' => true,
+    'dev_mode' => $dev_mode,
+  ]);
+}
+
+function customapi_get_dev_flags_public() {
+  $dev_mode = (int) get_option('customapi_dev_mode', 0);
+  return rest_ensure_response([
+    'dev_mode' => $dev_mode ? 1 : 0,
+  ]);
+}
+
 add_action('rest_api_init', function () {
   register_rest_route('customapi/v1', '/admin/users', [
     'methods' => 'GET',
@@ -555,6 +583,16 @@ add_action('rest_api_init', function () {
     'callback' => 'customapi_admin_export_jobs',
     'permission_callback' => '__return_true',
   ]);
+  register_rest_route('customapi/v1', '/admin/flags', [
+    'methods' => 'GET',
+    'callback' => 'customapi_admin_get_flags',
+    'permission_callback' => '__return_true',
+  ]);
+  register_rest_route('customapi/v1', '/admin/flags', [
+    'methods' => 'POST',
+    'callback' => 'customapi_admin_set_flags',
+    'permission_callback' => '__return_true',
+  ]);
 
   register_rest_route('customapi/v1', '/admin/email-templates', [
     'methods' => 'GET',
@@ -569,6 +607,11 @@ add_action('rest_api_init', function () {
   register_rest_route('customapi/v1', '/email-templates', [
     'methods' => 'GET',
     'callback' => 'customapi_get_email_templates_public',
+    'permission_callback' => '__return_true',
+  ]);
+  register_rest_route('customapi/v1', '/dev-flags', [
+    'methods' => 'GET',
+    'callback' => 'customapi_get_dev_flags_public',
     'permission_callback' => '__return_true',
   ]);
 });

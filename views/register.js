@@ -66,20 +66,45 @@ export function renderRegister(container) {
   const stateSelect = container.querySelector('select[name="state"]');
   let turnstileWidgetId = null;
 
-  if (!window.turnstile) {
-    const script = document.createElement('script');
-    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      if (CONFIG.TURNSTILE_SITE_KEY && turnstileContainer) {
-        turnstileWidgetId = window.turnstile.render(turnstileContainer, {
-          sitekey: CONFIG.TURNSTILE_SITE_KEY
-        });
+  const getDevFlags = async () => {
+    if (window.__dev_flags) return window.__dev_flags;
+    try {
+      const res = await fetch('/wp-json/customapi/v1/dev-flags?_=' + Date.now(), { credentials: 'include' });
+      const data = await res.json();
+      if (res.ok) {
+        window.__dev_flags = data;
+        return data;
       }
-    };
-    document.head.appendChild(script);
-  }
+    } catch (err) {}
+    window.__dev_flags = { dev_mode: 0 };
+    return window.__dev_flags;
+  };
+
+  (async () => {
+    const devFlags = await getDevFlags();
+    if (devFlags.dev_mode) {
+      if (turnstileContainer) turnstileContainer.innerHTML = '<div class="text-xs text-gray-500">Dev mode: captcha disabled</div>';
+      return;
+    }
+    if (!window.turnstile) {
+      const script = document.createElement('script');
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        if (CONFIG.TURNSTILE_SITE_KEY && turnstileContainer) {
+          turnstileWidgetId = window.turnstile.render(turnstileContainer, {
+            sitekey: CONFIG.TURNSTILE_SITE_KEY
+          });
+        }
+      };
+      document.head.appendChild(script);
+    } else if (CONFIG.TURNSTILE_SITE_KEY && turnstileContainer) {
+      turnstileWidgetId = window.turnstile.render(turnstileContainer, {
+        sitekey: CONFIG.TURNSTILE_SITE_KEY
+      });
+    }
+  })();
 
   togglePasswordBtn.addEventListener('click', () => {
     const isHidden = passwordInput.type === 'password';
@@ -146,12 +171,15 @@ export function renderRegister(container) {
       alert('Unable to verify ZIP code. Please try again.');
       return;
     }
-    if (window.turnstile && turnstileWidgetId !== null) {
-      formData.turnstile_token = window.turnstile.getResponse(turnstileWidgetId);
-    }
-    if (!formData.turnstile_token) {
-      alert('Please complete the captcha.');
-      return;
+    const devFlags = await getDevFlags();
+    if (!devFlags.dev_mode) {
+      if (window.turnstile && turnstileWidgetId !== null) {
+        formData.turnstile_token = window.turnstile.getResponse(turnstileWidgetId);
+      }
+      if (!formData.turnstile_token) {
+        alert('Please complete the captcha.');
+        return;
+      }
     }
 
     if (formData.role === 'employer') {

@@ -54,31 +54,34 @@ function customapi_contact_employer(WP_REST_Request $request) {
     return new WP_Error('missing_fields', 'Job ID and message are required.', ['status' => 400]);
   }
 
-  if (empty($turnstile_token)) {
-    return new WP_Error('captcha_required', 'Please complete the captcha.', ['status' => 400]);
-  }
+  $dev_mode = (int) get_option('customapi_dev_mode', 0);
+  if (!$dev_mode) {
+    if (empty($turnstile_token)) {
+      return new WP_Error('captcha_required', 'Please complete the captcha.', ['status' => 400]);
+    }
 
-  if (!defined('TURNSTILE_SECRET') || !TURNSTILE_SECRET) {
-    return new WP_Error('captcha_config', 'Captcha is not configured.', ['status' => 500]);
-  }
+    if (!defined('TURNSTILE_SECRET') || !TURNSTILE_SECRET) {
+      return new WP_Error('captcha_config', 'Captcha is not configured.', ['status' => 500]);
+    }
 
-  $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-  $verify = wp_remote_post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
-    'timeout' => 10,
-    'body' => [
-      'secret' => TURNSTILE_SECRET,
-      'response' => $turnstile_token,
-      'remoteip' => $ip,
-    ],
-  ]);
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    $verify = wp_remote_post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
+      'timeout' => 10,
+      'body' => [
+        'secret' => TURNSTILE_SECRET,
+        'response' => $turnstile_token,
+        'remoteip' => $ip,
+      ],
+    ]);
 
-  if (is_wp_error($verify)) {
-    return new WP_Error('captcha_error', 'Captcha verification failed.', ['status' => 502]);
-  }
+    if (is_wp_error($verify)) {
+      return new WP_Error('captcha_error', 'Captcha verification failed.', ['status' => 502]);
+    }
 
-  $verify_body = json_decode(wp_remote_retrieve_body($verify), true);
-  if (empty($verify_body['success'])) {
-    return new WP_Error('captcha_invalid', 'Captcha verification failed.', ['status' => 400]);
+    $verify_body = json_decode(wp_remote_retrieve_body($verify), true);
+    if (empty($verify_body['success'])) {
+      return new WP_Error('captcha_invalid', 'Captcha verification failed.', ['status' => 400]);
+    }
   }
 
   $post = get_post($job_id);

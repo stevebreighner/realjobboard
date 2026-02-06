@@ -8,6 +8,18 @@ export async function renderAdmin(container) {
       <div id="adminNotice" class="mb-4 text-sm text-gray-600"></div>
 
       <div class="mb-8">
+        <h2 class="text-xl font-semibold mb-2">Dev Mode</h2>
+        <p class="text-sm text-gray-600 mb-3">Use this for local/dev environments to bypass human verification.</p>
+        <div class="flex items-center gap-3">
+          <label class="inline-flex items-center gap-2 text-sm">
+            <input type="checkbox" id="devModeToggle" class="h-4 w-4" />
+            <span>Disable Turnstile/Captcha checks</span>
+          </label>
+          <span id="devModeStatus" class="text-xs text-gray-500"></span>
+        </div>
+      </div>
+
+      <div class="mb-8">
         <h2 class="text-xl font-semibold mb-2">Create User</h2>
         <form id="adminCreateUser" class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <input name="username" class="p-2 border rounded" placeholder="Username" required />
@@ -109,6 +121,8 @@ export async function renderAdmin(container) {
   const historyRow = container.querySelector('#historyRow');
   const historySelect = container.querySelector('#historySelect');
   const restoreHistoryBtn = container.querySelector('#restoreHistory');
+  const devModeToggle = container.querySelector('#devModeToggle');
+  const devModeStatus = container.querySelector('#devModeStatus');
 
   const session = await getSessionCached({ maxAgeMs: 30000 });
   const roles = Array.isArray(session?.roles) ? session.roles : [];
@@ -122,6 +136,42 @@ export async function renderAdmin(container) {
       endpoint URL and any Stripe env vars in <code>.htaccess</code> (or hosting settings).
     </div>
   `;
+
+  async function loadDevFlags() {
+    if (!devModeToggle) return;
+    try {
+      const res = await fetch('/wp-json/customapi/v1/admin/flags?_=' + Date.now(), { credentials: 'include' });
+      const data = await res.json();
+      if (res.ok) {
+        devModeToggle.checked = !!data.dev_mode;
+        devModeStatus.textContent = data.dev_mode ? 'Dev mode ON' : 'Dev mode OFF';
+      }
+    } catch (err) {
+      devModeStatus.textContent = 'Unable to load dev mode';
+    }
+  }
+
+  devModeToggle?.addEventListener('change', async () => {
+    devModeStatus.textContent = 'Saving...';
+    try {
+      const res = await fetch('/wp-json/customapi/v1/admin/flags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ dev_mode: devModeToggle.checked ? 1 : 0 }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        devModeStatus.textContent = data.message || 'Failed to save';
+        return;
+      }
+      devModeStatus.textContent = data.dev_mode ? 'Dev mode ON' : 'Dev mode OFF';
+    } catch (err) {
+      devModeStatus.textContent = 'Failed to save';
+    }
+  });
+
+  await loadDevFlags();
 
   async function fetchUsers() {
     usersContainer.innerHTML = '<p class="text-sm text-gray-500">Loading users...</p>';
