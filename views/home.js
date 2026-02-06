@@ -238,7 +238,7 @@ export function renderHome(container) {
       </div>
     </section>
 
-    <section class="bg-white text-gray-900 py-16 px-6 md:px-12">
+    <section class="bg-white text-gray-900 py-12 md:py-16 px-6 md:px-12">
       <div class="max-w-6xl mx-auto reveal">
         <div class="grid gap-8 md:grid-cols-[0.9fr,1.1fr] items-center">
           <div class="rounded-2xl border shadow-sm p-6 bg-gradient-to-br from-amber-50 via-white to-rose-50">
