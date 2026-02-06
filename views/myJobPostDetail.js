@@ -217,6 +217,25 @@ export async function renderMyJobPostDetail(container, jobId) {
           <h2 class="text-xl font-semibold">Applicants (${applicants.length})</h2>
           <button id="resetLearningBtn" class="text-xs text-indigo-600 hover:underline">Reset learning</button>
         </div>
+        <div class="flex flex-col md:flex-row md:items-center gap-3 mb-3">
+          <div class="text-sm text-gray-600">Bulk actions for selected applicants:</div>
+          <select id="bulkStatus" class="border rounded p-2 text-sm">
+            <option value="" selected>Set status...</option>
+            <option value="reviewing">Reviewing</option>
+            <option value="shortlisted">Shortlisted</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <select id="bulkRank" class="border rounded p-2 text-sm">
+            <option value="" selected>Set rank...</option>
+            <option value="1">Rank 1</option>
+            <option value="2">Rank 2</option>
+            <option value="3">Rank 3</option>
+            <option value="4">Rank 4</option>
+            <option value="5">Rank 5</option>
+          </select>
+          <button id="bulkApply" class="text-sm text-indigo-600 hover:underline">Apply to selected</button>
+          <button id="bulkRemove" class="text-sm text-red-600 hover:underline">Remove selected</button>
+        </div>
         <div id="learningPanel" class="mb-3 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded p-2 hidden"></div>
         <input id="applicantSearch" class="w-full p-2 border rounded mb-3" placeholder="Filter applicants by name, location, or resume filename" />
         <div id="applicantsContainer" class="space-y-2"></div>
@@ -224,6 +243,18 @@ export async function renderMyJobPostDetail(container, jobId) {
         <p class="mt-4">
           <a href="/#my-job-posts" class="text-blue-600 hover:underline">← Back to My Jobs</a>
         </p>
+
+        <div id="messageModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-lg border border-gray-200">
+            <h3 class="text-lg font-semibold mb-2">Message Applicant</h3>
+            <p class="text-sm text-gray-600 mb-4">This sends an email to the applicant without revealing their email address.</p>
+            <textarea id="messageBody" class="w-full p-2 border rounded mb-3" rows="5" placeholder="Write your message"></textarea>
+            <div class="flex items-center justify-end space-x-3">
+              <button id="messageCancelBtn" class="px-3 py-2 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button id="messageSendBtn" class="px-3 py-2 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700">Send</button>
+            </div>
+          </div>
+        </div>
 
         <div id="deleteModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
           <div class="bg-white rounded-lg p-6 w-full max-w-sm shadow-lg border border-gray-200">
@@ -282,12 +313,21 @@ export async function renderMyJobPostDetail(container, jobId) {
     const createCancelBtn = container.querySelector('#createCancelBtn');
     const createMessage = container.querySelector('#createMessage');
     const deleteModal = container.querySelector('#deleteModal');
+    const messageModal = container.querySelector('#messageModal');
+    const messageBody = container.querySelector('#messageBody');
+    const messageCancelBtn = container.querySelector('#messageCancelBtn');
+    const messageSendBtn = container.querySelector('#messageSendBtn');
+    let messageTargetUserId = null;
     const deleteCancelBtn = container.querySelector('#deleteCancelBtn');
     const deleteConfirmBtn = container.querySelector('#deleteConfirmBtn');
     const applicantSearch = container.querySelector('#applicantSearch');
     const applicantsContainer = container.querySelector('#applicantsContainer');
     const resetLearningBtn = container.querySelector('#resetLearningBtn');
     const learningPanel = container.querySelector('#learningPanel');
+    const bulkStatus = container.querySelector('#bulkStatus');
+    const bulkRank = container.querySelector('#bulkRank');
+    const bulkApply = container.querySelector('#bulkApply');
+    const bulkRemove = container.querySelector('#bulkRemove');
 
     if (payNowBtn) {
       payNowBtn.addEventListener('click', async () => {
@@ -346,12 +386,25 @@ export async function renderMyJobPostDetail(container, jobId) {
     setupZipLookup(editZip, editCity, editState);
     setupZipLookup(createZip, createCity, createState);
 
+    const getStatusLabel = (status) => (status || 'new').toString();
+    const getStatusClass = (status) => {
+      const val = (status || 'new').toString();
+      if (val === 'shortlisted') return 'bg-emerald-100 text-emerald-800';
+      if (val === 'reviewing') return 'bg-blue-100 text-blue-800';
+      if (val === 'rejected') return 'bg-rose-100 text-rose-800';
+      if (val === 'withdrawn') return 'bg-slate-100 text-slate-700';
+      return 'bg-amber-100 text-amber-800';
+    };
+
     const renderApplicants = (list) => {
       applicantsContainer.innerHTML = list.length
         ? list.map(app => `
-            <div class="border rounded p-2 flex justify-between items-center">
+            <div class="border rounded p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div>
-                <div>${app.name}</div>
+                <label class="flex items-center gap-2">
+                  <input type="checkbox" class="app-select" data-user-id="${app.id}" />
+                  <span>${app.name}</span>
+                </label>
                 <div class="text-xs text-gray-600">
                   ${app.hide_email ? 'Email hidden — use resume link only' : (app.email || 'Email not available')}
                 </div>
@@ -359,8 +412,35 @@ export async function renderMyJobPostDetail(container, jobId) {
                   Match score: ${typeof app.match_score === 'number' ? app.match_score : 0}%
                   ${app.pref_score ? `<span class="ml-1 text-emerald-700">(learned +${app.pref_score}%)</span>` : ''}
                 </div>
+                <div class="text-xs text-gray-600 mt-1">
+                  Status: <span class="inline-flex items-center px-2 py-0.5 rounded-full ${getStatusClass(app.status)}">${getStatusLabel(app.status)}</span>
+                  ${app.rank ? `<span class="ml-2 text-slate-600">Rank: ${app.rank}/5</span>` : ''}
+                </div>
               </div>
-              <a href="${app.link}" data-action="view-application" data-user-id="${app.id}" class="text-blue-600 hover:underline text-sm">View Application</a>
+              <div class="flex flex-col md:flex-row md:items-center gap-3 text-sm">
+                ${app.resume ? `<a href="${app.resume}" target="_blank" rel="noopener" data-action="view-application" data-user-id="${app.id}" class="text-blue-600 hover:underline">Resume</a>` : ''}
+                ${app.cover ? `<a href="${app.cover}" target="_blank" rel="noopener" data-action="view-application" data-user-id="${app.id}" class="text-blue-600 hover:underline">Cover letter</a>` : ''}
+                ${!app.resume && !app.cover ? `<span class="text-gray-500">No files</span>` : ''}
+                <div class="flex items-center gap-2">
+                  <select class="border rounded p-1 text-xs" data-role="status" data-user-id="${app.id}">
+                    <option value="new" ${getStatusLabel(app.status) === 'new' ? 'selected' : ''}>New</option>
+                    <option value="reviewing" ${getStatusLabel(app.status) === 'reviewing' ? 'selected' : ''}>Reviewing</option>
+                    <option value="shortlisted" ${getStatusLabel(app.status) === 'shortlisted' ? 'selected' : ''}>Shortlisted</option>
+                    <option value="rejected" ${getStatusLabel(app.status) === 'rejected' ? 'selected' : ''}>Rejected</option>
+                  </select>
+                  <select class="border rounded p-1 text-xs" data-role="rank" data-user-id="${app.id}">
+                    <option value="0" ${!app.rank ? 'selected' : ''}>Rank</option>
+                    <option value="1" ${app.rank == 1 ? 'selected' : ''}>1</option>
+                    <option value="2" ${app.rank == 2 ? 'selected' : ''}>2</option>
+                    <option value="3" ${app.rank == 3 ? 'selected' : ''}>3</option>
+                    <option value="4" ${app.rank == 4 ? 'selected' : ''}>4</option>
+                    <option value="5" ${app.rank == 5 ? 'selected' : ''}>5</option>
+                  </select>
+                  <button class="text-xs text-indigo-600 hover:underline" data-action="save-app" data-user-id="${app.id}">Save</button>
+                  <button class="text-xs text-indigo-600 hover:underline" data-action="message-app" data-user-id="${app.id}">Message</button>
+                  <button class="text-xs text-red-600 hover:underline" data-action="remove-app" data-user-id="${app.id}">Remove</button>
+                </div>
+              </div>
             </div>
           `).join('')
         : `<p class="text-gray-500">No applicants found.</p>`;
@@ -398,6 +478,77 @@ export async function renderMyJobPostDetail(container, jobId) {
       }
     }
     applicantsContainer.addEventListener('click', (e) => {
+      const messageBtn = e.target.closest('button[data-action="message-app"]');
+      if (messageBtn) {
+        const userId = Number(messageBtn.dataset.userId || 0);
+        if (!userId) return;
+        messageTargetUserId = userId;
+        if (messageBody) messageBody.value = '';
+        messageModal?.classList.remove('hidden');
+        return;
+      }
+
+      const removeBtn = e.target.closest('button[data-action="remove-app"]');
+      if (removeBtn) {
+        const userId = Number(removeBtn.dataset.userId || 0);
+        if (!userId) return;
+        if (!confirm('Remove this applicant? They will receive a rejection email.')) return;
+        fetch('/wp-json/customapi/v1/remove-application', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ job_id: Number(jobId), user_id: userId }),
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (!data || data.success !== true) {
+              alert(data.message || 'Remove failed.');
+              return;
+            }
+            const next = applicants.filter(a => Number(a.id) !== userId);
+            applicants.splice(0, applicants.length, ...next);
+            renderApplicants(applicants);
+          })
+          .catch(() => alert('Remove failed.'));
+        return;
+      }
+
+      const saveBtn = e.target.closest('button[data-action="save-app"]');
+      if (saveBtn) {
+        const userId = Number(saveBtn.dataset.userId || 0);
+        if (!userId) return;
+        const statusEl = applicantsContainer.querySelector(`select[data-role="status"][data-user-id="${userId}"]`);
+        const rankEl = applicantsContainer.querySelector(`select[data-role="rank"][data-user-id="${userId}"]`);
+        const status = statusEl?.value || 'new';
+        const rank = Number(rankEl?.value || 0);
+        if (status === 'rejected' && !confirm('Reject this applicant? They will receive an email.')) {
+          return;
+        }
+        fetch('/wp-json/customapi/v1/update-application-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ job_id: Number(jobId), user_id: userId, status, rank }),
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (!data || data.success !== true) {
+              alert(data.message || 'Update failed.');
+              return;
+            }
+            const idx = applicants.findIndex(a => Number(a.id) === userId);
+            if (idx !== -1) {
+              applicants[idx].status = status;
+              applicants[idx].rank = rank;
+              renderApplicants(applicants);
+            }
+          })
+          .catch(() => {
+            alert('Update failed.');
+          });
+        return;
+      }
+
       const link = e.target.closest('a[data-action="view-application"]');
       if (!link) return;
       const userId = Number(link.dataset.userId || 0);
@@ -409,6 +560,77 @@ export async function renderMyJobPostDetail(container, jobId) {
         body: JSON.stringify({ job_id: Number(jobId), user_id: userId }),
         keepalive: true,
       }).catch(() => {});
+    });
+
+    messageCancelBtn?.addEventListener('click', () => {
+      messageModal?.classList.add('hidden');
+      messageTargetUserId = null;
+    });
+    messageSendBtn?.addEventListener('click', () => {
+      const message = (messageBody?.value || '').trim();
+      if (!messageTargetUserId || !message) return;
+      fetch('/wp-json/customapi/v1/contact-applicant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ job_id: Number(jobId), user_id: messageTargetUserId, message }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (!data || data.success !== true) {
+            alert(data.message || 'Message failed.');
+            return;
+          }
+          messageModal?.classList.add('hidden');
+          messageTargetUserId = null;
+          alert('Message sent.');
+        })
+        .catch(() => alert('Message failed.'));
+    });
+
+    const getSelectedUserIds = () => {
+      return Array.from(container.querySelectorAll('.app-select:checked')).map(el => Number(el.dataset.userId || 0)).filter(Boolean);
+    };
+
+    bulkApply?.addEventListener('click', async () => {
+      const userIds = getSelectedUserIds();
+      if (!userIds.length) return alert('Select at least one applicant.');
+      const status = bulkStatus?.value || '';
+      const rankVal = bulkRank?.value || '';
+      if (!status && !rankVal) return alert('Select a status and/or rank.');
+      if (status === 'rejected' && !confirm('Reject selected applicants? They will receive email.')) return;
+
+      for (const userId of userIds) {
+        await fetch('/wp-json/customapi/v1/update-application-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ job_id: Number(jobId), user_id: userId, status: status || undefined, rank: rankVal ? Number(rankVal) : 0 }),
+        }).catch(() => {});
+        const idx = applicants.findIndex(a => Number(a.id) === userId);
+        if (idx !== -1) {
+          if (status) applicants[idx].status = status;
+          if (rankVal) applicants[idx].rank = Number(rankVal);
+        }
+      }
+      renderApplicants(applicants);
+    });
+
+    bulkRemove?.addEventListener('click', async () => {
+      const userIds = getSelectedUserIds();
+      if (!userIds.length) return alert('Select at least one applicant.');
+      if (!confirm('Remove selected applicants? They will receive a rejection email.')) return;
+      for (const userId of userIds) {
+        await fetch('/wp-json/customapi/v1/remove-application', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ job_id: Number(jobId), user_id: userId }),
+        }).catch(() => {});
+      }
+      const remaining = applicants.filter(a => !userIds.includes(Number(a.id)));
+      applicants.splice(0, applicants.length, ...remaining);
+      renderApplicants(applicants);
     });
 
     resetLearningBtn?.addEventListener('click', async () => {

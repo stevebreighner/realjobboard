@@ -107,6 +107,67 @@ function customapi_contact_employer(WP_REST_Request $request) {
   return ['success' => true];
 }
 
+function customapi_contact_applicant(WP_REST_Request $request) {
+  if (empty($_SESSION['user']['id'])) {
+    return new WP_Error('unauthorized', 'You must be logged in.', ['status' => 401]);
+  }
+  $employer_id = intval($_SESSION['user']['id']);
+  if (!function_exists('customapi_is_employer') || !customapi_is_employer($employer_id)) {
+    return new WP_Error('forbidden', 'Employer account required.', ['status' => 403]);
+  }
+
+  $params = $request->get_json_params();
+  $job_id = intval($params['job_id'] ?? 0);
+  $applicant_id = intval($params['user_id'] ?? 0);
+  $message = sanitize_textarea_field($params['message'] ?? '');
+
+  if (!$job_id || !$applicant_id || !$message) {
+    return new WP_Error('missing_fields', 'job_id, user_id, and message are required.', ['status' => 400]);
+  }
+
+  $post = get_post($job_id);
+  if (!$post || $post->post_status !== 'publish') {
+    return new WP_Error('not_found', 'Job not found.', ['status' => 404]);
+  }
+  if ((int) $post->post_author !== $employer_id) {
+    return new WP_Error('forbidden', 'Not your job post.', ['status' => 403]);
+  }
+
+  $applicant = get_user_by('ID', $applicant_id);
+  if (!$applicant || empty($applicant->user_email)) {
+    return new WP_Error('not_found', 'Applicant not found.', ['status' => 404]);
+  }
+
+  $job_title = get_the_title($job_id);
+  $company_name = get_post_meta($job_id, 'company', true);
+  if ($company_name && strpos($company_name, '@') !== false) {
+    $company_name = '';
+  }
+  $company_label = $company_name ?: (defined('EMAIL_BRAND_NAME') ? EMAIL_BRAND_NAME : get_bloginfo('name'));
+  $subject = function_exists('customapi_email_subject')
+    ? customapi_email_subject('application_update', $job_title)
+    : "Update on your application: {$job_title}";
+
+  $body = "<p>You received a message from the employer.</p><p style=\"white-space:pre-line;\">{$message}</p>";
+  $meta = [
+    "Job: {$job_title}",
+    "Company: {$company_label}",
+  ];
+
+  if (function_exists('customapi_email_template') && function_exists('customapi_send_html_mail')) {
+    $html = customapi_email_template('Message from employer', $body, 'View Job', home_url("/#/list-detail?id={$job_id}"), $meta);
+    $sent = customapi_send_html_mail($applicant->user_email, $subject, $html);
+  } else {
+    $sent = wp_mail($applicant->user_email, $subject, wp_strip_all_tags($message));
+  }
+
+  if (!$sent) {
+    return new WP_Error('email_failed', 'Failed to send message.', ['status' => 500]);
+  }
+
+  return ['success' => true];
+}
+
 add_action('rest_api_init', function () {
   register_rest_route('customapi/v1', '/contact', [
     'methods' => 'POST',
@@ -117,6 +178,12 @@ add_action('rest_api_init', function () {
   register_rest_route('customapi/v1', '/contact-employer', [
     'methods' => 'POST',
     'callback' => 'customapi_contact_employer',
+    'permission_callback' => '__return_true',
+  ]);
+
+  register_rest_route('customapi/v1', '/contact-applicant', [
+    'methods' => 'POST',
+    'callback' => 'customapi_contact_applicant',
     'permission_callback' => '__return_true',
   ]);
 });

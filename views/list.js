@@ -2,8 +2,14 @@ export function renderList(container) {
  
 
   container.innerHTML = `
-    <div class="max-w-4xl mx-auto px-4">
-      <h1 class="text-2xl font-bold mb-4">Results</h1>
+    <div class="max-w-5xl mx-auto px-4">
+      <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-4">
+        <div>
+          <h1 class="text-3xl font-bold">Open Roles</h1>
+          <p class="text-sm text-gray-600">Curated listings with privacy-first applications.</p>
+        </div>
+        <div class="text-xs text-gray-500">Sorted by featured + most recent</div>
+      </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
         <input
@@ -50,14 +56,28 @@ export function renderList(container) {
         />
       </div>
 
-      <input
-        type="text"
-        id="searchInput"
-        class="w-full p-2 border rounded mb-4"
-        placeholder="Search..."
-      />
+      <div class="flex flex-col md:flex-row gap-3 mb-4">
+        <input
+          type="text"
+          id="searchInput"
+          class="w-full p-2 border rounded"
+          placeholder="Search..."
+        />
+        <select id="sortSelect" class="w-full md:w-56 p-2 border rounded">
+          <option value="featured" selected>Featured + Recent</option>
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="payHigh">Highest Pay</option>
+          <option value="payLow">Lowest Pay</option>
+          <option value="company">Company A–Z</option>
+          <option value="title">Job Title A–Z</option>
+        </select>
+      </div>
+      <p class="text-xs text-gray-500 mb-4">
+        Tip: use comma-separated search terms to rank results by match count (e.g. "react, node, aws").
+      </p>
 
-      <div id="itemsContainer" class="space-y-4"></div>
+      <div id="itemsContainer" class="grid gap-6 md:grid-cols-2"></div>
     </div>
   `;
 
@@ -70,10 +90,19 @@ export function renderList(container) {
   const filterRateType = container.querySelector('#filterRateType');
   const filterRateMin = container.querySelector('#filterRateMin');
   const filterRateMax = container.querySelector('#filterRateMax');
+  const sortSelect = container.querySelector('#sortSelect');
 
   const normalize = (val) => (val || '').toString().toLowerCase();
   const getMetaValue = (item, key) =>
     (item?.meta && item.meta[key] != null ? item.meta[key] : item?.[key]) ?? '';
+  const formatRateType = (val) => {
+    const t = (val || '').toString().toLowerCase();
+    if (t === 'hourly') return 'per hour';
+    if (t === 'salary') return 'per year';
+    if (t === 'contract') return 'contract';
+    if (t === 'commission') return 'commission';
+    return val || '';
+  };
   const isFeatured = (item) => {
     const raw = getMetaValue(item, 'job_featured');
     return ['1', 'true', 'yes'].includes(String(raw).toLowerCase());
@@ -101,8 +130,21 @@ export function renderList(container) {
 
   let items = [];
 
+  const isNewListing = (item) => {
+    const ts = new Date(item.date || 0).getTime();
+    if (!ts) return false;
+    const days = (Date.now() - ts) / (1000 * 60 * 60 * 24);
+    return days <= 7;
+  };
+
   const applyFilters = () => {
-    const query = normalize(searchInput.value);
+    const rawQuery = searchInput.value || '';
+    const query = normalize(rawQuery);
+    const terms = rawQuery
+      .split(',')
+      .map(t => normalize(t))
+      .filter(t => t.length);
+    const useMulti = terms.length >= 2;
     const fieldQuery = normalize(filterField.value);
     const cityQuery = normalize(filterCity.value);
     const stateQuery = normalize(filterState.value);
@@ -112,7 +154,14 @@ export function renderList(container) {
     const maxRateQuery = normalize(filterRateMax.value);
 
     const filtered = items.filter(item => {
-      if (query && !getSearchText(item).includes(query)) return false;
+      const searchText = getSearchText(item);
+      if (useMulti) {
+        const matchCount = terms.reduce((acc, term) => acc + (searchText.includes(term) ? 1 : 0), 0);
+        if (matchCount === 0) return false;
+        item.__matchCount = matchCount;
+      } else if (query && !searchText.includes(query)) {
+        return false;
+      }
       if (fieldQuery && !normalize(getMetaValue(item, 'field')).includes(fieldQuery)) return false;
       if (cityQuery && !normalize(getMetaValue(item, 'city')).includes(cityQuery)) return false;
       if (stateQuery && !normalize(getMetaValue(item, 'state')).includes(stateQuery)) return false;
@@ -127,11 +176,34 @@ export function renderList(container) {
       return true;
     });
 
+    const sortMode = sortSelect?.value || 'featured';
     const sorted = [...filtered].sort((a, b) => {
-      const featureDiff = (isFeatured(b) ? 1 : 0) - (isFeatured(a) ? 1 : 0);
-      if (featureDiff !== 0) return featureDiff;
+      if (useMulti) {
+        const countDiff = (b.__matchCount || 0) - (a.__matchCount || 0);
+        if (countDiff !== 0) return countDiff;
+      }
       const dateA = new Date(a.date || 0).getTime();
       const dateB = new Date(b.date || 0).getTime();
+      const companyA = normalize(getMetaValue(a, 'company'));
+      const companyB = normalize(getMetaValue(b, 'company'));
+      const titleA = normalize(a.title || a.name || '');
+      const titleB = normalize(b.title || b.name || '');
+      const rateMinA = parseFloat(getMetaValue(a, 'rate_min') || '');
+      const rateMinB = parseFloat(getMetaValue(b, 'rate_min') || '');
+      const rateMaxA = parseFloat(getMetaValue(a, 'rate_max') || '');
+      const rateMaxB = parseFloat(getMetaValue(b, 'rate_max') || '');
+      const payA = !isNaN(rateMaxA) ? rateMaxA : (!isNaN(rateMinA) ? rateMinA : 0);
+      const payB = !isNaN(rateMaxB) ? rateMaxB : (!isNaN(rateMinB) ? rateMinB : 0);
+
+      if (sortMode === 'newest') return dateB - dateA;
+      if (sortMode === 'oldest') return dateA - dateB;
+      if (sortMode === 'payHigh') return payB - payA;
+      if (sortMode === 'payLow') return payA - payB;
+      if (sortMode === 'company') return companyA.localeCompare(companyB);
+      if (sortMode === 'title') return titleA.localeCompare(titleB);
+
+      const featureDiff = (isFeatured(b) ? 1 : 0) - (isFeatured(a) ? 1 : 0);
+      if (featureDiff !== 0) return featureDiff;
       return dateB - dateA;
     });
 
@@ -141,6 +213,7 @@ export function renderList(container) {
   [searchInput, filterField, filterCity, filterState, filterZip, filterRateType, filterRateMin, filterRateMax].forEach(input => {
     input.addEventListener('input', applyFilters);
   });
+  sortSelect?.addEventListener('change', applyFilters);
 
   const cached = window.__preload?.list;
   const cacheFresh = cached && (Date.now() - cached.ts) < 60000;
@@ -170,27 +243,56 @@ export function renderList(container) {
             .map(item => {
               const id = item.id || item._id || item.slug;
               const field = getMetaValue(item, 'field');
-              const company = getMetaValue(item, 'company');
+              const rawCompany = getMetaValue(item, 'company');
+              const company = rawCompany && rawCompany.includes('@') ? '' : rawCompany;
               const companySite = getMetaValue(item, 'company_site');
-              const rateType = getMetaValue(item, 'rate_type');
+              const rateType = formatRateType(getMetaValue(item, 'rate_type'));
               const rateMin = getMetaValue(item, 'rate_min');
               const rateMax = getMetaValue(item, 'rate_max');
               const location = buildLocation(item);
               const featured = isFeatured(item);
+              const isNew = isNewListing(item);
               return `
-                <div class="border rounded p-4 shadow">
-                  <div class="flex items-center justify-between">
-                    <h2 class="text-lg font-semibold">${item.title || item.name}</h2>
-                    ${featured ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">Featured</span>` : ''}
+                <div class="group relative border border-slate-200 rounded-2xl p-6 bg-white shadow-sm hover:shadow-lg transition">
+                  <div class="absolute inset-y-0 left-0 w-1 rounded-l-2xl bg-gradient-to-b from-indigo-500 via-pink-500 to-amber-400 opacity-70"></div>
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 class="text-xl font-medium text-slate-900 font-serif">${item.title || item.name}</h2>
+                      ${company ? `<div class="text-base text-slate-600 mt-1">${company}</div>` : ''}
+                    </div>
+                    <div class="flex items-center gap-2">
+                      ${isNew ? `<span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-1 rounded-full">New</span>` : ''}
+                      ${featured ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">Featured</span>` : ''}
+                    </div>
                   </div>
-                  <p class="text-sm text-gray-600">${item.summary || ''}</p>
-                  ${field ? `<p class="text-sm text-gray-600">Field: ${field}</p>` : ''}
-                  ${(rateType || rateMin || rateMax) ? `<p class="text-sm text-gray-600">Rate: ${rateMin || ''}${rateMax ? `–${rateMax}` : ''} ${rateType || ''}</p>` : ''}
-                  ${company ? `<p class="text-sm text-gray-600">Company: ${company}${companySite ? ` • <a href="${companySite}" class="text-indigo-600 hover:underline" target="_blank" rel="noopener">Website</a>` : ''}</p>` : (companySite ? `<p class="text-sm text-gray-600">Company: <a href="${companySite}" class="text-indigo-600 hover:underline" target="_blank" rel="noopener">Website</a></p>` : '')}
-                  ${location ? `<p class="text-sm text-gray-600">${location}</p>` : ''}
-                  <a href="/#list-detail?id=${id}" class="text-indigo-600 text-sm mt-2 inline-block hover:underline">
-                    View Details
-                  </a>
+                  <p class="text-base text-slate-600 mt-3 line-clamp-3">${item.summary || ''}</p>
+                  <div class="mt-4 flex flex-wrap gap-2 text-sm text-slate-600">
+                    ${field ? `<span class="px-3 py-1.5 rounded-full bg-slate-100 inline-flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 7h16M4 12h16M4 17h16"></path>
+                      </svg>
+                      ${field}
+                    </span>` : ''}
+                    ${(rateType || rateMin || rateMax) ? `<span class="px-3 py-1.5 rounded-full bg-slate-100 inline-flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v20M5 7h14M5 17h14"></path>
+                      </svg>
+                      ${rateMin || ''}${rateMax ? `–${rateMax}` : ''} ${rateType || ''}
+                    </span>` : ''}
+                    ${location ? `<span class="px-3 py-1.5 rounded-full bg-slate-100 inline-flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 21s-6-5.686-6-10a6 6 0 1 1 12 0c0 4.314-6 10-6 10z"></path>
+                        <circle cx="12" cy="11" r="2"></circle>
+                      </svg>
+                      ${location}
+                    </span>` : ''}
+                  </div>
+                  <div class="mt-5 flex items-center justify-between text-base">
+                    ${companySite ? `<a href="${companySite}" class="text-indigo-600 hover:underline" target="_blank" rel="noopener">Company site</a>` : '<span></span>'}
+                    <a href="/#list-detail?id=${id}" class="text-indigo-600 font-semibold hover:underline">
+                      View Details →
+                    </a>
+                  </div>
                 </div>
               `;
             })

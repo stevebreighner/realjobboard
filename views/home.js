@@ -3,73 +3,112 @@
 import { CONFIG } from '../config.js';
 import { getSessionCached } from '../utils/session.js';
 export function renderHome(container) {
+  const heroes = [
+    {
+      key: 'employers',
+      title: 'Fewer distractions. Better hires.',
+      lines: [
+        'Built to reduce noise and improve applicant quality without penalizing great candidates.',
+        'Smart matching that’s transparent — no black‑box AI.',
+        'Privacy‑first: resumes and files are encrypted by default.',
+      ],
+      primary: { label: 'Post a job', href: '/#post', id: 'postCta' },
+      secondary: { label: 'Browse listings', href: '/#list' },
+    },
+    {
+      key: 'employees',
+      title: 'Find real work faster.',
+      lines: [
+        `Search ${CONFIG.COMPANY_BUSINESS_THING_PLURAL} without spam or tracking.`,
+        'Apply once, reuse your resume, and control what employers see.',
+        'Encrypted by default for safer, cleaner hiring.',
+      ],
+      primary: { label: 'Search openings', href: '/#list' },
+      secondary: { label: 'How privacy works', href: '/#employees' },
+    },
+    {
+      key: 'speed',
+      title: 'Encrypted. Still lightning‑fast.',
+      lines: [
+        'Decryption happens only when needed, then we cache for speed.',
+        'Lightweight front end keeps load times low.',
+        'Security without the slowdown.',
+      ],
+      primary: { label: 'See speed details', href: '/#speed' },
+      secondary: { label: 'Browse listings', href: '/#list' },
+    },
+    {
+      key: 'multisearch',
+      title: 'Multi‑search that actually helps.',
+      lines: [
+        'Search by multiple terms at once to surface better matches.',
+        'Results are ranked by how many terms they match.',
+        'Find the right fit without endless scrolling.',
+      ],
+      primary: { label: 'Try multi‑search', href: '/#list' },
+      secondary: { label: 'Employer tools', href: '/#employers' },
+    },
+  ];
+
+  const hero = heroes[Math.floor(Math.random() * heroes.length)];
+  const heroLines = hero.lines.map(line => `<p class="text-white/90 text-sm mt-2">${line}</p>`).join('');
+
   container.innerHTML = `
     <style>
       .home-hero {
-        background-image:
-          linear-gradient(135deg, rgba(16, 12, 32, 0.75) 0%, rgba(16, 12, 32, 0.45) 50%, rgba(16, 12, 32, 0.75) 100%),
-          url('/views/jobboard.webp');
-        background-size: cover;
-        background-position: center top;
         position: relative;
         overflow: hidden;
       }
-      .home-hero::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: rgba(255, 255, 255, 0.2);
-        backdrop-filter: grayscale(1) contrast(0.9) brightness(0.95);
-        -webkit-backdrop-filter: grayscale(1) contrast(0.9) brightness(0.95);
-        mix-blend-mode: luminosity;
-        pointer-events: none;
+      .bg-hero-fun {
+        background: linear-gradient(135deg, #ff4d8d 0%, #ffb347 35%, #5cffd1 70%, #5b7cff 100%);
+        background-size: 200% 200%;
+        animation: heroShift 12s ease infinite;
       }
-
-      @media (min-width: 1024px) {
-        .home-hero {
-          background-position: center 30%;
-        }
-      }
-
       .home-blob {
         position: absolute;
         border-radius: 999px;
         filter: blur(20px);
-        opacity: 0.45;
+        opacity: 0.35;
         mix-blend-mode: screen;
       }
 
       .home-blob.one {
-        width: 360px;
-        height: 360px;
+        width: 320px;
+        height: 320px;
         background: #ff7ab6;
         top: -120px;
         left: -80px;
       }
 
       .home-blob.two {
-        width: 420px;
-        height: 420px;
+        width: 360px;
+        height: 360px;
         background: #60a5fa;
         bottom: -160px;
         right: -120px;
       }
+      @keyframes heroShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      .text-shadow {
+        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+      }
     </style>
     <!-- Hero Section -->
-    <div class="home-hero relative flex flex-col items-center justify-center text-center min-h-screen text-white p-8 bg-no-repeat">
-      <div class="home-blob one"></div>
-      <div class="home-blob two"></div>
-      <div class="absolute inset-0 bg-black/35"></div>
-      <div class="relative z-10">
-        <h1 class="text-4xl md:text-6xl font-bold mb-4">Welcome to ${CONFIG.COMPANY_NAME}</h1>
-        <p class="text-xl md:text-2xl mb-3">Privacy focused Job Search for finding the best talent and getting hired.</p>
-        <p class="text-base md:text-lg text-white/90 mb-2">Your data stays private — resumes and files are encrypted by default.</p>
-        <p class="text-sm md:text-base text-white/80 mb-2">Sensitive documents are encrypted and only decrypted when you load them.</p>
-        <p class="text-sm md:text-base text-white/80 mb-2">We never sell your info — paid job posts keep the lights on.</p>
-        <p class="text-sm md:text-base text-white/80 mb-6">Smart resume matching that’s transparent — no black‑box AI.</p>
-        <div class="flex gap-4 justify-center">
-          <a id="postCta" href="/#post" class="bg-white text-indigo-600 font-semibold px-6 py-3 rounded-xl shadow hover:bg-gray-100 transition" style="display:none;">Post a ${CONFIG.COMPANY_BUSINESS_THING}</a>
-          <a href="/#list" class="border border-white px-6 py-3 rounded-xl hover:bg-white hover:text-indigo-600 transition">Browse ${CONFIG.COMPANY_BUSINESS_THING_PLURAL}</a>
+    <div class="max-w-5xl mx-auto px-4 py-10">
+      <div class="home-hero bg-hero-fun relative overflow-hidden text-white rounded-2xl p-6 md:p-8 shadow">
+        <div class="home-blob one"></div>
+        <div class="home-blob two"></div>
+        <div class="absolute inset-0 bg-black/35 pointer-events-none"></div>
+        <div class="relative z-10 text-shadow text-center">
+          <h1 class="text-3xl md:text-4xl font-bold mb-3">${hero.title}</h1>
+          ${heroLines}
+          <div class="mt-5 flex gap-3 justify-center">
+            <a ${hero.primary.id ? `id="${hero.primary.id}"` : ''} href="${hero.primary.href}" class="bg-white text-slate-900 font-semibold px-4 py-2 rounded-lg">${hero.primary.label}</a>
+            <a href="${hero.secondary.href}" class="border border-white/70 text-white px-4 py-2 rounded-lg hover:bg-white/10">${hero.secondary.label}</a>
+          </div>
         </div>
       </div>
     </div>
@@ -112,6 +151,23 @@ export function renderHome(container) {
         </div>
       </div>
     </section>
+
+    <section class="bg-white text-gray-900 py-12 px-6 md:px-12">
+      <div class="max-w-4xl mx-auto border rounded-2xl p-6 md:p-8 shadow-sm bg-gradient-to-r from-pink-50 via-white to-amber-50">
+        <div class="text-xs uppercase tracking-widest text-pink-600 mb-2">Founding Employer</div>
+        <h3 class="text-2xl md:text-3xl font-bold mb-2">Lock in founder pricing</h3>
+        <p class="text-gray-700 mb-4">
+          We’re opening early access to the first 10 companies. Founding employers lock in a discounted rate forever and
+          get priority placement, verified badges, and direct founder support.
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <a href="/#support?subject=Founding%20Employer&context=home" class="bg-pink-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-pink-700">
+            Apply for founding access
+          </a>
+          <span class="text-sm text-gray-600 self-center">Early access: $49/month (regular $99)</span>
+        </div>
+      </div>
+    </section>
   `;
 
   const postCta = container.querySelector('#postCta');
@@ -120,7 +176,11 @@ export function renderHome(container) {
       const roles = Array.isArray(session?.roles) ? session.roles : [];
       if (postCta && roles.includes('employer')) {
         postCta.style.display = 'inline-block';
+      } else if (postCta) {
+        postCta.style.display = 'none';
       }
     })
     .catch(() => {});
+
+  
 }

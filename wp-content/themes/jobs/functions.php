@@ -119,6 +119,9 @@ add_action('rest_api_init', function () {
       ['delete-cover/(?P<time>\d+)',  'DELETE', 'customapi_delete_cover'],
       ['get-my-list', 'GET', 'customapi_get_my_list'], ['get-my-list-detail', 'GET', 'customapi_get_my_list_detail'],
       ['submit-application', 'POST', 'customapi_submit_application'],
+      ['withdraw-application', 'POST', 'customapi_withdraw_application'],
+      ['update-application-status', 'POST', 'customapi_update_application_status'],
+      ['remove-application', 'POST', 'customapi_remove_application'],
       ['check-application', 'GET', 'customapi_check_application'],
       ['user-jobs', 'GET', 'customapi_user_jobs'],
       ['user-job-detail', 'GET', 'customapi_user_job_detail'],
@@ -176,6 +179,83 @@ add_filter('wp_mail_from_name', function ($name) {
   return defined('EMAIL_FROM_NAME') ? EMAIL_FROM_NAME : $name;
 });
 // end override wp emails
+
+// Email branding helpers
+if (!defined('EMAIL_BRAND_NAME')) {
+  define('EMAIL_BRAND_NAME', get_bloginfo('name'));
+}
+if (!defined('EMAIL_PRIMARY_COLOR')) {
+  define('EMAIL_PRIMARY_COLOR', '#4f46e5');
+}
+if (!defined('EMAIL_ACCENT_COLOR')) {
+  define('EMAIL_ACCENT_COLOR', '#ec4899');
+}
+if (!defined('EMAIL_BRAND_LOGO_URL')) {
+  define('EMAIL_BRAND_LOGO_URL', get_stylesheet_directory_uri() . '/assets/email-logo.svg');
+}
+
+function customapi_email_template($title, $bodyHtml, $ctaText = '', $ctaUrl = '', $metaLines = []) {
+  $brand = EMAIL_BRAND_NAME;
+  $primary = EMAIL_PRIMARY_COLOR;
+  $accent = EMAIL_ACCENT_COLOR;
+  $logo = EMAIL_BRAND_LOGO_URL;
+  $meta = '';
+  if (!empty($metaLines)) {
+    $items = array_map(function($line) {
+      return '<div style="margin-bottom:6px;">' . esc_html($line) . '</div>';
+    }, $metaLines);
+    $meta = '<div style="margin:16px 0; padding:12px 14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; font-size:13px; color:#475569;">' . implode('', $items) . '</div>';
+  }
+  $cta = '';
+  if (!empty($ctaText) && !empty($ctaUrl)) {
+    $cta = '<div style="margin:22px 0;"><a href="' . esc_url($ctaUrl) . '" style="display:inline-block; background:' . esc_attr($primary) . '; color:#fff; text-decoration:none; font-weight:600; padding:12px 18px; border-radius:10px;">' . esc_html($ctaText) . '</a></div>';
+  }
+  return '
+  <div style="margin:0; padding:24px; background:#f7f7fb; font-family:Arial, sans-serif;">
+    <div style="max-width:600px; margin:0 auto; background:#ffffff; border-radius:16px; padding:26px; border:1px solid #e5e7eb;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+        ' . (!empty($logo) ? '<img src="' . esc_url($logo) . '" alt="' . esc_attr($brand) . '" width="28" height="28" style="display:block; border-radius:6px;" />' : '') . '
+        <div style="font-weight:700; color:#0f172a; font-size:16px;">' . esc_html($brand) . '</div>
+      </div>
+      <h2 style="margin:0 0 8px; font-size:20px; color:#111827;">' . esc_html($title) . '</h2>
+      <div style="font-size:14px; color:#374151; line-height:1.6;">' . $bodyHtml . '</div>
+      ' . $meta . '
+      ' . $cta . '
+      <div style="border-top:1px solid #e5e7eb; margin-top:18px; padding-top:12px; font-size:12px; color:#6b7280;">
+        You’re receiving this email because you used ' . esc_html($brand) . '.
+        <div style="margin-top:8px;">
+          <a href="' . esc_url(home_url('/#/support')) . '" style="color:' . esc_attr($primary) . '; text-decoration:none;">Support</a>
+          <span style="margin:0 6px;">•</span>
+          <a href="' . esc_url(home_url('/#/privacy')) . '" style="color:' . esc_attr($primary) . '; text-decoration:none;">Privacy</a>
+          <span style="margin:0 6px;">•</span>
+          <a href="' . esc_url(home_url('/#/terms')) . '" style="color:' . esc_attr($primary) . '; text-decoration:none;">Terms</a>
+        </div>
+      </div>
+    </div>
+  </div>';
+}
+
+function customapi_send_html_mail($to, $subject, $html, $replyTo = '') {
+  $headers = ['Content-Type: text/html; charset=UTF-8'];
+  if (!empty($replyTo)) {
+    $headers[] = 'Reply-To: ' . $replyTo;
+  }
+  return wp_mail($to, $subject, $html, $headers);
+}
+
+function customapi_email_subject($type, $job_title = '') {
+  $brand = EMAIL_BRAND_NAME;
+  $job_part = $job_title ? ": {$job_title}" : '';
+  $map = [
+    'application_submitted' => "Application submitted{$job_part}",
+    'application_received' => "New application received{$job_part}",
+    'application_withdrawn' => "Application withdrawn{$job_part}",
+    'application_update' => "Application update{$job_part}",
+    'application_removed' => "Application update{$job_part}",
+  ];
+  $subject = $map[$type] ?? "Notification{$job_part}";
+  return "{$brand} - {$subject}";
+}
 
 function customapi_get_site_admin_emails() {
   $admins = get_users([
