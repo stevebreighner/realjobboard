@@ -131,7 +131,7 @@ export function renderHome(container) {
     </div>
 
     <!-- What We Do Section -->
-    <section class="bg-white text-gray-800 py-14 px-6 md:px-12">
+    <section class="bg-white text-gray-800 py-10 md:py-14 px-6 md:px-12">
       <div class="max-w-6xl mx-auto space-y-10">
         <div class="grid gap-8 md:grid-cols-[1.1fr,0.9fr] items-center reveal">
           <div>
