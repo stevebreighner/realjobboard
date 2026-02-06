@@ -181,6 +181,50 @@ export async function renderListDetail(container, id) {
         });
       }
 
+      if (templateSelect) {
+        const vars = {
+          job_title: data.title || '',
+          company: company || 'Employer',
+          site_name: document.title || '',
+          site_url: window.location.origin,
+        };
+        const replaceVars = (text) => {
+          let out = text || '';
+          Object.entries(vars).forEach(([key, val]) => {
+            out = out.replaceAll(`{${key}}`, val);
+          });
+          return out;
+        };
+
+        fetch('/wp-json/customapi/v1/email-templates', { credentials: 'include' })
+          .then(res => res.json())
+          .then(data => {
+            const templates = Array.isArray(data) ? data.filter(t => t.scope === 'applicant') : [];
+            if (!templates.length) return;
+            const groups = {};
+            templates.forEach(t => {
+              const cat = t.category || 'General';
+              if (!groups[cat]) groups[cat] = [];
+              groups[cat].push(t);
+            });
+            templateSelect.innerHTML = `<option value="" selected>Quick template (optional)</option>` + Object.entries(groups)
+              .map(([cat, list]) => {
+                const opts = list.map(t => `<option value="${t.body.replace(/"/g, '&quot;')}">${t.title}</option>`).join('');
+                return `<optgroup label="${cat}">${opts}</optgroup>`;
+              })
+              .join('');
+          })
+          .catch(() => {});
+
+        templateSelect.addEventListener('change', () => {
+          const val = templateSelect.value || '';
+          if (val) {
+            const textarea = messageForm.querySelector('textarea[name="message"]');
+            if (textarea) textarea.value = replaceVars(val);
+          }
+        });
+      }
+
       messageForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         statusEl.textContent = 'Sending...';
@@ -225,46 +269,3 @@ export async function renderListDetail(container, id) {
     container.innerHTML = `<p class="text-red-600">❌ Error: ${error.message}</p>`;
   }
 }
-      if (templateSelect) {
-        const vars = {
-          job_title: data.title || '',
-          company: company || 'Employer',
-          site_name: document.title || '',
-          site_url: window.location.origin,
-        };
-        const replaceVars = (text) => {
-          let out = text || '';
-          Object.entries(vars).forEach(([key, val]) => {
-            out = out.replaceAll(`{${key}}`, val);
-          });
-          return out;
-        };
-
-        fetch('/wp-json/customapi/v1/email-templates', { credentials: 'include' })
-          .then(res => res.json())
-          .then(data => {
-            const templates = Array.isArray(data) ? data.filter(t => t.scope === 'applicant') : [];
-            if (!templates.length) return;
-            const groups = {};
-            templates.forEach(t => {
-              const cat = t.category || 'General';
-              if (!groups[cat]) groups[cat] = [];
-              groups[cat].push(t);
-            });
-            templateSelect.innerHTML = `<option value="" selected>Quick template (optional)</option>` + Object.entries(groups)
-              .map(([cat, list]) => {
-                const opts = list.map(t => `<option value="${t.body.replace(/"/g, '&quot;')}">${t.title}</option>`).join('');
-                return `<optgroup label="${cat}">${opts}</optgroup>`;
-              })
-              .join('');
-          })
-          .catch(() => {});
-
-        templateSelect.addEventListener('change', () => {
-          const val = templateSelect.value || '';
-          if (val) {
-            const textarea = messageForm.querySelector('textarea[name="message"]');
-            if (textarea) textarea.value = replaceVars(val);
-          }
-        });
-      }
