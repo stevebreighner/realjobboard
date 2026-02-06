@@ -12,7 +12,11 @@ function customapi_tokenize_text($text) {
 }
 
 function customapi_get_resume_text_for_application($job_id, $app_user_id) {
-  $applicants = get_post_meta($job_id, 'job_applicants', true);
+  $applicants = get_post_meta($job_id, 'job_applications', true);
+  if (!is_array($applicants)) {
+    // fallback for legacy key
+    $applicants = get_post_meta($job_id, 'job_applicants', true);
+  }
   if (!is_array($applicants)) return '';
   $resume_url = '';
   foreach ($applicants as $app) {
@@ -282,7 +286,10 @@ function customapi_user_job_detail(WP_REST_Request $request) {
     }
 
     // Get applicants meta
-    $applicants = get_post_meta($job_id, 'job_applicants', true);
+    $applicants = get_post_meta($job_id, 'job_applications', true);
+    if (!is_array($applicants)) {
+        $applicants = get_post_meta($job_id, 'job_applicants', true);
+    }
     if (!is_array($applicants)) {
         $applicants = [];
     }
@@ -359,6 +366,8 @@ function customapi_user_job_detail(WP_REST_Request $request) {
                 'pref_score' => $pref_boost,
                 'cover'    => $app['cover_letter'] ?? '',
                 'time'     => $app['time'] ?? 0,
+                'status'   => $app['status'] ?? 'new',
+                'rank'     => $app['rank'] ?? 0,
                 'link'     => "/#application?jobId={$job_id}&userId={$appUser->ID}"
             ];
         }
@@ -466,6 +475,90 @@ function customapi_user_job_update(WP_REST_Request $request) {
     return rest_ensure_response(['message' => 'Job updated', 'id' => $job_id]);
 }
 
+function customapi_get_saved_jobs(WP_REST_Request $request) {
+    if (empty($_SESSION['user']['id'])) {
+        return new WP_Error('unauthorized', 'You must be logged in.', ['status' => 401]);
+    }
+    $user_id = intval($_SESSION['user']['id']);
+    $saved = get_user_meta($user_id, 'saved_jobs', true);
+    if (!is_array($saved)) $saved = [];
+    $saved = array_values(array_filter(array_map('intval', $saved)));
+    return rest_ensure_response($saved);
+}
+
+function customapi_toggle_saved_job(WP_REST_Request $request) {
+    if (empty($_SESSION['user']['id'])) {
+        return new WP_Error('unauthorized', 'You must be logged in.', ['status' => 401]);
+    }
+    $user_id = intval($_SESSION['user']['id']);
+    $job_id = intval($request->get_param('job_id'));
+    if (!$job_id) {
+        return new WP_Error('missing_id', 'Job ID required.', ['status' => 400]);
+    }
+    $saved = get_user_meta($user_id, 'saved_jobs', true);
+    if (!is_array($saved)) $saved = [];
+    $saved = array_values(array_filter(array_map('intval', $saved)));
+    if (in_array($job_id, $saved, true)) {
+        $saved = array_values(array_diff($saved, [$job_id]));
+        update_user_meta($user_id, 'saved_jobs', $saved);
+        return rest_ensure_response(['saved' => false, 'job_id' => $job_id]);
+    }
+    $saved[] = $job_id;
+    $saved = array_values(array_unique($saved));
+    update_user_meta($user_id, 'saved_jobs', $saved);
+    return rest_ensure_response(['saved' => true, 'job_id' => $job_id]);
+}
+
+function customapi_get_job_alerts(WP_REST_Request $request) {
+    if (empty($_SESSION['user']['id'])) {
+        return new WP_Error('unauthorized', 'You must be logged in.', ['status' => 401]);
+    }
+    $user_id = intval($_SESSION['user']['id']);
+    $alerts = get_user_meta($user_id, 'job_alerts', true);
+    if (!is_array($alerts)) $alerts = [];
+    return rest_ensure_response(array_values($alerts));
+}
+
+function customapi_save_job_alert(WP_REST_Request $request) {
+    if (empty($_SESSION['user']['id'])) {
+        return new WP_Error('unauthorized', 'You must be logged in.', ['status' => 401]);
+    }
+    $user_id = intval($_SESSION['user']['id']);
+    $payload = $request->get_json_params();
+    $label = sanitize_text_field($payload['label'] ?? 'Alert');
+    $criteria = $payload['criteria'] ?? [];
+    if (!is_array($criteria)) $criteria = [];
+
+    $alerts = get_user_meta($user_id, 'job_alerts', true);
+    if (!is_array($alerts)) $alerts = [];
+
+    $alerts[] = [
+        'id' => uniqid('alert_', true),
+        'label' => $label,
+        'criteria' => $criteria,
+        'created_at' => time(),
+    ];
+    update_user_meta($user_id, 'job_alerts', array_values($alerts));
+    return rest_ensure_response(['success' => true, 'alerts' => $alerts]);
+}
+
+function customapi_delete_job_alert(WP_REST_Request $request) {
+    if (empty($_SESSION['user']['id'])) {
+        return new WP_Error('unauthorized', 'You must be logged in.', ['status' => 401]);
+    }
+    $user_id = intval($_SESSION['user']['id']);
+    $alert_id = sanitize_text_field($request->get_param('alert_id'));
+    if (!$alert_id) {
+        return new WP_Error('missing_id', 'Alert ID required.', ['status' => 400]);
+    }
+    $alerts = get_user_meta($user_id, 'job_alerts', true);
+    if (!is_array($alerts)) $alerts = [];
+    $alerts = array_values(array_filter($alerts, function($a) use ($alert_id) {
+        return ($a['id'] ?? '') !== $alert_id;
+    }));
+    update_user_meta($user_id, 'job_alerts', $alerts);
+    return rest_ensure_response(['success' => true, 'alerts' => $alerts]);
+}
 
 function customapi_user_job_delete(WP_REST_Request $request) {
     if (empty($_SESSION['user']['id'])) {

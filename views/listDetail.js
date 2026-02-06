@@ -147,7 +147,10 @@ export async function renderListDetail(container, id) {
     container.innerHTML = `
       <div class="flex items-center justify-between mb-4">
         <h1 class="text-2xl font-bold">${data.title}</h1>
-        ${isFeatured ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">Featured</span>` : ''}
+        <div class="flex items-center gap-2">
+          <button id="saveJobBtn" class="text-xs px-2 py-1 rounded border text-slate-700 hover:border-indigo-500">Save</button>
+          ${isFeatured ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">Featured</span>` : ''}
+        </div>
       </div>
       <p class="text-gray-600 text-sm mb-2">
         ${company ? `Posted by ${company}` : 'Posted by Employer'} on ${data.date}
@@ -211,6 +214,37 @@ export async function renderListDetail(container, id) {
     });
 
     applyDistance();
+
+    const saveBtn = document.getElementById('saveJobBtn');
+    if (saveBtn && isLoggedIn) {
+      fetch('/wp-json/customapi/v1/saved-jobs', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          const saved = Array.isArray(data) && data.includes(Number(id));
+          saveBtn.textContent = saved ? 'Saved' : 'Save';
+          saveBtn.classList.toggle('text-amber-700', saved);
+        })
+        .catch(() => {});
+
+      saveBtn.addEventListener('click', async () => {
+        const res = await fetch('/wp-json/customapi/v1/saved-jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ job_id: id }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          const saved = !!data.saved;
+          saveBtn.textContent = saved ? 'Saved' : 'Save';
+          saveBtn.classList.toggle('text-amber-700', saved);
+        }
+      });
+    } else if (saveBtn) {
+      saveBtn.textContent = 'Login to save';
+      saveBtn.disabled = true;
+      saveBtn.classList.add('opacity-60', 'cursor-not-allowed');
+    }
 
     const messageForm = document.getElementById('employerMessageForm');
     const statusEl = document.getElementById('employerMessageStatus');

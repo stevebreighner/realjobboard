@@ -99,6 +99,8 @@ export function renderProfile(container) {
   </form>
 
     <div id="jobboard-links" class="mt-4"></div>
+    <div id="savedJobsSection" class="mt-6"></div>
+    <div id="jobAlertsSection" class="mt-6"></div>
 
     <p class="mt-4"><a href="/#update-password" class="text-purple-600">Update Password</a></p>
   </div>
@@ -111,6 +113,8 @@ export function renderProfile(container) {
   const toggleAddressBtn = container.querySelector('#toggleAddressBtn');
   const addressSection = container.querySelector('#addressSection');
   const hideEmailToggle = container.querySelector('#hide_email')?.closest('label');
+  const savedJobsSection = container.querySelector('#savedJobsSection');
+  const jobAlertsSection = container.querySelector('#jobAlertsSection');
 
   // Fetch profile + role info
   function applyProfileData(data) {
@@ -174,6 +178,66 @@ export function renderProfile(container) {
         <p class="mt-2"><a href="/#resume" class="text-blue-600">Manage Resume & Cover Letter</a></p>
         <p class="mt-2"><a href="/#my-applications" class="text-blue-600">My Applications</a></p>
       `;
+
+      const renderSavedJobs = async () => {
+        if (!savedJobsSection) return;
+        savedJobsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">Saved Jobs</h3><p class="text-sm text-gray-500">Loading...</p>`;
+        try {
+          const savedRes = await fetch('/wp-json/customapi/v1/saved-jobs', { credentials: 'include' });
+          const savedIds = await savedRes.json();
+          if (!savedRes.ok || !Array.isArray(savedIds) || !savedIds.length) {
+            savedJobsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">Saved Jobs</h3><p class="text-sm text-gray-500">No saved jobs yet.</p>`;
+            return;
+          }
+          const listRes = await fetch('/wp-json/customapi/v1/get-list');
+          const list = await listRes.json();
+          const savedSet = new Set(savedIds.map(Number));
+          const matches = (Array.isArray(list) ? list : []).filter(j => savedSet.has(Number(j.id || j._id || j.slug)));
+          savedJobsSection.innerHTML = `
+            <h3 class="text-lg font-semibold mb-2">Saved Jobs</h3>
+            <div class="space-y-2">
+              ${matches.map(job => `
+                <div class="border rounded-lg p-3 bg-white shadow-sm">
+                  <div class="font-medium">${job.title || job.name || 'Job'}</div>
+                  <div class="text-xs text-gray-500">${job.meta?.company || ''}</div>
+                  <a class="text-sm text-indigo-600 hover:underline" href="/#list-detail?id=${job.id}">View job</a>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        } catch (err) {
+          savedJobsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">Saved Jobs</h3><p class="text-sm text-gray-500">Unable to load saved jobs.</p>`;
+        }
+      };
+
+      const renderAlerts = async () => {
+        if (!jobAlertsSection) return;
+        jobAlertsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">Job Alerts</h3><p class="text-sm text-gray-500">Loading...</p>`;
+        try {
+          const res = await fetch('/wp-json/customapi/v1/job-alerts', { credentials: 'include' });
+          const data = await res.json();
+          if (!res.ok || !Array.isArray(data) || !data.length) {
+            jobAlertsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">Job Alerts</h3><p class="text-sm text-gray-500">No alerts yet.</p>`;
+            return;
+          }
+          jobAlertsSection.innerHTML = `
+            <h3 class="text-lg font-semibold mb-2">Job Alerts</h3>
+            <div class="space-y-2">
+              ${data.map(alert => `
+                <div class="border rounded-lg p-3 bg-white shadow-sm">
+                  <div class="font-medium">${alert.label || 'Alert'}</div>
+                  <div class="text-xs text-gray-500">${alert.criteria?.query ? `Query: ${alert.criteria.query}` : 'Saved search'}</div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        } catch (err) {
+          jobAlertsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">Job Alerts</h3><p class="text-sm text-gray-500">Unable to load alerts.</p>`;
+        }
+      };
+
+      renderSavedJobs();
+      renderAlerts();
     }
 
   }

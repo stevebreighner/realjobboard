@@ -90,6 +90,17 @@ export function renderList(container) {
         Add your ZIP in Profile to enable distance filtering.
       </p>
 
+      <div class="mb-6 border rounded-2xl p-4 bg-white shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h2 class="text-lg font-semibold">Job Alerts</h2>
+            <p class="text-xs text-gray-500">Save this search to get notified about new matches.</p>
+          </div>
+          <button id="saveAlertBtn" class="text-sm text-indigo-600 hover:underline">Save this search</button>
+        </div>
+        <div id="alertsContainer" class="space-y-2"></div>
+      </div>
+
       <div id="itemsContainer" class="grid gap-6 md:grid-cols-2"></div>
     </div>
   `;
@@ -106,6 +117,10 @@ export function renderList(container) {
   const sortSelect = container.querySelector('#sortSelect');
   const distanceSelect = container.querySelector('#distanceSelect');
   const distanceHint = container.querySelector('#distanceHint');
+  const saveAlertBtn = container.querySelector('#saveAlertBtn');
+  const alertsContainer = container.querySelector('#alertsContainer');
+  const savedJobIds = new Set();
+  let alerts = [];
 
   const normalize = (val) => (val || '').toString().toLowerCase();
   const getMetaValue = (item, key) =>
@@ -341,6 +356,113 @@ export function renderList(container) {
 
     loadUserZip();
 
+    async function loadSavedJobs() {
+      try {
+        const res = await fetch('/wp-json/customapi/v1/saved-jobs', { credentials: 'include' });
+        const data = await res.json();
+        if (res.ok && Array.isArray(data)) {
+          data.forEach(id => savedJobIds.add(Number(id)));
+          applyFilters();
+        }
+      } catch (err) {}
+    }
+
+    async function loadAlerts() {
+      try {
+        const res = await fetch('/wp-json/customapi/v1/job-alerts', { credentials: 'include' });
+        const data = await res.json();
+        if (res.ok && Array.isArray(data)) {
+          alerts = data;
+          renderAlerts();
+        }
+      } catch (err) {}
+    }
+
+    function renderAlerts() {
+      const host = container.querySelector('#alertsContainer');
+      if (!host) return;
+      host.innerHTML = alerts.length ? alerts.map(a => `
+        <div class="flex items-center justify-between border rounded-lg px-3 py-2 text-sm bg-white">
+          <div>
+            <div class="font-medium">${a.label || 'Alert'}</div>
+            <div class="text-xs text-gray-500">${a.criteria?.query ? `Query: ${a.criteria.query}` : 'Saved search'}</div>
+          </div>
+          <button class="text-red-600 hover:underline text-xs" data-alert-id="${a.id}">Delete</button>
+        </div>
+      `).join('') : '<div class="text-sm text-gray-500">No alerts yet.</div>';
+    }
+
+    loadSavedJobs();
+    loadAlerts();
+
+    saveAlertBtn?.addEventListener('click', async () => {
+      const criteria = {
+        query: searchInput.value || '',
+        field: filterField.value || '',
+        city: filterCity.value || '',
+        state: filterState.value || '',
+        zip: filterZip.value || '',
+        rate_type: filterRateType.value || '',
+        rate_min: filterRateMin.value || '',
+        rate_max: filterRateMax.value || '',
+        radius: distanceSelect?.value || '',
+      };
+      const label = criteria.query ? `Alert: ${criteria.query}` : 'Alert: Current filters';
+      try {
+        const res = await fetch('/wp-json/customapi/v1/job-alerts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ label, criteria }),
+        });
+        const data = await res.json();
+        if (res.ok && Array.isArray(data.alerts)) {
+          alerts = data.alerts;
+          renderAlerts();
+        }
+      } catch (err) {}
+    });
+
+    alertsContainer?.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-alert-id]');
+      if (!btn) return;
+      const alertId = btn.getAttribute('data-alert-id');
+      try {
+        const res = await fetch('/wp-json/customapi/v1/job-alerts-delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ alert_id: alertId }),
+        });
+        const data = await res.json();
+        if (res.ok && Array.isArray(data.alerts)) {
+          alerts = data.alerts;
+          renderAlerts();
+        }
+      } catch (err) {}
+    });
+
+    itemsContainer?.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-save-id]');
+      if (!btn) return;
+      const jobId = Number(btn.getAttribute('data-save-id'));
+      if (!jobId) return;
+      try {
+        const res = await fetch('/wp-json/customapi/v1/saved-jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ job_id: jobId }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          if (data.saved) savedJobIds.add(jobId);
+          else savedJobIds.delete(jobId);
+          applyFilters();
+        }
+      } catch (err) {}
+    });
+
     function renderItems(items) {
       itemsContainer.innerHTML = items.length
         ? items
@@ -359,6 +481,7 @@ export function renderList(container) {
                 : '';
               const featured = isFeatured(item);
               const isNew = isNewListing(item);
+              const isSaved = savedJobIds.has(Number(id));
               return `
                 <div class="group relative border border-slate-200 rounded-2xl p-6 bg-white shadow-sm hover:shadow-lg transition">
                   <div class="absolute inset-y-0 left-0 w-1 rounded-l-2xl bg-gradient-to-b from-indigo-500 via-pink-500 to-amber-400 opacity-70"></div>
@@ -402,9 +525,14 @@ export function renderList(container) {
                   </div>
                   <div class="mt-5 flex items-center justify-between text-base">
                     ${companySite ? `<a href="${companySite}" class="text-indigo-600 hover:underline" target="_blank" rel="noopener">Company site</a>` : '<span></span>'}
-                    <a href="/#list-detail?id=${id}" class="text-indigo-600 font-semibold hover:underline">
-                      View Details →
-                    </a>
+                    <div class="flex items-center gap-3">
+                      <button data-save-id="${id}" class="text-sm ${isSaved ? 'text-amber-700' : 'text-indigo-600'} hover:underline">
+                        ${isSaved ? 'Saved' : 'Save'}
+                      </button>
+                      <a href="/#list-detail?id=${id}" class="text-indigo-600 font-semibold hover:underline">
+                        View Details →
+                      </a>
+                    </div>
                   </div>
                 </div>
               `;

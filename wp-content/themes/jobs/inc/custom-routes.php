@@ -27,6 +27,11 @@ add_action('rest_api_init', function () {
     ['user-job-detail', 'GET', 'customapi_user_job_detail'],
     ['user-job-update', 'POST', 'customapi_user_job_update'],
     ['user-job-delete', 'POST', 'customapi_user_job_delete'],
+    ['saved-jobs', 'GET', 'customapi_get_saved_jobs'],
+    ['saved-jobs', 'POST', 'customapi_toggle_saved_job'],
+    ['job-alerts', 'GET', 'customapi_get_job_alerts'],
+    ['job-alerts', 'POST', 'customapi_save_job_alert'],
+    ['job-alerts-delete', 'POST', 'customapi_delete_job_alert'],
     // --- end resumes / covers ---
     ['create-post',     'POST',  'customapi_create_post'],
     ['user-profile',     'GET', 'customapi_get_user_profile'],
