@@ -97,15 +97,15 @@ export function renderHome(container) {
       }
     </style>
     <!-- Hero Section -->
-    <div class="max-w-5xl mx-auto px-4 py-10">
-      <div class="home-hero bg-hero-fun relative overflow-hidden text-white rounded-2xl p-6 md:p-8 shadow">
+    <div class="w-full px-4 py-10">
+      <div class="home-hero bg-hero-fun relative overflow-hidden text-white rounded-2xl p-6 md:p-10 shadow w-full">
         <div class="home-blob one"></div>
         <div class="home-blob two"></div>
         <div class="absolute inset-0 bg-black/35 pointer-events-none"></div>
-        <div class="relative z-10 text-shadow text-center">
-          <h1 class="text-3xl md:text-4xl font-bold mb-3">${hero.title}</h1>
+        <div class="relative z-10 text-shadow text-center max-w-5xl mx-auto">
+          <h1 class="text-3xl md:text-5xl font-bold mb-3">${hero.title}</h1>
           ${heroLines}
-          <div class="mt-5 flex gap-3 justify-center">
+          <div class="mt-6 flex gap-3 justify-center flex-wrap">
             <a ${hero.primary.id ? `id="${hero.primary.id}"` : ''} href="${hero.primary.href}" class="bg-white text-slate-900 font-semibold px-4 py-2 rounded-lg">${hero.primary.label}</a>
             <a href="${hero.secondary.href}" class="border border-white/70 text-white px-4 py-2 rounded-lg hover:bg-white/10">${hero.secondary.label}</a>
           </div>
@@ -148,6 +148,54 @@ export function renderHome(container) {
           <h3 class="text-2xl font-semibold mb-2">Built for Speed</h3>
           <p class="text-gray-600 mb-3">Lightning‑fast pages with smart caching and a lightweight front end.</p>
           <a href="/#speed" class="text-indigo-600 text-sm hover:underline mt-auto">See how it stays fast →</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-slate-50 text-gray-900 py-16 px-6 md:px-12">
+      <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-10">
+          <h2 class="text-3xl md:text-4xl font-bold">How we stand out</h2>
+          <p class="text-gray-600 mt-2">Practical features that make hiring and searching feel modern without the noise.</p>
+        </div>
+        <div class="grid gap-8 md:grid-cols-3">
+          <div class="rounded-2xl bg-white border shadow-sm p-6 flex flex-col">
+            <div class="h-12 w-12 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path d="M3 6h18M3 12h18M3 18h18"/>
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold mb-2">Multi‑search results</h3>
+            <p class="text-gray-600 mb-4">
+              Combine terms like “React, API, Remote” and we rank results by how many terms match.
+            </p>
+            <a href="/#list" class="text-indigo-600 text-sm hover:underline mt-auto">Try multi‑search →</a>
+          </div>
+          <div class="rounded-2xl bg-white border shadow-sm p-6 flex flex-col">
+            <div class="h-12 w-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path d="M12 6v6l4 2"/>
+                <path d="M5 12a7 7 0 1 1 7 7"/>
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold mb-2">Smart matching</h3>
+            <p class="text-gray-600 mb-4">
+              Resume text and job descriptions are compared for relevance so top candidates surface first.
+            </p>
+            <a href="/#employers" class="text-indigo-600 text-sm hover:underline mt-auto">See matching tools →</a>
+          </div>
+          <div class="rounded-2xl bg-white border shadow-sm p-6 flex flex-col">
+            <div class="h-12 w-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4z"/>
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold mb-2">Privacy controls</h3>
+            <p class="text-gray-600 mb-4">
+              Hide your email, share only resume links, and keep sensitive data encrypted by default.
+            </p>
+            <a href="/#employees" class="text-indigo-600 text-sm hover:underline mt-auto">Privacy details →</a>
+          </div>
         </div>
       </div>
     </section>
