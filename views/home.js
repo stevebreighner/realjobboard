@@ -95,6 +95,23 @@ export function renderHome(container) {
       .text-shadow {
         text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
       }
+      .reveal {
+        opacity: 0;
+        transform: translateY(18px);
+        transition: opacity 0.6s ease, transform 0.6s ease;
+      }
+      .reveal.reveal-in {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .floaty {
+        animation: floaty 6s ease-in-out infinite;
+      }
+      @keyframes floaty {
+        0% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
+        100% { transform: translateY(0); }
+      }
     </style>
     <!-- Hero Section -->
     <div class="w-full px-4 py-10">
@@ -153,48 +170,118 @@ export function renderHome(container) {
     </section>
 
     <section class="bg-slate-50 text-gray-900 py-16 px-6 md:px-12">
-      <div class="max-w-6xl mx-auto">
-        <div class="text-center mb-10">
-          <h2 class="text-3xl md:text-4xl font-bold">How we stand out</h2>
-          <p class="text-gray-600 mt-2">Practical features that make hiring and searching feel modern without the noise.</p>
+      <div class="max-w-6xl mx-auto reveal">
+        <div class="grid gap-8 md:grid-cols-[1.1fr,0.9fr] items-center">
+          <div>
+            <div class="text-xs uppercase tracking-widest text-pink-600 mb-2">Multi‑search</div>
+            <h2 class="text-3xl md:text-4xl font-bold mb-3">Search by multiple terms at once.</h2>
+            <p class="text-gray-600 text-lg mb-4">
+              Combine terms like “React, API, Remote” and we rank results by how many terms match. Find the right fit faster
+              without endless scrolling.
+            </p>
+            <a href="/#list" class="text-indigo-600 font-semibold hover:underline">Try multi‑search →</a>
+          </div>
+          <div class="rounded-2xl bg-white border shadow-sm p-6">
+            <div class="flex items-center justify-between">
+              <div class="text-sm font-semibold text-gray-700">Match score</div>
+              <span class="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">3/3 terms</span>
+            </div>
+            <div class="mt-4 space-y-3">
+              <div class="flex items-center justify-between text-sm">
+                <span>React</span>
+                <div class="h-2 flex-1 mx-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div class="h-2 w-4/5 bg-pink-400"></div>
+                </div>
+                <span class="text-gray-500">80%</span>
+              </div>
+              <div class="flex items-center justify-between text-sm">
+                <span>API</span>
+                <div class="h-2 flex-1 mx-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div class="h-2 w-3/4 bg-indigo-400"></div>
+                </div>
+                <span class="text-gray-500">75%</span>
+              </div>
+              <div class="flex items-center justify-between text-sm">
+                <span>Remote</span>
+                <div class="h-2 flex-1 mx-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div class="h-2 w-2/3 bg-amber-400"></div>
+                </div>
+                <span class="text-gray-500">66%</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="grid gap-8 md:grid-cols-3">
-          <div class="rounded-2xl bg-white border shadow-sm p-6 flex flex-col">
-            <div class="h-12 w-12 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path d="M3 6h18M3 12h18M3 18h18"/>
-              </svg>
+      </div>
+    </section>
+
+    <section class="bg-white text-gray-900 py-16 px-6 md:px-12">
+      <div class="max-w-6xl mx-auto reveal">
+        <div class="grid gap-8 md:grid-cols-[0.9fr,1.1fr] items-center">
+          <div class="rounded-2xl border shadow-sm p-6 bg-gradient-to-br from-amber-50 via-white to-rose-50">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="h-12 w-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center floaty">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path d="M12 6v6l4 2"/>
+                  <path d="M5 12a7 7 0 1 1 7 7"/>
+                </svg>
+              </div>
+              <div class="text-sm text-gray-600">Smart matching engine</div>
             </div>
-            <h3 class="text-xl font-semibold mb-2">Multi‑search results</h3>
-            <p class="text-gray-600 mb-4">
-              Combine terms like “React, API, Remote” and we rank results by how many terms match.
-            </p>
-            <a href="/#list" class="text-indigo-600 text-sm hover:underline mt-auto">Try multi‑search →</a>
+            <div class="text-sm text-gray-600">Resumes are scored against job descriptions with keyword relevance.</div>
+            <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <div class="p-3 rounded-lg bg-white border">Top skills matched</div>
+              <div class="p-3 rounded-lg bg-white border">Experience alignment</div>
+              <div class="p-3 rounded-lg bg-white border">Keyword density</div>
+              <div class="p-3 rounded-lg bg-white border">Role relevance</div>
+            </div>
           </div>
-          <div class="rounded-2xl bg-white border shadow-sm p-6 flex flex-col">
-            <div class="h-12 w-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path d="M12 6v6l4 2"/>
-                <path d="M5 12a7 7 0 1 1 7 7"/>
-              </svg>
-            </div>
-            <h3 class="text-xl font-semibold mb-2">Smart matching</h3>
-            <p class="text-gray-600 mb-4">
-              Resume text and job descriptions are compared for relevance so top candidates surface first.
+          <div>
+            <div class="text-xs uppercase tracking-widest text-amber-600 mb-2">Smart matching</div>
+            <h2 class="text-3xl md:text-4xl font-bold mb-3">Surface stronger candidates faster.</h2>
+            <p class="text-gray-600 text-lg mb-4">
+              We compare resume text and job descriptions to rank applicants by relevance. Transparent scoring — no black‑box
+              hype.
             </p>
-            <a href="/#employers" class="text-indigo-600 text-sm hover:underline mt-auto">See matching tools →</a>
+            <a href="/#employers" class="text-indigo-600 font-semibold hover:underline">See matching tools →</a>
           </div>
-          <div class="rounded-2xl bg-white border shadow-sm p-6 flex flex-col">
-            <div class="h-12 w-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4z"/>
-              </svg>
-            </div>
-            <h3 class="text-xl font-semibold mb-2">Privacy controls</h3>
-            <p class="text-gray-600 mb-4">
-              Hide your email, share only resume links, and keep sensitive data encrypted by default.
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-slate-50 text-gray-900 py-16 px-6 md:px-12">
+      <div class="max-w-6xl mx-auto reveal">
+        <div class="grid gap-8 md:grid-cols-[1.1fr,0.9fr] items-center">
+          <div>
+            <div class="text-xs uppercase tracking-widest text-emerald-600 mb-2">Privacy controls</div>
+            <h2 class="text-3xl md:text-4xl font-bold mb-3">Keep control of your data.</h2>
+            <p class="text-gray-600 text-lg mb-4">
+              Hide your email, share resume links only, and keep sensitive info encrypted by default. You decide what’s shared.
             </p>
-            <a href="/#employees" class="text-indigo-600 text-sm hover:underline mt-auto">Privacy details →</a>
+            <a href="/#employees" class="text-indigo-600 font-semibold hover:underline">Privacy details →</a>
+          </div>
+          <div class="rounded-2xl border shadow-sm p-6 bg-white">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="h-12 w-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center floaty">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4z"/>
+                </svg>
+              </div>
+              <div class="text-sm text-gray-600">Privacy settings</div>
+            </div>
+            <div class="space-y-3 text-sm text-gray-600">
+              <div class="flex items-center justify-between">
+                <span>Show email to employers</span>
+                <span class="text-emerald-600 font-semibold">Off</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span>Resume link access</span>
+                <span class="text-emerald-600 font-semibold">On</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span>Encrypted profile data</span>
+                <span class="text-emerald-600 font-semibold">On</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -325,6 +412,22 @@ export function renderHome(container) {
   }
 
   container.innerHTML = loggedOutHtml;
+
+  const revealEls = container.querySelectorAll('.reveal');
+  if (revealEls.length) {
+    const observer = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('reveal-in');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.2 }
+    );
+    revealEls.forEach(el => observer.observe(el));
+  }
 
   const postCta = container.querySelector('#postCta');
   getSessionCached({ maxAgeMs: 30000 })
