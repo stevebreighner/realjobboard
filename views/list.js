@@ -61,7 +61,7 @@ export function renderList(container) {
           type="text"
           id="searchInput"
           class="w-full p-2 border rounded"
-          placeholder="Search..."
+          placeholder="Search (comma-separated: react, node, aws)"
         />
         <select id="sortSelect" class="w-full md:w-56 p-2 border rounded">
           <option value="featured" selected>Featured + Recent</option>

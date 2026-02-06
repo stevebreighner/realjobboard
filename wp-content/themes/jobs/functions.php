@@ -193,12 +193,16 @@ if (!defined('EMAIL_ACCENT_COLOR')) {
 if (!defined('EMAIL_BRAND_LOGO_URL')) {
   define('EMAIL_BRAND_LOGO_URL', get_stylesheet_directory_uri() . '/assets/email-logo.svg');
 }
+if (!defined('EMAIL_HEADER_IMAGE_URL')) {
+  define('EMAIL_HEADER_IMAGE_URL', '');
+}
 
 function customapi_email_template($title, $bodyHtml, $ctaText = '', $ctaUrl = '', $metaLines = []) {
   $brand = EMAIL_BRAND_NAME;
   $primary = EMAIL_PRIMARY_COLOR;
   $accent = EMAIL_ACCENT_COLOR;
   $logo = EMAIL_BRAND_LOGO_URL;
+  $headerImage = EMAIL_HEADER_IMAGE_URL ?: $logo;
   $meta = '';
   if (!empty($metaLines)) {
     $items = array_map(function($line) {
@@ -213,6 +217,12 @@ function customapi_email_template($title, $bodyHtml, $ctaText = '', $ctaUrl = ''
   return '
   <div style="margin:0; padding:24px; background:#f7f7fb; font-family:Arial, sans-serif;">
     <div style="max-width:600px; margin:0 auto; background:#ffffff; border-radius:16px; padding:26px; border:1px solid #e5e7eb;">
+      <div style="margin:-26px -26px 18px; border-radius:16px 16px 12px 12px; overflow:hidden;">
+        <div style="background:linear-gradient(120deg,' . esc_attr($primary) . ', ' . esc_attr($accent) . '); padding:18px 22px; display:flex; align-items:center; gap:12px;">
+          ' . (!empty($headerImage) ? '<img src="' . esc_url($headerImage) . '" alt="' . esc_attr($brand) . '" width="32" height="32" style="display:block; border-radius:8px; background:#fff; padding:4px;" />' : '') . '
+          <div style="color:#fff; font-weight:700; font-size:16px; letter-spacing:0.2px;">' . esc_html($brand) . '</div>
+        </div>
+      </div>
       <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
         ' . (!empty($logo) ? '<img src="' . esc_url($logo) . '" alt="' . esc_attr($brand) . '" width="28" height="28" style="display:block; border-radius:6px;" />' : '') . '
         <div style="font-weight:700; color:#0f172a; font-size:16px;">' . esc_html($brand) . '</div>
