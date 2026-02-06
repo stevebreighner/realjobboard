@@ -18,6 +18,7 @@ export async function renderMyJobPostDetail(container, jobId) {
     const meta = data.meta || {};
     const getMeta = (key) => (meta && meta[key] != null ? meta[key] : (data[key] ?? ''));
     let jobField = getMeta('field');
+    const companyName = getMeta('company') || '';
     let street1 = getMeta('street1');
     let street2 = getMeta('street2');
     let city = getMeta('city');
@@ -327,6 +328,7 @@ export async function renderMyJobPostDetail(container, jobId) {
     const messagePreview = container.querySelector('#messagePreview');
     const messagePreviewBtn = container.querySelector('#messagePreviewBtn');
     let messageTargetUserId = null;
+    let messageTargetName = '';
     const deleteCancelBtn = container.querySelector('#deleteCancelBtn');
     const deleteConfirmBtn = container.querySelector('#deleteConfirmBtn');
     const applicantSearch = container.querySelector('#applicantSearch');
@@ -491,6 +493,8 @@ export async function renderMyJobPostDetail(container, jobId) {
       if (messageBtn) {
         const userId = Number(messageBtn.dataset.userId || 0);
         if (!userId) return;
+        const found = applicants.find(a => Number(a.id) === userId);
+        messageTargetName = found?.name || 'Applicant';
         messageTargetUserId = userId;
         if (messageBody) messageBody.value = '';
         messageModal?.classList.remove('hidden');
@@ -578,15 +582,42 @@ export async function renderMyJobPostDetail(container, jobId) {
       { title: 'Not selected', body: 'We appreciate your time. We are moving forward with other candidates at this stage.' },
     ];
 
+    const buildVars = () => ({
+      job_title: data.title || '',
+      company: companyName || 'Employer',
+      site_name: document.title || '',
+      site_url: window.location.origin,
+      applicant_name: messageTargetName || 'Applicant',
+      employer_name: companyName || 'Employer',
+    });
+
+    const replaceVars = (text) => {
+      let out = text || '';
+      const vars = buildVars();
+      Object.entries(vars).forEach(([key, val]) => {
+        out = out.replaceAll(`{${key}}`, val);
+      });
+      return out;
+    };
+
     const loadTemplates = async () => {
       if (!messageTemplate) return;
       try {
         const res = await fetch('/wp-json/customapi/v1/email-templates', { credentials: 'include' });
         const data = await res.json();
         const templates = Array.isArray(data) ? data.filter(t => t.scope === 'employer') : [];
-        const list = templates.length ? templates : fallbackTemplates;
-        messageTemplate.innerHTML = `<option value="" selected>Choose a template...</option>` + list
-          .map(t => `<option value="${t.body.replace(/"/g, '&quot;')}">${t.title}</option>`)
+        const list = templates.length ? templates : fallbackTemplates.map(t => ({ ...t, category: 'General' }));
+        const groups = {};
+        list.forEach(t => {
+          const cat = t.category || 'General';
+          if (!groups[cat]) groups[cat] = [];
+          groups[cat].push(t);
+        });
+        messageTemplate.innerHTML = `<option value="" selected>Choose a template...</option>` + Object.entries(groups)
+          .map(([cat, items]) => {
+            const opts = items.map(t => `<option value="${t.body.replace(/"/g, '&quot;')}">${t.title}</option>`).join('');
+            return `<optgroup label="${cat}">${opts}</optgroup>`;
+          })
           .join('');
       } catch (err) {
         messageTemplate.innerHTML = `<option value="" selected>Choose a template...</option>` + fallbackTemplates
@@ -599,7 +630,7 @@ export async function renderMyJobPostDetail(container, jobId) {
     messageTemplate?.addEventListener('change', () => {
       const val = messageTemplate.value || '';
       if (val && messageBody) {
-        messageBody.value = val;
+        messageBody.value = replaceVars(val);
       }
       updatePreview();
     });
@@ -614,7 +645,7 @@ export async function renderMyJobPostDetail(container, jobId) {
       const subject = `Application update: ${data.title || 'Job'}`;
       messagePreview.innerHTML = `
         <div class="font-semibold mb-1">Subject: ${subject}</div>
-        <div class="whitespace-pre-line">${body}</div>
+        <div class="whitespace-pre-line">${replaceVars(body)}</div>
       `;
     };
 

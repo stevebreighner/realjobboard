@@ -75,6 +75,14 @@ export async function renderAdmin(container) {
         </div>
         <p class="text-xs text-gray-500 mb-2">These templates appear in employer/applicant message dropdowns.</p>
         <div id="templatesMsg" class="text-sm mb-2"></div>
+        <div class="flex items-center gap-3 text-xs text-gray-500 mb-2">
+          <span>Variables: {job_title}, {company}, {site_name}, {site_url}, {applicant_name}, {employer_name}</span>
+        </div>
+        <div id="historyRow" class="flex items-center gap-2 text-xs text-gray-500 mb-2 hidden">
+          <label for="historySelect">Restore previous:</label>
+          <select id="historySelect" class="border rounded p-1 text-xs"></select>
+          <button id="restoreHistory" class="text-xs text-indigo-600 hover:underline">Restore</button>
+        </div>
         <div id="templatesContainer" class="space-y-3"></div>
       </div>
     </div>
@@ -98,6 +106,9 @@ export async function renderAdmin(container) {
   const saveTemplatesBtn = container.querySelector('#saveTemplates');
   const templatesContainer = container.querySelector('#templatesContainer');
   const templatesMsg = container.querySelector('#templatesMsg');
+  const historyRow = container.querySelector('#historyRow');
+  const historySelect = container.querySelector('#historySelect');
+  const restoreHistoryBtn = container.querySelector('#restoreHistory');
 
   const session = await getSessionCached({ maxAgeMs: 30000 });
   const roles = Array.isArray(session?.roles) ? session.roles : [];
@@ -222,19 +233,22 @@ export async function renderAdmin(container) {
   }
 
   let emailTemplates = [];
+  let templateHistory = [];
+  let autosaveTimer = null;
 
   const renderTemplates = () => {
     templatesContainer.innerHTML = emailTemplates.length
       ? emailTemplates.map((tpl, idx) => `
           <div class="border rounded p-3">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <input class="p-2 border rounded text-sm" data-role="tpl-title" data-idx="${idx}" placeholder="Title" value="${tpl.title || ''}" />
-              <select class="p-2 border rounded text-sm" data-role="tpl-scope" data-idx="${idx}">
-                <option value="employer" ${tpl.scope === 'employer' ? 'selected' : ''}>Employer</option>
-                <option value="applicant" ${tpl.scope === 'applicant' ? 'selected' : ''}>Applicant</option>
-              </select>
-              <button class="text-sm text-red-600 hover:underline justify-self-start md:justify-self-end" data-action="delete-template" data-idx="${idx}">Delete</button>
-            </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <input class="p-2 border rounded text-sm" data-role="tpl-title" data-idx="${idx}" placeholder="Title" value="${tpl.title || ''}" />
+            <select class="p-2 border rounded text-sm" data-role="tpl-scope" data-idx="${idx}">
+              <option value="employer" ${tpl.scope === 'employer' ? 'selected' : ''}>Employer</option>
+              <option value="applicant" ${tpl.scope === 'applicant' ? 'selected' : ''}>Applicant</option>
+            </select>
+            <input class="p-2 border rounded text-sm" data-role="tpl-category" data-idx="${idx}" placeholder="Category" value="${tpl.category || ''}" />
+            <button class="text-sm text-red-600 hover:underline justify-self-start md:justify-self-end" data-action="delete-template" data-idx="${idx}">Delete</button>
+          </div>
             <textarea class="mt-2 w-full p-2 border rounded text-sm" rows="3" data-role="tpl-body" data-idx="${idx}" placeholder="Template body">${tpl.body || ''}</textarea>
           </div>
         `).join('')
@@ -251,9 +265,22 @@ export async function renderAdmin(container) {
       templatesMsg.className = 'text-sm text-red-600';
       return;
     }
-    emailTemplates = Array.isArray(data) ? data : [];
+    emailTemplates = Array.isArray(data) ? data : (data.templates || []);
+    templateHistory = Array.isArray(data?.history) ? data.history : [];
     templatesMsg.textContent = '';
     renderTemplates();
+
+    if (historyRow && historySelect) {
+      if (templateHistory.length) {
+        historyRow.classList.remove('hidden');
+        historySelect.innerHTML = templateHistory.map((h, idx) => {
+          const label = new Date((h.time || 0) * 1000).toLocaleString();
+          return `<option value="${idx}">${label}</option>`;
+        }).join('');
+      } else {
+        historyRow.classList.add('hidden');
+      }
+    }
   };
 
   templatesContainer.addEventListener('input', (e) => {
@@ -262,6 +289,8 @@ export async function renderAdmin(container) {
     if (idx < 0 || !emailTemplates[idx]) return;
     if (target.dataset.role === 'tpl-title') emailTemplates[idx].title = target.value;
     if (target.dataset.role === 'tpl-body') emailTemplates[idx].body = target.value;
+    if (target.dataset.role === 'tpl-category') emailTemplates[idx].category = target.value;
+    scheduleAutosave();
   });
 
   templatesContainer.addEventListener('change', (e) => {
@@ -269,6 +298,7 @@ export async function renderAdmin(container) {
     const idx = Number(target.dataset.idx || -1);
     if (idx < 0 || !emailTemplates[idx]) return;
     if (target.dataset.role === 'tpl-scope') emailTemplates[idx].scope = target.value;
+    scheduleAutosave();
   });
 
   templatesContainer.addEventListener('click', (e) => {
@@ -281,11 +311,11 @@ export async function renderAdmin(container) {
   });
 
   addTemplateBtn?.addEventListener('click', () => {
-    emailTemplates.push({ title: '', body: '', scope: 'employer', id: `tpl_${Date.now()}` });
+    emailTemplates.push({ title: '', body: '', scope: 'employer', category: 'General', id: `tpl_${Date.now()}` });
     renderTemplates();
   });
 
-  saveTemplatesBtn?.addEventListener('click', async () => {
+  const saveTemplates = async () => {
     templatesMsg.textContent = 'Saving...';
     templatesMsg.className = 'text-sm text-gray-500';
     const res = await fetch('/wp-json/customapi/v1/admin/email-templates', {
@@ -303,7 +333,26 @@ export async function renderAdmin(container) {
     templatesMsg.textContent = 'Templates saved.';
     templatesMsg.className = 'text-sm text-green-700';
     emailTemplates = data.templates || emailTemplates;
+    templateHistory = data.history || templateHistory;
     renderTemplates();
+  };
+
+  const scheduleAutosave = () => {
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => {
+      saveTemplates();
+    }, 1200);
+  };
+
+  saveTemplatesBtn?.addEventListener('click', saveTemplates);
+
+  restoreHistoryBtn?.addEventListener('click', () => {
+    const idx = Number(historySelect?.value || -1);
+    if (idx < 0 || !templateHistory[idx]) return;
+    if (!confirm('Restore this previous version?')) return;
+    emailTemplates = templateHistory[idx].templates || [];
+    renderTemplates();
+    saveTemplates();
   });
 
   usersContainer.addEventListener('click', async (e) => {

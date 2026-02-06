@@ -44,36 +44,42 @@ function customapi_default_email_templates() {
       'title' => 'Application received',
       'body' => 'Thanks for applying. We are reviewing your application and will be in touch soon.',
       'scope' => 'employer',
+      'category' => 'Status',
     ],
     [
       'id' => 'applicant_interview',
       'title' => 'Interview request',
       'body' => 'We’d like to schedule a quick interview. Please reply with a few times that work for you this week.',
       'scope' => 'employer',
+      'category' => 'Interview',
     ],
     [
       'id' => 'applicant_more_info',
       'title' => 'Request more info',
       'body' => 'Could you share a few more details about your recent experience with this role?',
       'scope' => 'employer',
+      'category' => 'Screening',
     ],
     [
       'id' => 'applicant_reject',
       'title' => 'Not selected',
       'body' => 'We appreciate your time. We are moving forward with other candidates at this stage.',
       'scope' => 'employer',
+      'category' => 'Status',
     ],
     [
       'id' => 'employer_question',
       'title' => 'Question about the role',
       'body' => 'Hi! I’m interested in this role and had a quick question about the day-to-day responsibilities.',
       'scope' => 'applicant',
+      'category' => 'Inquiry',
     ],
     [
       'id' => 'employer_followup',
       'title' => 'Follow-up',
       'body' => 'Just following up on my application. Please let me know if there’s anything else I can provide.',
       'scope' => 'applicant',
+      'category' => 'Follow-up',
     ],
   ];
 }
@@ -85,7 +91,12 @@ function customapi_admin_get_email_templates() {
   if (!is_array($templates) || empty($templates)) {
     $templates = customapi_default_email_templates();
   }
-  return rest_ensure_response(array_values($templates));
+  $history = get_option('customapi_email_templates_history', []);
+  if (!is_array($history)) $history = [];
+  return rest_ensure_response([
+    'templates' => array_values($templates),
+    'history' => array_values($history),
+  ]);
 }
 
 function customapi_admin_save_email_templates(WP_REST_Request $request) {
@@ -98,17 +109,30 @@ function customapi_admin_save_email_templates(WP_REST_Request $request) {
     $title = sanitize_text_field($tpl['title'] ?? '');
     $body = sanitize_textarea_field($tpl['body'] ?? '');
     $scope = sanitize_text_field($tpl['scope'] ?? 'employer');
+    $category = sanitize_text_field($tpl['category'] ?? 'General');
     if (!$title || !$body) continue;
     $clean[] = [
       'id' => sanitize_text_field($tpl['id'] ?? uniqid('tpl_', true)),
       'title' => $title,
       'body' => $body,
       'scope' => in_array($scope, ['employer', 'applicant'], true) ? $scope : 'employer',
+      'category' => $category ?: 'General',
     ];
+  }
+  $prev = get_option('customapi_email_templates', []);
+  $history = get_option('customapi_email_templates_history', []);
+  if (!is_array($history)) $history = [];
+  if (is_array($prev) && !empty($prev)) {
+    array_unshift($history, [
+      'time' => time(),
+      'templates' => $prev,
+    ]);
+    $history = array_slice($history, 0, 10);
+    update_option('customapi_email_templates_history', $history, false);
   }
   update_option('customapi_email_templates', $clean, false);
   customapi_admin_log('email_templates_update', ['count' => count($clean)]);
-  return rest_ensure_response(['success' => true, 'templates' => $clean]);
+  return rest_ensure_response(['success' => true, 'templates' => $clean, 'history' => $history]);
 }
 
 function customapi_get_email_templates_public() {

@@ -4,6 +4,15 @@ if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
 
+function customapi_template_replace($text, $vars) {
+  if (!is_string($text)) return $text;
+  $replacements = [];
+  foreach ($vars as $key => $val) {
+    $replacements['{' . $key . '}'] = $val;
+  }
+  return str_replace(array_keys($replacements), array_values($replacements), $text);
+}
+
 function customapi_contact(WP_REST_Request $request) {
   $params = $request->get_json_params();
   $name = sanitize_text_field($params['name'] ?? '');
@@ -95,6 +104,20 @@ function customapi_contact_employer(WP_REST_Request $request) {
   }
 
   $job_title = get_the_title($job_id);
+  $company_name = get_post_meta($job_id, 'company', true);
+  if ($company_name && strpos($company_name, '@') !== false) {
+    $company_name = '';
+  }
+  $company_label = $company_name ?: (defined('EMAIL_BRAND_NAME') ? EMAIL_BRAND_NAME : get_bloginfo('name'));
+  $vars = [
+    'job_title' => $job_title,
+    'company' => $company_label,
+    'site_name' => get_bloginfo('name'),
+    'site_url' => home_url('/'),
+    'applicant_name' => $sender_name,
+    'employer_name' => $employer->display_name,
+  ];
+  $message = customapi_template_replace($message, $vars);
   $subject = "[Job Inquiry] {$job_title}";
   $body = "Job: {$job_title}\nFrom: {$sender_name}\nEmail: {$sender_email}\n\n{$message}";
   $headers = ['Reply-To: ' . $sender_email];
@@ -144,6 +167,15 @@ function customapi_contact_applicant(WP_REST_Request $request) {
     $company_name = '';
   }
   $company_label = $company_name ?: (defined('EMAIL_BRAND_NAME') ? EMAIL_BRAND_NAME : get_bloginfo('name'));
+  $vars = [
+    'job_title' => $job_title,
+    'company' => $company_label,
+    'site_name' => get_bloginfo('name'),
+    'site_url' => home_url('/'),
+    'applicant_name' => $applicant->display_name,
+    'employer_name' => get_user_by('ID', $employer_id)->display_name ?? $company_label,
+  ];
+  $message = customapi_template_replace($message, $vars);
   $subject = function_exists('customapi_email_subject')
     ? customapi_email_subject('application_update', $job_title)
     : "Update on your application: {$job_title}";
