@@ -53,7 +53,7 @@ export function renderHome(container) {
   const hero = heroes[Math.floor(Math.random() * heroes.length)];
   const heroLines = hero.lines.map(line => `<p class="text-white/90 text-sm mt-2">${line}</p>`).join('');
 
-  container.innerHTML = `
+  const loggedOutHtml = `
     <style>
       .home-hero {
         position: relative;
@@ -170,9 +170,121 @@ export function renderHome(container) {
     </section>
   `;
 
+  function renderLoggedInHome(session) {
+    const roles = Array.isArray(session?.roles) ? session.roles : [];
+    const username = session?.username || 'there';
+    const isEmployer = roles.includes('employer');
+    const isAdmin = roles.includes('site_admin') || roles.includes('administrator');
+
+    let actions = [];
+    let listTitle = 'Recent activity';
+    let listEmpty = 'No recent activity yet.';
+    let listEndpoint = null;
+
+    if (isAdmin) {
+      actions = [
+        { label: 'Admin panel', href: '/#admin' },
+        { label: 'View jobs', href: '/#admin' },
+        { label: 'Update profile', href: '/#profile' },
+      ];
+      listTitle = 'Admin overview';
+      listEmpty = 'Use the Admin panel to manage users, jobs, and templates.';
+    } else if (isEmployer) {
+      actions = [
+        { label: 'Post a job', href: '/#post' },
+        { label: 'Manage openings', href: '/#myJobPosts' },
+        { label: 'Browse listings', href: '/#list' },
+      ];
+      listTitle = 'Your latest openings';
+      listEmpty = 'No openings yet. Post your first job to get started.';
+      listEndpoint = '/wp-json/customapi/v1/user-jobs';
+    } else {
+      actions = [
+        { label: 'Search openings', href: '/#list' },
+        { label: 'My applications', href: '/#myApplications' },
+        { label: 'Update profile', href: '/#profile' },
+      ];
+      listTitle = 'Your latest applications';
+      listEmpty = 'No applications yet. Start browsing to apply.';
+      listEndpoint = '/wp-json/customapi/v1/user-applications';
+    }
+
+    container.innerHTML = `
+      <div class="max-w-5xl mx-auto px-4 py-10">
+        <div class="rounded-2xl border shadow-sm bg-white p-6 md:p-8">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <div class="text-xs uppercase tracking-widest text-gray-500">Welcome back</div>
+              <h1 class="text-3xl font-semibold text-gray-900">Hi ${username}</h1>
+              <p class="text-sm text-gray-600 mt-1">Your home base for everything ${CONFIG.COMPANY_BUSINESS_THING_PLURAL}.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              ${actions.map(a => `
+                <a href="${a.href}" class="bg-purple text-white font-semibold px-4 py-2 rounded-lg">
+                  ${a.label}
+                </a>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-8">
+          <h2 class="text-xl font-semibold mb-3">${listTitle}</h2>
+          <div id="homeRecentList" class="space-y-3"></div>
+        </div>
+      </div>
+    `;
+
+    const listEl = container.querySelector('#homeRecentList');
+    if (!listEl) return;
+
+    if (!listEndpoint) {
+      listEl.innerHTML = `<div class="text-sm text-gray-600">${listEmpty}</div>`;
+      return;
+    }
+
+    listEl.innerHTML = `<div class="text-sm text-gray-500">Loading...</div>`;
+    fetch(`${listEndpoint}?_=${Date.now()}`, { credentials: 'include' })
+      .then(res => res.json().then(data => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok || !Array.isArray(data) || !data.length) {
+          listEl.innerHTML = `<div class="text-sm text-gray-600">${listEmpty}</div>`;
+          return;
+        }
+        const items = data.slice(0, 3);
+        if (isEmployer) {
+          listEl.innerHTML = items.map(job => `
+            <div class="border rounded-lg p-4 bg-white shadow-sm">
+              <div class="font-semibold text-gray-900">${job.title || 'Untitled role'}</div>
+              <div class="text-xs text-gray-500 mt-1">${job.date || ''}</div>
+              <a class="text-sm text-indigo-600 hover:underline mt-2 inline-block" href="/#myJobPosts">Manage openings →</a>
+            </div>
+          `).join('');
+        } else {
+          listEl.innerHTML = items.map(app => `
+            <div class="border rounded-lg p-4 bg-white shadow-sm">
+              <div class="font-semibold text-gray-900">${app.job_title || 'Untitled role'}</div>
+              <div class="text-xs text-gray-500 mt-1">${[app.company, app.location].filter(Boolean).join(' • ')}</div>
+              <div class="text-xs text-gray-600 mt-1">Status: ${app.status || 'new'}</div>
+              <a class="text-sm text-indigo-600 hover:underline mt-2 inline-block" href="/#myApplications">View applications →</a>
+            </div>
+          `).join('');
+        }
+      })
+      .catch(() => {
+        listEl.innerHTML = `<div class="text-sm text-gray-600">${listEmpty}</div>`;
+      });
+  }
+
+  container.innerHTML = loggedOutHtml;
+
   const postCta = container.querySelector('#postCta');
   getSessionCached({ maxAgeMs: 30000 })
     .then(session => {
+      if (session) {
+        renderLoggedInHome(session);
+        return;
+      }
       const roles = Array.isArray(session?.roles) ? session.roles : [];
       if (postCta && roles.includes('employer')) {
         postCta.style.display = 'inline-block';
