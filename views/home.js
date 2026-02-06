@@ -252,7 +252,7 @@ export function renderHome(container) {
       <div class="max-w-6xl mx-auto reveal">
         <div class="grid gap-8 md:grid-cols-[1.1fr,0.9fr] items-center">
           <div>
-            <div class="text-xs uppercase tracking-widest text-emerald-600 mb-2">Privacy controls</div>
+            <div class="text-xs uppercase tracking-widest text-[rgb(0_64_110)] mb-2">Privacy controls</div>
             <h2 class="text-3xl md:text-4xl font-bold mb-3">Keep control of your data.</h2>
             <p class="text-gray-600 text-lg mb-4">
               Hide your email, share resume links only, and keep sensitive info encrypted by default. You decide what’s shared.
@@ -261,7 +261,7 @@ export function renderHome(container) {
           </div>
           <div class="rounded-2xl border shadow-sm p-6 bg-white">
             <div class="flex items-center gap-3 mb-4">
-              <div class="h-12 w-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center floaty">
+            <div class="h-12 w-12 rounded-xl bg-emerald-100 text-[rgb(0_64_110)] flex items-center justify-center floaty">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4z"/>
                 </svg>
@@ -271,15 +271,15 @@ export function renderHome(container) {
             <div class="space-y-3 text-sm text-gray-600">
               <div class="flex items-center justify-between">
                 <span>Show email to employers</span>
-                <span class="text-emerald-600 font-semibold">Off</span>
+                <span class="text-[rgb(0_64_110)] font-semibold">Off</span>
               </div>
               <div class="flex items-center justify-between">
                 <span>Resume link access</span>
-                <span class="text-emerald-600 font-semibold">On</span>
+                <span class="text-[rgb(0_64_110)] font-semibold">On</span>
               </div>
               <div class="flex items-center justify-between">
                 <span>Encrypted profile data</span>
-                <span class="text-emerald-600 font-semibold">On</span>
+                <span class="text-[rgb(0_64_110)] font-semibold">On</span>
               </div>
             </div>
           </div>

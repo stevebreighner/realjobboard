@@ -22,7 +22,7 @@ export function renderSpeed(container) {
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="border rounded-xl p-5 bg-white shadow-sm">
-          <div class="text-xs uppercase tracking-widest text-emerald-600 mb-2">Vanilla JS</div>
+          <div class="text-xs uppercase tracking-widest text-[rgb(0_64_110)] mb-2">Vanilla JS</div>
           <h2 class="text-xl font-semibold mb-2">No heavy framework overhead</h2>
           <p class="text-gray-700">
             The app uses lightweight view rendering to keep initial load and route changes snappy.
@@ -30,7 +30,7 @@ export function renderSpeed(container) {
         </div>
 
         <div class="border rounded-xl p-5 bg-white shadow-sm">
-          <div class="text-xs uppercase tracking-widest text-emerald-600 mb-2">Smart Caching</div>
+          <div class="text-xs uppercase tracking-widest text-[rgb(0_64_110)] mb-2">Smart Caching</div>
           <h2 class="text-xl font-semibold mb-2">Cache after decryption</h2>
           <p class="text-gray-700">
             Profile data is cached after decryption so revisits load instantly without redoing heavy work.
@@ -38,7 +38,7 @@ export function renderSpeed(container) {
         </div>
 
         <div class="border rounded-xl p-5 bg-white shadow-sm">
-          <div class="text-xs uppercase tracking-widest text-emerald-600 mb-2">Optimized Fetching</div>
+          <div class="text-xs uppercase tracking-widest text-[rgb(0_64_110)] mb-2">Optimized Fetching</div>
           <h2 class="text-xl font-semibold mb-2">Only what’s needed</h2>
           <p class="text-gray-700">
             We minimize API calls and reuse cached data across pages to keep the UI responsive.
@@ -46,7 +46,7 @@ export function renderSpeed(container) {
         </div>
 
         <div class="border rounded-xl p-5 bg-white shadow-sm">
-          <div class="text-xs uppercase tracking-widest text-emerald-600 mb-2">Predictable UI</div>
+          <div class="text-xs uppercase tracking-widest text-[rgb(0_64_110)] mb-2">Predictable UI</div>
           <h2 class="text-xl font-semibold mb-2">Fast, consistent experience</h2>
           <p class="text-gray-700">
             A consistent layout means fewer layout shifts and a smoother feel on every page.
