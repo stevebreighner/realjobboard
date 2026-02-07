@@ -108,7 +108,8 @@ class ApplicationController {
     $appId = $this->applications->createApplication($jobId, (int) $user['id'], $resumeUrl ?: null, $coverUrl ?: null);
     if (!empty($compliance)) {
       $enc = $this->crypto->encrypt(json_encode($compliance));
-      $this->applications->setMeta($appId, 'compliance', $enc['ciphertext'], $enc['iv'], $enc['tag']);
+      $ciphertext = base64_encode($enc['ciphertext']);
+      $this->applications->setMeta($appId, 'compliance', $ciphertext, $enc['iv'], $enc['tag']);
     }
 
     return [

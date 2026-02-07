@@ -94,7 +94,12 @@ class JobPostController {
       $complianceAnswers = null;
       $metaRow = $complianceMap[(int) $app['id']] ?? null;
       if ($metaRow && !empty($metaRow['value'])) {
-        $decrypted = $this->crypto->decrypt($metaRow['value'], (string) $metaRow['iv'], (string) $metaRow['tag']);
+        $ciphertext = base64_decode((string) $metaRow['value'], true);
+        if ($ciphertext !== false) {
+          $decrypted = $this->crypto->decrypt($ciphertext, (string) $metaRow['iv'], (string) $metaRow['tag']);
+        } else {
+          $decrypted = '';
+        }
         $decoded = json_decode($decrypted, true);
         if (is_array($decoded)) {
           $complianceAnswers = $decoded;
