@@ -14,6 +14,7 @@ use App\Services\RateLimiter;
 use App\Services\Mailer;
 use App\Services\EncryptionService;
 use App\Models\SettingsModel;
+use App\Models\AuditLogModel;
 
 class JobPostController {
   private AuthService $auth;
@@ -25,6 +26,7 @@ class JobPostController {
   private CompanyModel $companies;
   private EncryptionService $crypto;
   private SettingsModel $settings;
+  private AuditLogModel $audit;
 
   public function __construct() {
     $this->auth = new AuthService($GLOBALS['DB_PDO']);
@@ -36,6 +38,7 @@ class JobPostController {
     $this->companies = new CompanyModel();
     $this->crypto = new EncryptionService();
     $this->settings = new SettingsModel();
+    $this->audit = new AuditLogModel();
   }
 
   private function requireEmployer(): array {
@@ -226,6 +229,11 @@ class JobPostController {
     $meta['owner_email'] = $user['email'] ?? '';
     $jobId = $this->jobs->createDraft($title, [], $status);
     $this->jobs->updateMeta($jobId, $meta);
+    $this->audit->log((int) $user['id'], 'job_created', 'Job draft created', [
+      'job_id' => $jobId,
+      'title' => $title,
+      'status' => $status,
+    ]);
     return ['id' => $jobId];
   }
 

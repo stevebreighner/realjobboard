@@ -8,18 +8,21 @@ use App\Models\ApplicationModel;
 use App\Models\JobModel;
 use App\Services\RateLimiter;
 use App\Services\EncryptionService;
+use App\Models\AuditLogModel;
 
 class ApplicationController {
   private AuthService $auth;
   private ApplicationModel $applications;
   private JobModel $jobs;
   private EncryptionService $crypto;
+  private AuditLogModel $audit;
 
   public function __construct() {
     $this->auth = new AuthService($GLOBALS['DB_PDO']);
     $this->applications = new ApplicationModel();
     $this->jobs = new JobModel();
     $this->crypto = new EncryptionService();
+    $this->audit = new AuditLogModel();
   }
 
   private function jsonInput(): array {
@@ -111,6 +114,10 @@ class ApplicationController {
       $ciphertext = base64_encode($enc['ciphertext']);
       $this->applications->setMeta($appId, 'compliance', $ciphertext, $enc['iv'], $enc['tag']);
     }
+    $this->audit->log((int) $user['id'], 'application_submitted', 'Applied to job', [
+      'job_id' => $jobId,
+      'application_id' => $appId,
+    ]);
 
     return [
       'message' => 'Application submitted',

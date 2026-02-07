@@ -8,6 +8,15 @@ export async function renderAdmin(container) {
       <div id="adminNotice" class="mb-4 text-sm text-gray-600"></div>
 
       <div class="mb-8">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Recent Activity</h2>
+          <button id="refreshRecent" class="text-sm text-indigo-600 hover:underline">Refresh</button>
+        </div>
+        <div id="recentActivity" class="space-y-2 text-sm"></div>
+        <div id="recentErrors" class="mt-3 text-xs text-rose-700 space-y-1"></div>
+      </div>
+
+      <div class="mb-8">
         <h2 class="text-xl font-semibold mb-2">Dev Mode</h2>
         <p class="text-sm text-gray-600 mb-3">Use this for local/dev environments to bypass human verification.</p>
         <div class="flex items-center gap-3">
@@ -156,6 +165,9 @@ export async function renderAdmin(container) {
   const refreshJobsBtn = container.querySelector('#refreshJobs');
   const exportUsersBtn = container.querySelector('#exportUsers');
   const exportJobsBtn = container.querySelector('#exportJobs');
+  const refreshRecentBtn = container.querySelector('#refreshRecent');
+  const recentActivity = container.querySelector('#recentActivity');
+  const recentErrors = container.querySelector('#recentErrors');
   const refreshAuditBtn = container.querySelector('#refreshAudit');
   const auditContainer = container.querySelector('#auditContainer');
   const createForm = container.querySelector('#adminCreateUser');
@@ -199,6 +211,50 @@ export async function renderAdmin(container) {
       </div>
     </div>
   `;
+
+  async function loadRecentActivity() {
+    if (!recentActivity) return;
+    recentActivity.innerHTML = '<div class="text-gray-500">Loading...</div>';
+    if (recentErrors) recentErrors.innerHTML = '';
+    try {
+      const [auditRes, errorRes] = await Promise.all([
+        fetch(`/wp-json/customapi/v1/admin/audit?_=${Date.now()}`, { credentials: 'include' }),
+        fetch(`/wp-json/customapi/v1/admin/error-log?_=${Date.now()}`, { credentials: 'include' }),
+      ]);
+      const auditData = await auditRes.json();
+      const errorData = await errorRes.json();
+      const rows = Array.isArray(auditData) ? auditData.slice(0, 12) : [];
+      if (!rows.length) {
+        recentActivity.innerHTML = '<div class="text-gray-500">No recent activity.</div>';
+      } else {
+        recentActivity.innerHTML = rows.map(row => {
+          const label = row.label ? ` — ${row.label}` : '';
+          const meta = row.meta ? row.meta : {};
+          const login = meta.login ? ` (${meta.login})` : '';
+          return `
+            <div class="flex items-start justify-between gap-3 border-b border-slate-100 pb-2">
+              <div>
+                <div class="font-medium text-slate-900">${row.event_type}${login}</div>
+                <div class="text-xs text-slate-500">${label}</div>
+              </div>
+              <div class="text-xs text-slate-500 whitespace-nowrap">${row.created_at || ''}</div>
+            </div>
+          `;
+        }).join('');
+      }
+      const errorLines = Array.isArray(errorData?.lines) ? errorData.lines.slice(-5) : [];
+      if (recentErrors && errorLines.length) {
+        recentErrors.innerHTML = `
+          <div class="font-semibold text-rose-700">Recent errors</div>
+          ${errorLines.map(line => `<div>${line}</div>`).join('')}
+        `;
+      }
+    } catch (err) {
+      recentActivity.innerHTML = '<div class="text-rose-600">Unable to load recent activity.</div>';
+    }
+  }
+
+  refreshRecentBtn?.addEventListener('click', loadRecentActivity);
 
   async function loadDevFlags() {
     if (!devModeToggle) return;
@@ -937,6 +993,7 @@ export async function renderAdmin(container) {
     window.location.href = '/wp-json/customapi/v1/admin/export-jobs';
   });
 
+  loadRecentActivity();
   fetchUsers();
   fetchCompanies();
   fetchJobs();

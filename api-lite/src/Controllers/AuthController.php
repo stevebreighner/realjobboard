@@ -10,16 +10,19 @@ use App\Models\CompanyModel;
 use App\Models\UserMetaModel;
 use App\Models\AuthTokenModel;
 use App\Models\SettingsModel;
+use App\Models\AuditLogModel;
 
 class AuthController {
   private AuthService $auth;
   private AuthTokenModel $tokens;
   private SettingsModel $settings;
+  private AuditLogModel $audit;
 
   public function __construct() {
     $this->auth = new AuthService($GLOBALS['DB_PDO']);
     $this->tokens = new AuthTokenModel();
     $this->settings = new SettingsModel();
+    $this->audit = new AuditLogModel();
   }
 
   private function jsonInput(): array {
@@ -126,6 +129,11 @@ class AuthController {
     ]);
 
     $this->auth->createSession((int) $user['id']);
+    $this->audit->log((int) $user['id'], 'register', 'User registered', [
+      'role' => $role,
+      'email' => $email,
+      'username' => $username,
+    ]);
 
     if ($role === 'employer' && $companyName) {
       $companyModel = new CompanyModel();
@@ -190,6 +198,9 @@ class AuthController {
       }
     }
     if (empty($user) || !$this->auth->validatePassword($user, $password)) {
+      $this->audit->log(null, 'login_failed', 'Invalid credentials', [
+        'login' => $login,
+      ]);
       http_response_code(401);
       return ['error' => 'Invalid credentials'];
     }
@@ -198,6 +209,7 @@ class AuthController {
     if ($twofaEnabled) {
       $pending = $this->tokens->createPending2fa((int) $user['id']);
       $this->setPendingCookie($pending);
+      $this->audit->log((int) $user['id'], 'login_2fa_required', '2FA required');
       return [
         'twoFARequired' => true,
         'message' => '2FA required',
@@ -205,6 +217,7 @@ class AuthController {
     }
 
     $this->auth->createSession((int) $user['id']);
+    $this->audit->log((int) $user['id'], 'login_success', 'Login successful');
     return [
       'message' => 'Login successful',
       'user' => [
@@ -217,6 +230,10 @@ class AuthController {
   }
 
   public function logout(): array {
+    $user = $this->auth->getSessionUser();
+    if (!empty($user)) {
+      $this->audit->log((int) $user['id'], 'logout', 'User logged out');
+    }
     $this->auth->clearSession();
     return ['message' => 'Logged out'];
   }

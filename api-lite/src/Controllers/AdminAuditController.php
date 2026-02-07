@@ -4,12 +4,15 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Services\AuthService;
+use App\Models\AuditLogModel;
 
 class AdminAuditController {
   private AuthService $auth;
+  private AuditLogModel $audit;
 
   public function __construct() {
     $this->auth = new AuthService($GLOBALS['DB_PDO']);
+    $this->audit = new AuditLogModel();
   }
 
   private function requireAdmin(): array {
@@ -29,6 +32,6 @@ class AdminAuditController {
   public function list(): array {
     $admin = $this->requireAdmin();
     if (empty($admin)) return ['error' => 'Access denied'];
-    return [];
+    return $this->audit->list(200);
   }
 }
