@@ -10,7 +10,7 @@ export function renderLogin(container) {
         <input type="email" placeholder="Email" class="w-full p-2 border rounded" required />
         <div class="relative w-full">
           <input type="password" id="loginPassword" placeholder="Password" class="w-full p-2 border rounded pr-10" required />
-          <button type="button" id="toggleLoginPassword" class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-500 bg-transparent border-0 p-0 m-0" style="width:2rem;height:2rem;right:1.4rem;">
+          <button type="button" id="toggleLoginPassword" class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-500 bg-transparent border-0 p-0 m-0" style="width:2rem;height:2rem;">
             <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/>
               <circle cx="12" cy="12" r="3"/>
@@ -20,7 +20,7 @@ export function renderLogin(container) {
         <button type="submit" class="text-purple px-4 py-2 rounded w-full">Login</button>
       </form>
       <div id="googleLoginWrap" class="mt-4">
-        <button type="button" id="googleLoginBtn" class="w-full border border-slate-300 rounded px-4 py-2 flex items-center justify-center gap-2 hover:bg-slate-50">
+        <button type="button" id="googleLoginBtn" class="w-full border border-slate-300 rounded p-2 flex items-center justify-center gap-2 hover:bg-slate-50">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="h-5 w-5">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.77 1.22 9.29 3.22l6.94-6.94C35.87 2.2 30.23 0 24 0 14.62 0 6.53 5.38 2.56 13.22l8.09 6.29C12.6 13.24 17.82 9.5 24 9.5z"/>
             <path fill="#4285F4" d="M46.5 24c0-1.59-.16-3.12-.46-4.59H24v9.19h12.71c-.55 2.97-2.22 5.49-4.71 7.19l7.22 5.6C43.5 37.36 46.5 31.1 46.5 24z"/>
