@@ -33,6 +33,9 @@ class ProfileController {
       'street1', 'street2',
       'first_name', 'last_name', 'dob',
       'hide_email', 'avatar_url',
+      'compliance_gender', 'compliance_race', 'compliance_disability',
+      'compliance_veteran', 'compliance_work_auth', 'compliance_prior_employment',
+      'compliance_background_check',
     ]);
 
     if ($light) {
@@ -64,6 +67,13 @@ class ProfileController {
       'dob' => $meta['dob'] ?? '',
       'hide_email' => $meta['hide_email'] ?? '',
       'avatar_url' => $meta['avatar_url'] ?? '',
+      'compliance_gender' => $meta['compliance_gender'] ?? '',
+      'compliance_race' => $meta['compliance_race'] ?? '',
+      'compliance_disability' => $meta['compliance_disability'] ?? '',
+      'compliance_veteran' => $meta['compliance_veteran'] ?? '',
+      'compliance_work_auth' => $meta['compliance_work_auth'] ?? '',
+      'compliance_prior_employment' => $meta['compliance_prior_employment'] ?? '',
+      'compliance_background_check' => $meta['compliance_background_check'] ?? '',
       'resumes' => array_map(function (array $row): array {
         $time = $row['created_at'] ? strtotime($row['created_at']) : time();
         $token = $row['access_token'] ?? '';
@@ -99,6 +109,9 @@ class ProfileController {
       'street1', 'street2', 'city', 'state', 'zip', 'country',
       'hide_email',
       'avatar_url',
+      'compliance_gender', 'compliance_race', 'compliance_disability',
+      'compliance_veteran', 'compliance_work_auth', 'compliance_prior_employment',
+      'compliance_background_check',
     ];
 
     foreach ($fields as $field) {

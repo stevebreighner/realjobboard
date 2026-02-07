@@ -408,6 +408,36 @@ export async function renderMyJobPostDetail(container, jobId) {
       return 'bg-amber-100 text-amber-800';
     };
 
+    const renderCompliance = (answers) => {
+      if (!answers || typeof answers !== 'object') return '';
+      const labelMap = {
+        gender: 'Gender',
+        race: 'Race/Ethnicity',
+        disability: 'Disability',
+        veteran: 'Veteran',
+        work_auth: 'Work Authorization',
+        prior_employment: 'Prior Employment',
+        background_check: 'Background Check',
+      };
+      const entries = Object.entries(answers).filter(([, v]) => v);
+      if (!entries.length) return '';
+      return `
+        <div class="mt-2 text-xs text-slate-600">
+          <details class="border border-slate-200 rounded p-2 bg-slate-50">
+            <summary class="cursor-pointer">Compliance answers</summary>
+            <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+              ${entries.map(([k, v]) => `
+                <div class="border rounded px-2 py-1 bg-white">
+                  <div class="text-[10px] uppercase tracking-wide text-slate-500">${labelMap[k] || k}</div>
+                  <div class="text-slate-800">${v}</div>
+                </div>
+              `).join('')}
+            </div>
+          </details>
+        </div>
+      `;
+    };
+
     const renderApplicants = (list) => {
       applicantsContainer.innerHTML = list.length
         ? list.map(app => `
@@ -428,6 +458,7 @@ export async function renderMyJobPostDetail(container, jobId) {
                   Status: <span class="inline-flex items-center px-2 py-0.5 rounded-full ${getStatusClass(app.status)}">${getStatusLabel(app.status)}</span>
                   ${app.rank ? `<span class="ml-2 text-slate-600">Rank: ${app.rank}/5</span>` : ''}
                 </div>
+                ${renderCompliance(app.compliance)}
               </div>
               <div class="flex flex-col md:flex-row md:items-center gap-3 text-sm">
                 ${app.resume ? `<a href="${app.resume}" target="_blank" rel="noopener" data-action="view-application" data-user-id="${app.id}" class="text-blue-600 hover:underline">Resume</a>` : ''}

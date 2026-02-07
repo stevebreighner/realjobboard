@@ -57,6 +57,15 @@ export async function renderApply(container, jobId) {
   
       const resumes = Array.isArray(profileData.resumes) ? profileData.resumes : [];
       const covers = Array.isArray(profileData.cover_letters) ? profileData.cover_letters : [];
+      const compliancePrefill = {
+        gender: profileData.compliance_gender || '',
+        race: profileData.compliance_race || '',
+        disability: profileData.compliance_disability || '',
+        veteran: profileData.compliance_veteran || '',
+        work_auth: profileData.compliance_work_auth || '',
+        prior_employment: profileData.compliance_prior_employment || '',
+        background_check: profileData.compliance_background_check || '',
+      };
   
       // --- Render form ---
       container.innerHTML = `
@@ -117,24 +126,24 @@ export async function renderApply(container, jobId) {
               <div class="mb-3">
                 <label class="block text-sm font-semibold">Gender (optional)</label>
                 <select name="compliance_gender" class="w-full p-2 border rounded">
-                  <option value="">Prefer not to say</option>
-                  <option value="female">Female</option>
-                  <option value="male">Male</option>
-                  <option value="nonbinary">Non-binary</option>
-                  <option value="other">Other</option>
+                  <option value="" ${!compliancePrefill.gender ? 'selected' : ''}>Prefer not to say</option>
+                  <option value="female" ${compliancePrefill.gender === 'female' ? 'selected' : ''}>Female</option>
+                  <option value="male" ${compliancePrefill.gender === 'male' ? 'selected' : ''}>Male</option>
+                  <option value="nonbinary" ${compliancePrefill.gender === 'nonbinary' ? 'selected' : ''}>Non-binary</option>
+                  <option value="other" ${compliancePrefill.gender === 'other' ? 'selected' : ''}>Other</option>
                 </select>
               </div>
               <div class="mb-3">
                 <label class="block text-sm font-semibold">Race/Ethnicity (optional)</label>
                 <select name="compliance_race" class="w-full p-2 border rounded">
-                  <option value="">Prefer not to say</option>
-                  <option value="asian">Asian</option>
-                  <option value="black">Black or African American</option>
-                  <option value="hispanic">Hispanic or Latino</option>
-                  <option value="white">White</option>
-                  <option value="native">Native American or Alaska Native</option>
-                  <option value="pacific">Native Hawaiian or Pacific Islander</option>
-                  <option value="other">Other</option>
+                  <option value="" ${!compliancePrefill.race ? 'selected' : ''}>Prefer not to say</option>
+                  <option value="asian" ${compliancePrefill.race === 'asian' ? 'selected' : ''}>Asian</option>
+                  <option value="black" ${compliancePrefill.race === 'black' ? 'selected' : ''}>Black or African American</option>
+                  <option value="hispanic" ${compliancePrefill.race === 'hispanic' ? 'selected' : ''}>Hispanic or Latino</option>
+                  <option value="white" ${compliancePrefill.race === 'white' ? 'selected' : ''}>White</option>
+                  <option value="native" ${compliancePrefill.race === 'native' ? 'selected' : ''}>Native American or Alaska Native</option>
+                  <option value="pacific" ${compliancePrefill.race === 'pacific' ? 'selected' : ''}>Native Hawaiian or Pacific Islander</option>
+                  <option value="other" ${compliancePrefill.race === 'other' ? 'selected' : ''}>Other</option>
                 </select>
               </div>
             ` : ''}
@@ -142,9 +151,9 @@ export async function renderApply(container, jobId) {
               <div class="mb-3">
                 <label class="block text-sm font-semibold">Disability status (optional)</label>
                 <select name="compliance_disability" class="w-full p-2 border rounded">
-                  <option value="">Prefer not to say</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
+                  <option value="" ${!compliancePrefill.disability ? 'selected' : ''}>Prefer not to say</option>
+                  <option value="yes" ${compliancePrefill.disability === 'yes' ? 'selected' : ''}>Yes</option>
+                  <option value="no" ${compliancePrefill.disability === 'no' ? 'selected' : ''}>No</option>
                 </select>
               </div>
             ` : ''}
@@ -152,9 +161,9 @@ export async function renderApply(container, jobId) {
               <div class="mb-3">
                 <label class="block text-sm font-semibold">Veteran status (optional)</label>
                 <select name="compliance_veteran" class="w-full p-2 border rounded">
-                  <option value="">Prefer not to say</option>
-                  <option value="protected_veteran">Protected Veteran</option>
-                  <option value="not_protected">Not a Protected Veteran</option>
+                  <option value="" ${!compliancePrefill.veteran ? 'selected' : ''}>Prefer not to say</option>
+                  <option value="protected_veteran" ${compliancePrefill.veteran === 'protected_veteran' ? 'selected' : ''}>Protected Veteran</option>
+                  <option value="not_protected" ${compliancePrefill.veteran === 'not_protected' ? 'selected' : ''}>Not a Protected Veteran</option>
                 </select>
               </div>
             ` : ''}
@@ -162,9 +171,9 @@ export async function renderApply(container, jobId) {
               <div class="mb-3">
                 <label class="block text-sm font-semibold">Work authorization</label>
                 <select name="compliance_work_auth" class="w-full p-2 border rounded">
-                  <option value="">Prefer not to say</option>
-                  <option value="authorized">Authorized to work in the U.S.</option>
-                  <option value="not_authorized">Not authorized</option>
+                  <option value="" ${!compliancePrefill.work_auth ? 'selected' : ''}>Prefer not to say</option>
+                  <option value="authorized" ${compliancePrefill.work_auth === 'authorized' ? 'selected' : ''}>Authorized to work in the U.S.</option>
+                  <option value="not_authorized" ${compliancePrefill.work_auth === 'not_authorized' ? 'selected' : ''}>Not authorized</option>
                 </select>
               </div>
             ` : ''}
@@ -172,9 +181,9 @@ export async function renderApply(container, jobId) {
               <div class="mb-3">
                 <label class="block text-sm font-semibold">Have you worked here before?</label>
                 <select name="compliance_prior_employment" class="w-full p-2 border rounded">
-                  <option value="">Prefer not to say</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
+                  <option value="" ${!compliancePrefill.prior_employment ? 'selected' : ''}>Prefer not to say</option>
+                  <option value="yes" ${compliancePrefill.prior_employment === 'yes' ? 'selected' : ''}>Yes</option>
+                  <option value="no" ${compliancePrefill.prior_employment === 'no' ? 'selected' : ''}>No</option>
                 </select>
               </div>
             ` : ''}
@@ -182,12 +191,16 @@ export async function renderApply(container, jobId) {
               <div class="mb-3">
                 <label class="block text-sm font-semibold">Background check consent</label>
                 <select name="compliance_background_check" class="w-full p-2 border rounded">
-                  <option value="">Prefer not to say</option>
-                  <option value="yes">I consent</option>
-                  <option value="no">I do not consent</option>
+                  <option value="" ${!compliancePrefill.background_check ? 'selected' : ''}>Prefer not to say</option>
+                  <option value="yes" ${compliancePrefill.background_check === 'yes' ? 'selected' : ''}>I consent</option>
+                  <option value="no" ${compliancePrefill.background_check === 'no' ? 'selected' : ''}>I do not consent</option>
                 </select>
               </div>
             ` : ''}
+            <label class="flex items-center gap-2 text-xs text-slate-600 mt-2">
+              <input type="checkbox" name="save_compliance" value="1" checked />
+              <span>Save these responses to my profile for next time</span>
+            </label>
           </div>
           ` : ''}
           <button type="submit" class="text-purple px-4 py-2 rounded hover:bg-indigo-700">
@@ -233,6 +246,20 @@ export async function renderApply(container, jobId) {
           prior_employment: formData.get('compliance_prior_employment') || '',
           background_check: formData.get('compliance_background_check') || '',
         };
+        const saveCompliance = formData.get('save_compliance') === '1';
+        if (saveCompliance) {
+          const fd = new FormData();
+          Object.entries({
+            compliance_gender: compliance.gender,
+            compliance_race: compliance.race,
+            compliance_disability: compliance.disability,
+            compliance_veteran: compliance.veteran,
+            compliance_work_auth: compliance.work_auth,
+            compliance_prior_employment: compliance.prior_employment,
+            compliance_background_check: compliance.background_check,
+          }).forEach(([k, v]) => fd.append(k, v));
+          fetch('/api/user-profile-update', { method: 'POST', body: fd, credentials: 'include' }).catch(() => {});
+        }
         const resumeRequired = true;
 
         if (resumeRequired && !selectedResume) {
