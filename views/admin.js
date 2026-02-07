@@ -134,6 +134,15 @@ export async function renderAdmin(container) {
         </div>
         <div id="logContainer" class="text-xs bg-slate-50 border rounded p-3 whitespace-pre-wrap"></div>
       </div>
+
+      <div class="mb-10">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Analytics</h2>
+          <button id="refreshAnalytics" class="text-sm text-indigo-600 hover:underline">Refresh</button>
+        </div>
+        <p class="text-xs text-gray-500 mb-2">Minimal, first‑party only. Includes path, referrer, and timestamp.</p>
+        <div id="analyticsContainer" class="space-y-2 text-sm"></div>
+      </div>
     </div>
   `;
 
@@ -169,6 +178,8 @@ export async function renderAdmin(container) {
   const refreshLogBtn = container.querySelector('#refreshLog');
   const downloadLogBtn = container.querySelector('#downloadLog');
   const logContainer = container.querySelector('#logContainer');
+  const refreshAnalyticsBtn = container.querySelector('#refreshAnalytics');
+  const analyticsContainer = container.querySelector('#analyticsContainer');
 
   const session = await getSessionCached({ maxAgeMs: 30000 });
   const roles = Array.isArray(session?.roles) ? session.roles : [];
@@ -295,6 +306,34 @@ export async function renderAdmin(container) {
     window.location.href = '/api/admin/error-log-download';
   });
   await loadLog();
+
+  async function loadAnalytics() {
+    if (!analyticsContainer) return;
+    analyticsContainer.innerHTML = '<p class="text-sm text-gray-500">Loading analytics...</p>';
+    try {
+      const res = await fetch('/api/admin/analytics?_=' + Date.now(), { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) {
+        analyticsContainer.innerHTML = `<p class="text-sm text-red-600">${data.error || 'Failed to load analytics.'}</p>`;
+        return;
+      }
+      analyticsContainer.innerHTML = data.length
+        ? data.map(row => `
+            <div class="border rounded p-2 bg-white">
+              <div class="text-xs text-gray-500">${row.created_at || ''}</div>
+              <div class="font-medium">${row.event} • ${row.path}</div>
+              <div class="text-xs text-gray-500">Referrer: ${row.referrer || 'Direct'}</div>
+              ${row.user_id ? `<div class="text-xs text-gray-500">User ID: ${row.user_id}</div>` : ''}
+            </div>
+          `).join('')
+        : '<p class="text-sm text-gray-500">No analytics yet.</p>';
+    } catch (err) {
+      analyticsContainer.innerHTML = '<p class="text-sm text-gray-500">Unable to load analytics.</p>';
+    }
+  }
+
+  refreshAnalyticsBtn?.addEventListener('click', loadAnalytics);
+  await loadAnalytics();
 
   async function fetchUsers() {
     usersContainer.innerHTML = '<p class="text-sm text-gray-500">Loading users...</p>';

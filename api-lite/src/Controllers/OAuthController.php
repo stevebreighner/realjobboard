@@ -33,6 +33,13 @@ class OAuthController {
     exit;
   }
 
+  public function statusGoogle(): array {
+    return [
+      'configured' => $this->oauth->isConfigured(),
+      'redirect_uri' => rtrim($this->getBaseUrl(), '/') . '/api/oauth/google/callback',
+    ];
+  }
+
   public function callbackGoogle(): void {
     $code = $_GET['code'] ?? '';
     $state = $_GET['state'] ?? '';
@@ -88,6 +95,18 @@ class OAuthController {
       'httponly' => true,
       'samesite' => 'Lax',
     ]);
+  }
+
+  private function getBaseUrl(): string {
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $scheme = 'http';
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+      $scheme = 'https';
+    }
+    if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+      $scheme = $_SERVER['HTTP_X_FORWARDED_PROTO'];
+    }
+    return $scheme . '://' . $host;
   }
 
   private function clearCookie(string $name): void {

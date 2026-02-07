@@ -64,4 +64,25 @@ class TrackingController {
 
     return ['ok' => true];
   }
+
+  public function list(): array {
+    $auth = $this->auth->getSessionUser();
+    if (empty($auth)) {
+      http_response_code(403);
+      return ['error' => 'Not logged in'];
+    }
+    $role = $auth['role'] ?? '';
+    if (!in_array($role, ['site_admin', 'administrator'], true)) {
+      http_response_code(403);
+      return ['error' => 'Access denied'];
+    }
+    $pdo = $GLOBALS['DB_PDO'];
+    $rows = $pdo->query("
+      SELECT id, event, path, referrer, user_id, created_at
+      FROM jb_tracking_events
+      ORDER BY created_at DESC
+      LIMIT 200
+    ")->fetchAll();
+    return $rows ?: [];
+  }
 }
