@@ -7,16 +7,19 @@ use App\Services\AuthService;
 use App\Models\ApplicationModel;
 use App\Models\JobModel;
 use App\Services\RateLimiter;
+use App\Services\EncryptionService;
 
 class ApplicationController {
   private AuthService $auth;
   private ApplicationModel $applications;
   private JobModel $jobs;
+  private EncryptionService $crypto;
 
   public function __construct() {
     $this->auth = new AuthService($GLOBALS['DB_PDO']);
     $this->applications = new ApplicationModel();
     $this->jobs = new JobModel();
+    $this->crypto = new EncryptionService();
   }
 
   private function jsonInput(): array {
@@ -78,6 +81,7 @@ class ApplicationController {
     $jobId = isset($data['jobId']) ? (int) $data['jobId'] : 0;
     $resumeUrl = trim((string) ($data['resume'] ?? ''));
     $coverUrl = trim((string) ($data['cover_letter'] ?? ''));
+    $compliance = $data['compliance'] ?? [];
 
     if ($jobId <= 0) {
       http_response_code(422);
@@ -102,6 +106,10 @@ class ApplicationController {
     }
 
     $appId = $this->applications->createApplication($jobId, (int) $user['id'], $resumeUrl ?: null, $coverUrl ?: null);
+    if (!empty($compliance)) {
+      $enc = $this->crypto->encrypt(json_encode($compliance));
+      $this->applications->setMeta($appId, 'compliance', $enc['ciphertext'], $enc['iv'], $enc['tag']);
+    }
 
     return [
       'message' => 'Application submitted',

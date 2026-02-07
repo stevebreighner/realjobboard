@@ -12,6 +12,7 @@ use App\Models\CompanyModel;
 use App\Models\UserFileModel;
 use App\Services\RateLimiter;
 use App\Services\Mailer;
+use App\Services\EncryptionService;
 
 class JobPostController {
   private AuthService $auth;
@@ -21,6 +22,7 @@ class JobPostController {
   private UserProfileModel $profiles;
   private UserFileModel $files;
   private CompanyModel $companies;
+  private EncryptionService $crypto;
 
   public function __construct() {
     $this->auth = new AuthService($GLOBALS['DB_PDO']);
@@ -30,6 +32,7 @@ class JobPostController {
     $this->profiles = new UserProfileModel();
     $this->files = new UserFileModel();
     $this->companies = new CompanyModel();
+    $this->crypto = new EncryptionService();
   }
 
   private function requireEmployer(): array {
@@ -79,6 +82,8 @@ class JobPostController {
     }
 
     $apps = $this->applications->listByJob($jobId);
+    $appIds = array_map(fn($a) => (int) $a['id'], $apps);
+    $complianceMap = $this->applications->getMetaByApplications($appIds, 'compliance');
     $applicants = [];
     foreach ($apps as $app) {
       $appUserId = (int) $app['user_id'];
@@ -86,6 +91,15 @@ class JobPostController {
       $u = $this->auth->getUserById($appUserId);
       $name = trim(($meta['first_name'] ?? '') . ' ' . ($meta['last_name'] ?? ''));
       if (!$name) $name = $u['username'] ?? 'Applicant';
+      $complianceAnswers = null;
+      $metaRow = $complianceMap[(int) $app['id']] ?? null;
+      if ($metaRow && !empty($metaRow['value'])) {
+        $decrypted = $this->crypto->decrypt($metaRow['value'], (string) $metaRow['iv'], (string) $metaRow['tag']);
+        $decoded = json_decode($decrypted, true);
+        if (is_array($decoded)) {
+          $complianceAnswers = $decoded;
+        }
+      }
       $applicants[] = [
         'id' => $appUserId,
         'name' => $name,
@@ -101,6 +115,7 @@ class JobPostController {
         'city' => $meta['city'] ?? '',
         'state' => $meta['state'] ?? '',
         'zip' => $meta['zip'] ?? '',
+        'compliance' => $complianceAnswers,
       ];
     }
 
@@ -134,7 +149,7 @@ class JobPostController {
     if (!in_array($status, ['draft','publish'], true)) $status = 'draft';
     $this->jobs->updateJob($jobId, $title ?: 'Untitled', $status);
     $meta = $data['meta'] ?? $data;
-    $allowed = ['description','field','street1','street2','city','state','zip','country','rate_type','rate_min','rate_max','job_type','company','company_site','job_featured','job_payment_status','job_tier','job_tier_label'];
+    $allowed = ['description','field','street1','street2','city','state','zip','country','rate_type','rate_min','rate_max','job_type','company','company_site','job_featured','job_payment_status','job_tier','job_tier_label','compliance_enabled','compliance_federal','compliance_blocks'];
     $update = [];
     foreach ($allowed as $key) {
       if (array_key_exists($key, $meta)) {

@@ -9,6 +9,11 @@ export async function renderApply(container, jobId) {
       if (!jobRes.ok) throw new Error(jobData.message || "Failed to fetch job details");
       const jobLabel = CONFIG.JOB_COPY?.SINGULAR || 'Job';
       const jobTitle = escapeHtml(jobData.title || `${jobLabel} #${jobId}`);
+      const complianceEnabled = jobData?.meta?.compliance_enabled === '1';
+      const complianceBlocks = (jobData?.meta?.compliance_blocks || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
   
       // --- Check application status ---
       const statusRes = await fetch(`/api/check-application?jobId=${jobId}`, {
@@ -104,7 +109,87 @@ export async function renderApply(container, jobId) {
                 `
             }
           </div>
-  
+          ${complianceEnabled ? `
+          <div class="border rounded p-4 bg-white">
+            <h2 class="text-lg font-semibold mb-2">Optional compliance questions</h2>
+            <p class="text-xs text-gray-500 mb-3">You may skip these unless the employer requires them.</p>
+            ${complianceBlocks.includes('eeo') ? `
+              <div class="mb-3">
+                <label class="block text-sm font-semibold">Gender (optional)</label>
+                <select name="compliance_gender" class="w-full p-2 border rounded">
+                  <option value="">Prefer not to say</option>
+                  <option value="female">Female</option>
+                  <option value="male">Male</option>
+                  <option value="nonbinary">Non-binary</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="block text-sm font-semibold">Race/Ethnicity (optional)</label>
+                <select name="compliance_race" class="w-full p-2 border rounded">
+                  <option value="">Prefer not to say</option>
+                  <option value="asian">Asian</option>
+                  <option value="black">Black or African American</option>
+                  <option value="hispanic">Hispanic or Latino</option>
+                  <option value="white">White</option>
+                  <option value="native">Native American or Alaska Native</option>
+                  <option value="pacific">Native Hawaiian or Pacific Islander</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            ` : ''}
+            ${complianceBlocks.includes('disability') ? `
+              <div class="mb-3">
+                <label class="block text-sm font-semibold">Disability status (optional)</label>
+                <select name="compliance_disability" class="w-full p-2 border rounded">
+                  <option value="">Prefer not to say</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
+            ` : ''}
+            ${complianceBlocks.includes('veteran') ? `
+              <div class="mb-3">
+                <label class="block text-sm font-semibold">Veteran status (optional)</label>
+                <select name="compliance_veteran" class="w-full p-2 border rounded">
+                  <option value="">Prefer not to say</option>
+                  <option value="protected_veteran">Protected Veteran</option>
+                  <option value="not_protected">Not a Protected Veteran</option>
+                </select>
+              </div>
+            ` : ''}
+            ${complianceBlocks.includes('work_auth') ? `
+              <div class="mb-3">
+                <label class="block text-sm font-semibold">Work authorization</label>
+                <select name="compliance_work_auth" class="w-full p-2 border rounded">
+                  <option value="">Prefer not to say</option>
+                  <option value="authorized">Authorized to work in the U.S.</option>
+                  <option value="not_authorized">Not authorized</option>
+                </select>
+              </div>
+            ` : ''}
+            ${complianceBlocks.includes('prior_employment') ? `
+              <div class="mb-3">
+                <label class="block text-sm font-semibold">Have you worked here before?</label>
+                <select name="compliance_prior_employment" class="w-full p-2 border rounded">
+                  <option value="">Prefer not to say</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
+            ` : ''}
+            ${complianceBlocks.includes('background_check') ? `
+              <div class="mb-3">
+                <label class="block text-sm font-semibold">Background check consent</label>
+                <select name="compliance_background_check" class="w-full p-2 border rounded">
+                  <option value="">Prefer not to say</option>
+                  <option value="yes">I consent</option>
+                  <option value="no">I do not consent</option>
+                </select>
+              </div>
+            ` : ''}
+          </div>
+          ` : ''}
           <button type="submit" class="text-purple px-4 py-2 rounded hover:bg-indigo-700">
             Submit Application
           </button>
@@ -139,6 +224,15 @@ export async function renderApply(container, jobId) {
         const formData = new FormData(e.target);
         const selectedResume = formData.get("resume") || formData.get("resume_link");
         const selectedCover = formData.get("cover_letter") || formData.get("cover_letter_link") || "";
+        const compliance = {
+          gender: formData.get('compliance_gender') || '',
+          race: formData.get('compliance_race') || '',
+          disability: formData.get('compliance_disability') || '',
+          veteran: formData.get('compliance_veteran') || '',
+          work_auth: formData.get('compliance_work_auth') || '',
+          prior_employment: formData.get('compliance_prior_employment') || '',
+          background_check: formData.get('compliance_background_check') || '',
+        };
         const resumeRequired = true;
 
         if (resumeRequired && !selectedResume) {
@@ -153,7 +247,7 @@ export async function renderApply(container, jobId) {
           const response = await fetch("/api/submit-application", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ jobId, resume: selectedResume, cover_letter: selectedCover }),
+            body: JSON.stringify({ jobId, resume: selectedResume, cover_letter: selectedCover, compliance }),
             credentials: "include"
           });
 

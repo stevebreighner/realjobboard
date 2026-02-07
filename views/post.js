@@ -57,6 +57,44 @@ export function renderPost(container) {
         }
         return `<input type="${f.type}" name="${f.name}" class="w-full p-2 border rounded" placeholder="${f.label}" ${f.required ? 'required' : ''} />`;
       }).join('')}
+      <div class="border rounded p-4 bg-white">
+        <h2 class="text-lg font-semibold mb-2">Compliance Questions (Optional)</h2>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" id="complianceEnabled" name="compliance_enabled" value="1" />
+          <span>Include compliance questions for applicants</span>
+        </label>
+        <div id="complianceOptions" class="mt-3 space-y-2 hidden">
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="compliance_blocks" value="eeo" />
+            <span>EEO Self‑ID (gender, race/ethnicity)</span>
+          </label>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="compliance_blocks" value="disability" />
+            <span>Disability self‑ID</span>
+          </label>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="compliance_blocks" value="veteran" />
+            <span>Veteran status</span>
+          </label>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="compliance_blocks" value="work_auth" />
+            <span>Work authorization</span>
+          </label>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="compliance_blocks" value="prior_employment" />
+            <span>Prior employment / rehire eligibility</span>
+          </label>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="compliance_blocks" value="background_check" />
+            <span>Background check consent</span>
+          </label>
+          <label class="flex items-center gap-2 text-sm mt-2">
+            <input type="checkbox" name="compliance_federal" value="1" />
+            <span>Federal/contractor role</span>
+          </label>
+        </div>
+        <p class="text-xs text-gray-500 mt-2">Applicants can skip these unless you mark them required in your own process.</p>
+      </div>
       <p id="postError" class="text-sm text-red-600"></p>
       <button type="submit" class="text-purple px-4 py-2 rounded">${CONFIG.POST_PAGE_COPY?.CONTINUE_PAYMENT || 'Continue to Payment'}</button>
     </form>
@@ -65,6 +103,13 @@ export function renderPost(container) {
 
   const form = container.querySelector('#postForm');
   const postError = container.querySelector('#postError');
+  const complianceEnabled = form.querySelector('#complianceEnabled');
+  const complianceOptions = form.querySelector('#complianceOptions');
+  complianceEnabled?.addEventListener('change', () => {
+    if (complianceOptions) {
+      complianceOptions.classList.toggle('hidden', !complianceEnabled.checked);
+    }
+  });
   const countryInput = form.querySelector('input[name="country"]');
   if (countryInput && !countryInput.value) {
     countryInput.value = 'United States';
@@ -99,7 +144,8 @@ export function renderPost(container) {
   setupZipLookup();
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const formData = Object.fromEntries(new FormData(form).entries());
+    const fd = new FormData(form);
+    const formData = Object.fromEntries(fd.entries());
 
     postError.textContent = '';
     const country = (formData.country || '').trim();
@@ -169,7 +215,17 @@ export function renderPost(container) {
 
       const tier = formData.job_tier || (tiers[0]?.id || 'standard');
       const promoCode = (formData.promo_code || '').trim();
-      const payload = { ...formData, rate_min: rateMin, rate_max: rateMax, tier, promo_code: promoCode };
+      const complianceBlocks = fd.getAll('compliance_blocks');
+      const payload = {
+        ...formData,
+        rate_min: rateMin,
+        rate_max: rateMax,
+        tier,
+        promo_code: promoCode,
+        compliance_enabled: complianceEnabled?.checked ? '1' : '0',
+        compliance_federal: formData.compliance_federal ? '1' : '0',
+        compliance_blocks: complianceBlocks.join(','),
+      };
 
       const checkoutRes = await fetch('/api/stripe-checkout', {
         method: 'POST',
