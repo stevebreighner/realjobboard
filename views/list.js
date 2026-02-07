@@ -135,6 +135,19 @@ export function renderList(container) {
     if (t === 'commission') return 'commission';
     return val || '';
   };
+  const formatMoney = (val) => {
+    const num = parseFloat(val);
+    if (isNaN(num)) return val;
+    const decimals = Number.isInteger(num) ? 0 : 2;
+    return new Intl.NumberFormat('en-US', { maximumFractionDigits: decimals, minimumFractionDigits: decimals }).format(num);
+  };
+  const formatRate = (min, max, typeLabel) => {
+    if (!min && !max && !typeLabel) return '';
+    const minLabel = min ? `$${formatMoney(min)}` : '';
+    const maxLabel = max ? `$${formatMoney(max)}` : '';
+    const range = minLabel && maxLabel ? `${minLabel}–${maxLabel}` : (minLabel || maxLabel);
+    return `${range}${typeLabel ? ` ${typeLabel}` : ''}`.trim();
+  };
   const isFeatured = (item) => {
     const raw = getMetaValue(item, 'job_featured');
     return ['1', 'true', 'yes'].includes(String(raw).toLowerCase());
@@ -536,7 +549,7 @@ export function renderList(container) {
               const safeCompanySlug = escapeHtml(companySlug || '');
               const summary = escapeHtml(item.summary || '');
               const safeField = escapeHtml(field);
-              const safeRate = escapeHtml(`${rateMin || ''}${rateMax ? `–${rateMax}` : ''} ${rateType || ''}`.trim());
+              const safeRate = escapeHtml(formatRate(rateMin, rateMax, rateType));
               const safeLocation = escapeHtml(location);
               const safeDistance = escapeHtml(distanceLabel);
               return `
