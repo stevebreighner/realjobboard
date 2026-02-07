@@ -21,6 +21,7 @@ export async function renderListDetail(container, id) {
     const formatMetaValue = (key, val) => {
       if (hiddenMetaKeys.has(key)) return '';
       if (key === 'company' && typeof val === 'string' && val.includes('@')) return '';
+      if (['company_slug', 'location', 'description'].includes(key)) return '';
       if (key === 'job_applications' && typeof val === 'string') {
         const apps = [];
         const entryRegex = /s:7:"user_id";i:(\d+);s:6:"resume";s:\d+:"([^"]*)";s:12:"cover_letter";s:\d+:"([^"]*)";s:4:"time";i:(\d+);/g;
@@ -191,11 +192,29 @@ export async function renderListDetail(container, id) {
             <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               ${Object.entries(data.meta)
                 .map(([key, val]) => {
-                  const formatted = formatMetaValue(key, val);
+                  const labelMap = {
+                    rate_type: 'Rate Type',
+                    rate_min: 'Rate Min',
+                    rate_max: 'Rate Max',
+                    job_type: 'Job Type',
+                    field: 'Field',
+                    city: 'City',
+                    state: 'State',
+                    zip: 'ZIP',
+                    country: 'Country',
+                  };
+                  const displayKey = labelMap[key] || key.replace(/_/g, ' ');
+                  let formatted = formatMetaValue(key, val);
+                  if (key === 'rate_min' || key === 'rate_max') {
+                    formatted = escapeHtml(`$${formatMoney(val)}`);
+                  }
+                  if (key === 'rate_type') {
+                    formatted = escapeHtml((val || '').toString().replace(/_/g, ' '));
+                  }
                   if (!formatted) return '';
                   return `
                     <div class="border border-slate-200 rounded-lg px-3 py-2 bg-white">
-                      <div class="text-xs uppercase tracking-wide text-slate-500">${escapeHtml(key)}</div>
+                      <div class="text-xs uppercase tracking-wide text-slate-500">${escapeHtml(displayKey)}</div>
                       <div class="text-slate-800">${formatted}</div>
                     </div>
                   `;
