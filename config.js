@@ -270,21 +270,7 @@ export const CONFIG = {
         primary: { label: 'Try multi‑search', href: '/#list' },
         secondary: { label: 'Employer tools', href: '/#employers' }
       }
-    ]
-    JOB_COPY: {
-      SINGULAR: 'Job',
-      PLURAL: 'Jobs',
-      POST_CTA: 'Post a job',
-      SEARCH_CTA: 'Search openings',
-      APPLY_FOR_PREFIX: 'Apply for:',
-      LIST_TITLE: 'Open Roles',
-      LIST_SUBTITLE: 'Curated listings with privacy-first applications.',
-      ALERTS_TITLE: 'Job Alerts',
-      MY_POSTS_TITLE: 'My Job Posts',
-      BACK_TO_DETAIL: '← Back to Job Detail',
-      MAX_APPS_REACHED: 'This job has reached the maximum of 25 applications.',
-      DRAFT_CREATED: 'Job draft created. You can publish it from your dashboard.'
-    },
+    ],
   
     fields: [
       { name: 'title', label: 'Title', type: 'text', required: true },
