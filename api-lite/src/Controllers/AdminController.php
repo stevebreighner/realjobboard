@@ -5,14 +5,17 @@ namespace App\Controllers;
 
 use App\Services\AuthService;
 use App\Models\PromoModel;
+use App\Models\EmailSubscriberModel;
 
 class AdminController {
   private AuthService $auth;
   private PromoModel $promos;
+  private EmailSubscriberModel $subscribers;
 
   public function __construct() {
     $this->auth = new AuthService($GLOBALS['DB_PDO']);
     $this->promos = new PromoModel();
+    $this->subscribers = new EmailSubscriberModel();
   }
 
   private function requireAdmin(): array {
@@ -180,5 +183,11 @@ class AdminController {
       fputcsv($out, $row);
     }
     fclose($out);
+  }
+
+  public function subscribersList(): array {
+    $user = $this->requireAdmin();
+    if (empty($user)) return ['error' => 'Access denied'];
+    return $this->subscribers->list(200);
   }
 }

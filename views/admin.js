@@ -152,6 +152,15 @@ export async function renderAdmin(container) {
         <p class="text-xs text-gray-500 mb-2">Minimal, first‑party only. Includes path, referrer, and timestamp.</p>
         <div id="analyticsContainer" class="space-y-2 text-sm"></div>
       </div>
+
+      <div class="mb-10">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Email Subscribers</h2>
+          <button id="refreshSubscribers" class="text-sm text-indigo-600 hover:underline">Refresh</button>
+        </div>
+        <p class="text-xs text-gray-500 mb-2">Users who saved job alerts (email list).</p>
+        <div id="subscribersContainer" class="space-y-2 text-sm"></div>
+      </div>
     </div>
   `;
 
@@ -192,6 +201,8 @@ export async function renderAdmin(container) {
   const logContainer = container.querySelector('#logContainer');
   const refreshAnalyticsBtn = container.querySelector('#refreshAnalytics');
   const analyticsContainer = container.querySelector('#analyticsContainer');
+  const refreshSubscribersBtn = container.querySelector('#refreshSubscribers');
+  const subscribersContainer = container.querySelector('#subscribersContainer');
 
   const session = await getSessionCached({ maxAgeMs: 30000 });
   const roles = Array.isArray(session?.roles) ? session.roles : [];
@@ -267,6 +278,27 @@ export async function renderAdmin(container) {
       }
     } catch (err) {
       devModeStatus.textContent = 'Unable to load dev mode';
+    }
+  }
+
+  async function fetchSubscribers() {
+    if (!subscribersContainer) return;
+    subscribersContainer.innerHTML = '<div class="text-gray-500">Loading...</div>';
+    try {
+      const res = await fetch(`/api/admin/subscribers?_=${Date.now()}`, { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data) || !data.length) {
+        subscribersContainer.innerHTML = '<div class="text-gray-500">No subscribers yet.</div>';
+        return;
+      }
+      subscribersContainer.innerHTML = data.map(row => `
+        <div class="border rounded-lg p-3 bg-white">
+          <div class="font-medium">${row.email}</div>
+          <div class="text-xs text-gray-500">User ID: ${row.user_id || '—'} • ${row.status} • Last: ${row.last_activity || ''}</div>
+        </div>
+      `).join('');
+    } catch (err) {
+      subscribersContainer.innerHTML = '<div class="text-red-600">Failed to load subscribers.</div>';
     }
   }
 
@@ -986,6 +1018,7 @@ export async function renderAdmin(container) {
   refreshUsersBtn.addEventListener('click', fetchUsers);
   refreshJobsBtn.addEventListener('click', fetchJobs);
   refreshAuditBtn.addEventListener('click', fetchAudit);
+  refreshSubscribersBtn?.addEventListener('click', fetchSubscribers);
   exportUsersBtn.addEventListener('click', () => {
     window.location.href = '/wp-json/customapi/v1/admin/export-users';
   });
@@ -999,4 +1032,5 @@ export async function renderAdmin(container) {
   fetchJobs();
   fetchAudit();
   fetchTemplates();
+  fetchSubscribers();
 }
