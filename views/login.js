@@ -10,7 +10,7 @@ export function renderLogin(container) {
         <input type="email" placeholder="Email" class="w-full p-2 border rounded" required />
         <div class="relative w-full">
           <input type="password" id="loginPassword" placeholder="Password" class="w-full p-2 border rounded pr-10" required />
-          <button type="button" id="toggleLoginPassword" class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-500 bg-transparent border-0 p-0 m-0" style="width:2rem;height:2rem;">
+          <button type="button" id="toggleLoginPassword" class="absolute inset-y-0 right-2 flex items-center justify-center text-gray-500 bg-transparent border-0 p-0 m-0" style="width:2rem;">
             <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/>
               <circle cx="12" cy="12" r="3"/>

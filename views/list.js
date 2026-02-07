@@ -759,7 +759,7 @@ export function renderList(container) {
                       <button data-save-id="${id}" class="text-sm ${isSaved ? 'text-amber-700' : 'text-indigo-600'} hover:underline">
                         ${isSaved ? 'Saved' : 'Save'}
                       </button>
-                      <a href="/#list-detail?id=${id}" class="inline-flex items-center gap-2 text-indigo-700 border border-indigo-300 px-2.5 py-1 rounded-full hover:border-indigo-500 hover:bg-indigo-50 transition">
+                      <a href="/#list-detail?id=${id}" data-detail-id="${id}" class="js-view-detail inline-flex items-center gap-2 text-indigo-700 border border-indigo-300 px-2.5 py-1 rounded-full hover:border-indigo-500 hover:bg-indigo-50 transition">
                         View
                         <span aria-hidden="true">→</span>
                       </a>
@@ -770,6 +770,23 @@ export function renderList(container) {
             })
             .join('')
         : `<p>No items found.</p>`;
+      attachDetailLinks();
+    }
+
+    function attachDetailLinks() {
+      const links = itemsContainer.querySelectorAll('.js-view-detail');
+      links.forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const id = link.getAttribute('data-detail-id');
+          const app = document.getElementById('app');
+          if (app) {
+            app.style.opacity = '0';
+            app.style.visibility = 'hidden';
+          }
+          window.location.hash = `#list-detail?id=${id}`;
+        }, { once: true });
+      });
     }
     
 }
