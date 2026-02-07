@@ -6,17 +6,6 @@ export function renderLogin(container) {
   container.innerHTML = `
     <div class="max-w-md mx-auto px-4">
       <h1 class="text-2xl font-bold mb-4 text-center">Login</h1>
-      <div id="googleLoginWrap" class="mb-4">
-        <button type="button" id="googleLoginBtn" class="w-full border border-slate-300 rounded px-4 py-2 flex items-center justify-center gap-2 hover:bg-slate-50">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="h-5 w-5">
-            <path fill="#EA4335" d="M24 9.5c3.54 0 6.77 1.22 9.29 3.22l6.94-6.94C35.87 2.2 30.23 0 24 0 14.62 0 6.53 5.38 2.56 13.22l8.09 6.29C12.6 13.24 17.82 9.5 24 9.5z"/>
-            <path fill="#4285F4" d="M46.5 24c0-1.59-.16-3.12-.46-4.59H24v9.19h12.71c-.55 2.97-2.22 5.49-4.71 7.19l7.22 5.6C43.5 37.36 46.5 31.1 46.5 24z"/>
-            <path fill="#FBBC05" d="M10.65 28.51c-.53-1.58-.83-3.27-.83-5.01s.3-3.43.83-5.01l-8.09-6.29C.9 15.08 0 19.45 0 24s.9 8.92 2.56 12.8l8.09-6.29z"/>
-            <path fill="#34A853" d="M24 48c6.23 0 11.46-2.05 15.28-5.61l-7.22-5.6c-2.01 1.35-4.6 2.15-8.06 2.15-6.18 0-11.4-3.74-13.35-9.01l-8.09 6.29C6.53 42.62 14.62 48 24 48z"/>
-          </svg>
-          Continue with Google
-        </button>
-      </div>
       <form id="loginForm" class="space-y-4">
         <input type="email" placeholder="Email" class="w-full p-2 border rounded" required />
         <div class="relative w-full">
@@ -30,6 +19,17 @@ export function renderLogin(container) {
         </div>
         <button type="submit" class="text-purple px-4 py-2 rounded w-full">Login</button>
       </form>
+      <div id="googleLoginWrap" class="mt-4">
+        <button type="button" id="googleLoginBtn" class="w-full border border-slate-300 rounded px-4 py-2 flex items-center justify-center gap-2 hover:bg-slate-50">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="h-5 w-5">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.77 1.22 9.29 3.22l6.94-6.94C35.87 2.2 30.23 0 24 0 14.62 0 6.53 5.38 2.56 13.22l8.09 6.29C12.6 13.24 17.82 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.5 24c0-1.59-.16-3.12-.46-4.59H24v9.19h12.71c-.55 2.97-2.22 5.49-4.71 7.19l7.22 5.6C43.5 37.36 46.5 31.1 46.5 24z"/>
+            <path fill="#FBBC05" d="M10.65 28.51c-.53-1.58-.83-3.27-.83-5.01s.3-3.43.83-5.01l-8.09-6.29C.9 15.08 0 19.45 0 24s.9 8.92 2.56 12.8l8.09-6.29z"/>
+            <path fill="#34A853" d="M24 48c6.23 0 11.46-2.05 15.28-5.61l-7.22-5.6c-2.01 1.35-4.6 2.15-8.06 2.15-6.18 0-11.4-3.74-13.35-9.01l-8.09 6.29C6.53 42.62 14.62 48 24 48z"/>
+          </svg>
+          Continue with Google
+        </button>
+      </div>
       <div id="loginMessage" class="mt-4 text-sm"></div>
       <div id="twoFASection" style="display:none; margin-top:1rem;">
         <label for="twoFACode" class="block mb-1">Enter 2FA Code:</label>
@@ -37,20 +37,22 @@ export function renderLogin(container) {
         <button id="verify2FAButton" class="mt-2 text-purple px-4 py-2 rounded w-full">Verify</button>
       </div>
       <br>
-      <p class="mt-4"><a href="/#forgot-password" class="text-blue-600">Forgot Password</a></p>
-      <div class="mt-4">
-        <p class="text-sm mb-2">Need a new verification email?</p>
-        <form id="resendVerifyForm" class="space-y-2">
-          <input type="email" id="resendEmail" placeholder="Email" class="w-full p-2 border rounded" required />
-          <button type="submit" class="text-purple px-4 py-2 rounded w-full">Resend Verification</button>
-        </form>
-      </div>
-      <div class="mt-6">
-        <p class="text-sm mb-2">Prefer a one-time link?</p>
-        <form id="magicLinkForm" class="space-y-2">
-          <input type="email" id="magicEmail" placeholder="Email" class="w-full p-2 border rounded" required />
-          <button type="submit" class="text-purple px-4 py-2 rounded w-full">Send Magic Link</button>
-        </form>
+      <div class="mt-4 space-y-3">
+        <a href="/#forgot-password" class="text-blue-600 text-sm block text-center">Forgot Password</a>
+        <details class="border border-slate-200 rounded p-3">
+          <summary class="cursor-pointer text-sm text-slate-700">Email me a magic login link</summary>
+          <form id="magicLinkForm" class="space-y-2 mt-3">
+            <input type="email" id="magicEmail" placeholder="Email" class="w-full p-2 border rounded" required />
+            <button type="submit" class="text-purple px-4 py-2 rounded w-full">Send Magic Link</button>
+          </form>
+        </details>
+        <details class="border border-slate-200 rounded p-3">
+          <summary class="cursor-pointer text-sm text-slate-700">Resend verification email</summary>
+          <form id="resendVerifyForm" class="space-y-2 mt-3">
+            <input type="email" id="resendEmail" placeholder="Email" class="w-full p-2 border rounded" required />
+            <button type="submit" class="text-purple px-4 py-2 rounded w-full">Resend Verification</button>
+          </form>
+        </details>
       </div>
       <p class="mt-4 text-center">No account? <a href="/#register" class="text-blue-600">Register here</a></p>
     </div>

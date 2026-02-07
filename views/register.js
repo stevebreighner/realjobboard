@@ -2,9 +2,10 @@ import { CONFIG, US_STATES } from '../config.js'; // optional if you want to use
 
 export function renderRegister(container) {
   container.innerHTML = `
-    <h1 class="text-2xl font-bold mb-4">Register</h1>
-    <div id="googleRegisterWrap" class="mb-4">
-      <button type="button" id="googleRegisterBtn" class="w-full border border-slate-300 rounded px-4 py-2 flex items-center justify-center gap-2 hover:bg-slate-50">
+    <div class="max-w-md mx-auto px-4">
+      <h1 class="text-2xl font-bold mb-4 text-center">Register</h1>
+      <div id="googleRegisterWrap" class="mb-4">
+        <button type="button" id="googleRegisterBtn" class="w-full border border-slate-300 rounded px-4 py-2 flex items-center justify-center gap-2 hover:bg-slate-50">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="h-5 w-5">
           <path fill="#EA4335" d="M24 9.5c3.54 0 6.77 1.22 9.29 3.22l6.94-6.94C35.87 2.2 30.23 0 24 0 14.62 0 6.53 5.38 2.56 13.22l8.09 6.29C12.6 13.24 17.82 9.5 24 9.5z"/>
           <path fill="#4285F4" d="M46.5 24c0-1.59-.16-3.12-.46-4.59H24v9.19h12.71c-.55 2.97-2.22 5.49-4.71 7.19l7.22 5.6C43.5 37.36 46.5 31.1 46.5 24z"/>
@@ -13,8 +14,8 @@ export function renderRegister(container) {
         </svg>
         Continue with Google
       </button>
-    </div>
-    <form id="registerForm" class="space-y-4">
+      </div>
+      <form id="registerForm" class="space-y-4">
       <input type="text" name="website" autocomplete="off" tabindex="-1" style="display:none" />
       <input type="hidden" name="ts" value="${Math.floor(Date.now() / 1000)}" />
       <input type="text" name="username" placeholder="Username" class="w-full p-2 border rounded" required />
@@ -63,9 +64,10 @@ export function renderRegister(container) {
 
       <button type="submit" class="text-purple px-4 py-2 rounded">Register</button>
     </form>
-    <p class="mt-4">
-      Have an account? <a href="#/login" class="text-blue-600">Login here</a>
-    </p>
+      <p class="mt-4 text-center">
+        Have an account? <a href="#/login" class="text-blue-600">Login here</a>
+      </p>
+    </div>
   `;
 
   const form = container.querySelector('#registerForm');
