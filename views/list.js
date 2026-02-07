@@ -93,6 +93,7 @@ export function renderList(container) {
       <p id="distanceHint" class="text-xs text-gray-500 mb-4 hidden">
         Add your ZIP in Profile to enable distance filtering.
       </p>
+      <p id="searchStatus" class="text-xs text-slate-500 mb-4 hidden">Searching...</p>
 
       <div class="mb-6 border rounded-2xl p-4 bg-white shadow-sm">
         <div class="flex items-center justify-between mb-3">
@@ -123,6 +124,7 @@ export function renderList(container) {
   const sortSelect = container.querySelector('#sortSelect');
   const distanceSelect = container.querySelector('#distanceSelect');
   const distanceHint = container.querySelector('#distanceHint');
+  const searchStatus = container.querySelector('#searchStatus');
   const saveAlertBtn = container.querySelector('#saveAlertBtn');
   const alertsContainer = container.querySelector('#alertsContainer');
   const savedJobIds = new Set();
@@ -299,6 +301,10 @@ export function renderList(container) {
   };
 
   const applyFilters = async () => {
+    if (searchStatus) {
+      searchStatus.classList.remove('hidden');
+      searchStatus.textContent = 'Searching...';
+    }
     const rawQuery = searchInput.value || '';
     const query = normalize(rawQuery);
     const cityMatch = rawQuery.match(/\bin\s+([a-z\s]+)$/i);
@@ -417,6 +423,13 @@ export function renderList(container) {
     const pageItems = sorted.slice(start, start + pageSize);
     renderItems(pageItems);
     renderPagination(totalItems, totalPages);
+    if (searchStatus) {
+      searchStatus.textContent = `Showing ${Math.min(totalItems, (currentPage - 1) * pageSize + 1)}–${Math.min(totalItems, currentPage * pageSize)} of ${totalItems}`;
+      if (totalItems === 0) {
+        searchStatus.textContent = 'No matches found.';
+      }
+      searchStatus.classList.remove('hidden');
+    }
   };
 
   function renderPagination(totalItems, totalPages) {
