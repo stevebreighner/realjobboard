@@ -753,8 +753,8 @@ export function renderList(container) {
                       <button data-save-id="${id}" class="text-sm ${isSaved ? 'text-amber-700' : 'text-indigo-600'} hover:underline">
                         ${isSaved ? 'Saved' : 'Save'}
                       </button>
-                      <a href="/#list-detail?id=${id}" class="inline-flex items-center gap-2 text-indigo-700 border border-indigo-300 px-3 py-1.5 rounded-full hover:border-indigo-500 hover:bg-indigo-50 transition">
-                        View Details
+                      <a href="/#list-detail?id=${id}" class="inline-flex items-center gap-2 text-indigo-700 border border-indigo-300 px-2.5 py-1 rounded-full hover:border-indigo-500 hover:bg-indigo-50 transition">
+                        View
                         <span aria-hidden="true">→</span>
                       </a>
                     </div>
