@@ -51,13 +51,20 @@ const adminRoutes = ['admin'];
 export async function router() {
   
   const app = document.getElementById('app');
+  if (app) {
+    app.style.opacity = '0';
+    app.style.transition = 'opacity 120ms ease';
+  }
   const { path, params } = parseHash();
   const normalizedPath = (!path || path === '/') ? 'home' : kebabToCamel(path);
   console.log('Hash path:', path);
   console.log('Normalized path:', normalizedPath);
   console.log('Params:', params);
   const scrollToTopAfterRender = () => {
-    requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      if (app) app.style.opacity = '1';
+    });
   };
   if (protectedRoutes.includes(normalizedPath)) {
     const session = await getSessionCached({ maxAgeMs: 30000 });

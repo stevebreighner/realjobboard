@@ -131,6 +131,35 @@ export function renderList(container) {
   let pageSize = 12;
 
   const normalize = (val) => (val || '').toString().toLowerCase();
+  const tokenize = (val) => normalize(val).split(/[^a-z0-9]+/).filter(Boolean);
+  const levenshtein = (a, b) => {
+    if (a === b) return 0;
+    const alen = a.length;
+    const blen = b.length;
+    if (!alen) return blen;
+    if (!blen) return alen;
+    const dp = Array.from({ length: alen + 1 }, () => new Array(blen + 1).fill(0));
+    for (let i = 0; i <= alen; i++) dp[i][0] = i;
+    for (let j = 0; j <= blen; j++) dp[0][j] = j;
+    for (let i = 1; i <= alen; i++) {
+      for (let j = 1; j <= blen; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        dp[i][j] = Math.min(
+          dp[i - 1][j] + 1,
+          dp[i][j - 1] + 1,
+          dp[i - 1][j - 1] + cost
+        );
+      }
+    }
+    return dp[alen][blen];
+  };
+  const fuzzyIncludes = (term, text) => {
+    if (!term) return true;
+    if (text.includes(term)) return true;
+    const tokens = tokenize(text);
+    const limit = term.length <= 4 ? 1 : term.length <= 7 ? 2 : 3;
+    return tokens.some(tok => tok.length >= 3 && levenshtein(term, tok) <= limit);
+  };
   const getMetaValue = (item, key) =>
     (item?.meta && item.meta[key] != null ? item.meta[key] : item?.[key]) ?? '';
   const formatRateType = (val) => {
@@ -257,14 +286,14 @@ export function renderList(container) {
     const filtered = items.filter(item => {
       const searchText = getSearchText(item);
       if (useMulti) {
-        const matchCount = terms.reduce((acc, term) => acc + (searchText.includes(term) ? 1 : 0), 0);
+        const matchCount = terms.reduce((acc, term) => acc + (fuzzyIncludes(term, searchText) ? 1 : 0), 0);
         if (matchCount === 0) return false;
         item.__matchCount = matchCount;
       } else if (query) {
         if (wordTerms.length > 1) {
-          if (!wordTerms.every(term => searchText.includes(term))) return false;
+          if (!wordTerms.every(term => fuzzyIncludes(term, searchText))) return false;
         } else if (!searchText.includes(query)) {
-          return false;
+          if (!fuzzyIncludes(query, searchText)) return false;
         }
       }
       if (fieldQuery && !normalize(getMetaValue(item, 'field')).includes(fieldQuery)) return false;

@@ -119,6 +119,27 @@ button {
   margin-right: 0.5rem;
 }
 
+/* Ensure outline-style buttons are always visible */
+button.text-purple,
+button.text-indigo-700,
+button.text-indigo-600 {
+  border-color: #c7d2fe;
+  background-color: transparent;
+}
+button.text-purple:hover,
+button.text-indigo-700:hover,
+button.text-indigo-600:hover {
+  border-color: #818cf8;
+}
+
+/* Make Tailwind width utilities take precedence */
+input.w-full,
+textarea.w-full,
+select.w-full {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
 button:hover {
   border-color: #646cff;
 }
