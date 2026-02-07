@@ -580,13 +580,14 @@ export function renderList(container) {
                       ${safeDistance}
                     </span>` : ''}
                   </div>
-                  <div class="mt-5 flex items-center justify-between text-sm">
+                  <div class="mt-5 flex items-center justify-end text-sm">
                     <div class="flex items-center gap-3">
                       <button data-save-id="${id}" class="text-sm ${isSaved ? 'text-amber-700' : 'text-indigo-600'} hover:underline">
                         ${isSaved ? 'Saved' : 'Save'}
                       </button>
-                      <a href="/#list-detail?id=${id}" class="text-indigo-600 font-semibold hover:underline">
-                        View Details →
+                      <a href="/#list-detail?id=${id}" class="inline-flex items-center gap-2 text-indigo-700 border border-indigo-300 px-3 py-1.5 rounded-full hover:border-indigo-500 hover:bg-indigo-50 transition">
+                        View Details
+                        <span aria-hidden="true">→</span>
                       </a>
                     </div>
                   </div>
