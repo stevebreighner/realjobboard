@@ -22,6 +22,7 @@ use App\Controllers\EmailTemplateController;
 use App\Controllers\AdminCompanyController;
 use App\Controllers\OAuthController;
 use App\Controllers\TrackingController;
+use App\Controllers\SubscriberController;
 
 return [
   'GET' => [
@@ -58,6 +59,7 @@ return [
     '/api/admin/company' => [new AdminCompanyController(), 'detail'],
     '/api/admin/analytics' => [new TrackingController(), 'list'],
     '/api/admin/subscribers' => [new AdminController(), 'subscribersList'],
+    '/api/admin/subscribers-digest' => [new AdminController(), 'sendDigest'],
     '/api/user-files' => [new UserFileController(), 'list'],
     '/api/user-file' => [new UserFileController(), 'download'],
     '/api/resumes' => [new UserFileController(), 'listResumes'],
@@ -65,7 +67,9 @@ return [
     '/api/oauth/google/start' => [new OAuthController(), 'startGoogle'],
     '/api/oauth/google/callback' => [new OAuthController(), 'callbackGoogle'],
     '/api/oauth/google/status' => [new OAuthController(), 'statusGoogle'],
+    '/api/unsubscribe' => [new SubscriberController(), 'unsubscribe'],
     // Legacy aliases
+    '/wp-json/customapi/v1/unsubscribe' => [new SubscriberController(), 'unsubscribe'],
     '/wp-json/customapi/v1/dev-flags' => [new DevFlagController(), 'getFlags'],
     '/wp-json/customapi/v1/saved-jobs' => [new SavedJobController(), 'list'],
     '/wp-json/customapi/v1/job-alerts' => [new JobAlertController(), 'list'],
@@ -83,6 +87,7 @@ return [
     '/wp-json/customapi/v1/admin/company' => [new AdminCompanyController(), 'detail'],
     '/wp-json/customapi/v1/admin/analytics' => [new TrackingController(), 'list'],
     '/wp-json/customapi/v1/admin/subscribers' => [new AdminController(), 'subscribersList'],
+    '/wp-json/customapi/v1/admin/subscribers-digest' => [new AdminController(), 'sendDigest'],
     '/wp-json/customapi/v1/ping' => [new HealthController(), 'ping'],
     '/wp-json/customapi/v1/jobs' => [new JobsController(), 'index'],
     '/wp-json/customapi/v1/job' => [new JobsController(), 'detail'],

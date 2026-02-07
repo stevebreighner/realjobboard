@@ -6,16 +6,23 @@ namespace App\Controllers;
 use App\Services\AuthService;
 use App\Models\PromoModel;
 use App\Models\EmailSubscriberModel;
+use App\Models\JobModel;
+use App\Services\Mailer;
+use App\Models\AuditLogModel;
 
 class AdminController {
   private AuthService $auth;
   private PromoModel $promos;
   private EmailSubscriberModel $subscribers;
+  private JobModel $jobs;
+  private AuditLogModel $audit;
 
   public function __construct() {
     $this->auth = new AuthService($GLOBALS['DB_PDO']);
     $this->promos = new PromoModel();
     $this->subscribers = new EmailSubscriberModel();
+    $this->jobs = new JobModel();
+    $this->audit = new AuditLogModel();
   }
 
   private function requireAdmin(): array {
@@ -189,5 +196,49 @@ class AdminController {
     $user = $this->requireAdmin();
     if (empty($user)) return ['error' => 'Access denied'];
     return $this->subscribers->list(200);
+  }
+
+  public function sendDigest(): array {
+    $user = $this->requireAdmin();
+    if (empty($user)) return ['error' => 'Access denied'];
+    $subscribers = $this->subscribers->list(1000);
+    if (empty($subscribers)) {
+      return ['sent' => 0];
+    }
+    $jobs = $this->jobs->list(10);
+    $baseUrl = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    $siteName = $_ENV['EMAIL_FROM_NAME'] ?? 'JobBoard';
+    $mailer = new Mailer();
+    $sent = 0;
+    foreach ($subscribers as $sub) {
+      if (($sub['status'] ?? '') !== 'subscribed') continue;
+      $email = $sub['email'] ?? '';
+      if (!$email) continue;
+      $token = $this->subscribers->getOrCreateToken($email);
+      $unsubscribeUrl = $baseUrl . '/api/unsubscribe?token=' . urlencode($token);
+      $items = '';
+      foreach ($jobs as $job) {
+        $title = htmlspecialchars($job['title'] ?? 'Job', ENT_QUOTES);
+        $jobUrl = $baseUrl . '/#list-detail?id=' . urlencode((string) ($job['id'] ?? ''));
+        $items .= '<li style="margin:0 0 6px 0;"><a href="' . $jobUrl . '" style="color:#4f46e5;text-decoration:none;">' . $title . '</a></li>';
+      }
+      $html = '
+        <div style="font-family: Arial, sans-serif; background:#f8fafc; padding:24px;">
+          <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;">
+            <h2 style="margin:0 0 12px 0;color:#0f172a;">New jobs this week</h2>
+            <p style="margin:0 0 12px 0;color:#475569;">Here are a few fresh listings on ' . htmlspecialchars($siteName, ENT_QUOTES) . '.</p>
+            <ul style="padding-left:18px;color:#0f172a;">' . $items . '</ul>
+            <p style="margin:16px 0 0 0;font-size:12px;color:#94a3b8;">Unsubscribe: <a href="' . htmlspecialchars($unsubscribeUrl, ENT_QUOTES) . '" style="color:#64748b;">' . htmlspecialchars($unsubscribeUrl, ENT_QUOTES) . '</a></p>
+          </div>
+        </div>
+      ';
+      if ($mailer->send($email, $siteName . ' — Weekly job digest', $html)) {
+        $sent++;
+      }
+    }
+    $this->audit->log((int) ($user['id'] ?? 0), 'digest_sent', 'Weekly digest sent', [
+      'count' => $sent,
+    ]);
+    return ['sent' => $sent];
   }
 }

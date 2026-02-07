@@ -156,9 +156,13 @@ export async function renderAdmin(container) {
       <div class="mb-10">
         <div class="flex items-center justify-between mb-2">
           <h2 class="text-xl font-semibold">Email Subscribers</h2>
-          <button id="refreshSubscribers" class="text-sm text-indigo-600 hover:underline">Refresh</button>
+          <div class="flex items-center gap-3">
+            <button id="sendDigest" class="text-sm text-indigo-600 hover:underline">Send digest</button>
+            <button id="refreshSubscribers" class="text-sm text-indigo-600 hover:underline">Refresh</button>
+          </div>
         </div>
         <p class="text-xs text-gray-500 mb-2">Users who saved job alerts (email list).</p>
+        <div id="subscribersMsg" class="text-sm mb-2"></div>
         <div id="subscribersContainer" class="space-y-2 text-sm"></div>
       </div>
     </div>
@@ -203,6 +207,8 @@ export async function renderAdmin(container) {
   const analyticsContainer = container.querySelector('#analyticsContainer');
   const refreshSubscribersBtn = container.querySelector('#refreshSubscribers');
   const subscribersContainer = container.querySelector('#subscribersContainer');
+  const sendDigestBtn = container.querySelector('#sendDigest');
+  const subscribersMsg = container.querySelector('#subscribersMsg');
 
   const session = await getSessionCached({ maxAgeMs: 30000 });
   const roles = Array.isArray(session?.roles) ? session.roles : [];
@@ -299,6 +305,29 @@ export async function renderAdmin(container) {
       `).join('');
     } catch (err) {
       subscribersContainer.innerHTML = '<div class="text-red-600">Failed to load subscribers.</div>';
+    }
+  }
+
+  async function sendDigest() {
+    if (!subscribersMsg) return;
+    subscribersMsg.textContent = 'Sending digest...';
+    subscribersMsg.className = 'text-sm text-gray-600';
+    try {
+      const res = await fetch('/api/admin/subscribers-digest', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        subscribersMsg.textContent = data.error || 'Digest failed.';
+        subscribersMsg.className = 'text-sm text-red-600';
+        return;
+      }
+      subscribersMsg.textContent = `Digest sent to ${data.sent || 0} subscriber(s).`;
+      subscribersMsg.className = 'text-sm text-green-700';
+    } catch (err) {
+      subscribersMsg.textContent = 'Digest failed.';
+      subscribersMsg.className = 'text-sm text-red-600';
     }
   }
 
@@ -1019,6 +1048,7 @@ export async function renderAdmin(container) {
   refreshJobsBtn.addEventListener('click', fetchJobs);
   refreshAuditBtn.addEventListener('click', fetchAudit);
   refreshSubscribersBtn?.addEventListener('click', fetchSubscribers);
+  sendDigestBtn?.addEventListener('click', sendDigest);
   exportUsersBtn.addEventListener('click', () => {
     window.location.href = '/wp-json/customapi/v1/admin/export-users';
   });

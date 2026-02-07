@@ -49,7 +49,10 @@ class JobAlertController {
     $email = $user['email'] ?? '';
     if ($email) {
       $this->subscribers->upsert((int) $user['id'], $email);
+      $token = $this->subscribers->getOrCreateToken($email);
       $siteName = $_ENV['EMAIL_FROM_NAME'] ?? 'JobBoard';
+      $baseUrl = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+      $unsubscribeUrl = $baseUrl . '/api/unsubscribe?token=' . urlencode($token);
       $subject = $siteName . ' — Job alert saved';
       $html = '
         <div style="font-family: Arial, sans-serif; background:#f8fafc; padding:24px;">
@@ -57,6 +60,7 @@ class JobAlertController {
             <h2 style="margin:0 0 12px 0;color:#0f172a;">Job alert saved</h2>
             <p style="margin:0 0 12px 0;color:#475569;">We saved your alert <strong>' . htmlspecialchars($label, ENT_QUOTES) . '</strong>.</p>
             <p style="margin:0;color:#64748b;font-size:13px;">You can manage alerts from your profile at any time.</p>
+            <p style="margin:16px 0 0 0;font-size:12px;color:#94a3b8;">Unsubscribe: <a href="' . htmlspecialchars($unsubscribeUrl, ENT_QUOTES) . '" style="color:#64748b;">' . htmlspecialchars($unsubscribeUrl, ENT_QUOTES) . '</a></p>
           </div>
         </div>
       ';
