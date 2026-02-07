@@ -14,6 +14,31 @@ spl_autoload_register(function ($class) {
   }
 });
 
+// Load .env (simple parser)
+$envPath = __DIR__ . '/../../.env';
+if (file_exists($envPath)) {
+  $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+  if ($lines !== false) {
+    foreach ($lines as $line) {
+      $line = trim($line);
+      if ($line === '' || ($line[0] ?? '') === '#') {
+        continue;
+      }
+      $parts = explode('=', $line, 2);
+      if (count($parts) !== 2) {
+        continue;
+      }
+      $key = trim($parts[0]);
+      $val = trim($parts[1]);
+      if ($val !== '' && $val[0] === '"' && substr($val, -1) === '"') {
+        $val = substr($val, 1, -1);
+      }
+      $_ENV[$key] = $val;
+      putenv($key . '=' . $val);
+    }
+  }
+}
+
 // Reuse WP DB settings without loading full WP
 $wpConfig = __DIR__ . '/../../wp-config.php';
 if (file_exists($wpConfig)) {

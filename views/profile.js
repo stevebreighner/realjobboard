@@ -36,69 +36,111 @@ export function renderProfile(container) {
       <input type="file" id="avatar" name="avatar" class="w-full p-2 border rounded" accept="image/*" />
     </div>
 
-    <form class="space-y-4" onsubmit="handleProfileUpdate(event)">
-    <label for="username" class="block font-semibold">Username</label>
-    <input type="text" id="username" name="username" class="w-full p-2 border rounded" readonly /><br />
-
-    <label for="email" class="block font-semibold">Email</label>
-    <input type="email" id="email" name="email" class="w-full p-2 border rounded" readonly /><br />
-
-    <label for="company" class="block font-semibold">Company</label>
-    <input type="text" id="company" name="company" class="w-full p-2 border rounded" /><br />
-
-    <label for="company_site" class="block font-semibold">Company Website</label>
-    <input type="url" id="company_site" name="company_site" class="w-full p-2 border rounded" placeholder="https://example.com" /><br />
-
-    <label for="company_key" class="block font-semibold">Company Team Key (optional)</label>
-    <input type="text" id="company_key" name="company_key" class="w-full p-2 border rounded" placeholder="Shared key for your company" />
-    <p class="text-xs text-gray-500 mb-4">Use the same key across team members to group accounts later.</p>
-
-    <label for="first_name" class="block font-semibold">First Name</label>
-    <input type="text" id="first_name" name="first_name" class="w-full p-2 border rounded" /><br />
-
-    <label for="last_name" class="block font-semibold">Last Name</label>
-    <input type="text" id="last_name" name="last_name" class="w-full p-2 border rounded" /><br />
-
-    <label for="dob" class="block font-semibold">Date of Birth</label>
-    <input type="date" id="dob" name="dob" class="w-full p-2 border rounded" /><br />
-
-    <div class="mt-4">
-      <button type="button" id="toggleAddressBtn" class="text-sm text-indigo-600 hover:underline">
-        Hide Address Details
-      </button>
+    <form class="grid grid-cols-1 md:grid-cols-2 gap-4" onsubmit="handleProfileUpdate(event)">
+    <div>
+      <label for="username" class="block font-semibold">Username</label>
+      <input type="text" id="username" name="username" class="w-full p-2 border rounded" readonly />
     </div>
-    <div id="addressSection">
+
+    <div>
+      <label for="email" class="block font-semibold">Email</label>
+      <input type="email" id="email" name="email" class="w-full p-2 border rounded" readonly />
+    </div>
+
+    <div id="companySection" class="hidden">
+      <h3 class="text-lg font-semibold mt-4">Company Profile</h3>
+      <label for="company" class="block font-semibold">Company</label>
+      <input type="text" id="company" name="company" class="w-full p-2 border rounded" readonly /><br />
+
+      <label for="company_site" class="block font-semibold">Company Website</label>
+      <input type="url" id="company_site" name="company_site" class="w-full p-2 border rounded" placeholder="https://example.com" readonly /><br />
+
+      <label for="company_logo" class="block font-semibold">Company Logo URL</label>
+      <input type="url" id="company_logo" name="company_logo" class="w-full p-2 border rounded" placeholder="https://..." /><br />
+
+      <label for="company_street1" class="block font-semibold">Company Street</label>
+      <input type="text" id="company_street1" name="company_street1" class="w-full p-2 border rounded" /><br />
+
+      <label for="company_street2" class="block font-semibold">Company Suite (optional)</label>
+      <input type="text" id="company_street2" name="company_street2" class="w-full p-2 border rounded" /><br />
+
+      <label for="company_city" class="block font-semibold">Company City</label>
+      <input type="text" id="company_city" name="company_city" class="w-full p-2 border rounded" /><br />
+
+      <label for="company_state" class="block font-semibold">Company State</label>
+      <input type="text" id="company_state" name="company_state" class="w-full p-2 border rounded" maxlength="2" /><br />
+
+      <label for="company_zip" class="block font-semibold">Company ZIP</label>
+      <input type="text" id="company_zip" name="company_zip" class="w-full p-2 border rounded" /><br />
+
+      <label for="company_country" class="block font-semibold">Company Country</label>
+      <input type="text" id="company_country" name="company_country" class="w-full p-2 border rounded" /><br />
+
+      <button type="button" id="saveCompanyBtn" class="text-purple px-4 py-2 rounded">Save Company</button>
+      <p id="companyMsg" class="text-sm mt-2"></p>
+    </div>
+
+    <div>
+      <label for="first_name" class="block font-semibold">First Name</label>
+      <input type="text" id="first_name" name="first_name" class="w-full p-2 border rounded" />
+    </div>
+
+    <div>
+      <label for="last_name" class="block font-semibold">Last Name</label>
+      <input type="text" id="last_name" name="last_name" class="w-full p-2 border rounded" />
+    </div>
+
+    <div>
+      <label for="dob" class="block font-semibold">Date of Birth</label>
+      <input type="date" id="dob" name="dob" class="w-full p-2 border rounded" />
+    </div>
+
+    <div class="md:col-span-2" id="addressSection">
       <h3 class="text-lg font-semibold mt-2">Address (USA Only)</h3>
-      <label for="street1" class="block font-semibold">Street Address</label>
-      <input type="text" id="street1" name="street1" class="w-full p-2 border rounded" required />
-      <p class="text-xs text-gray-500 mt-1">Include a street number and name (e.g., 111 N Main St).</p><br />
-
-      <label for="street2" class="block font-semibold">Unit/Suite (optional)</label>
-      <input type="text" id="street2" name="street2" class="w-full p-2 border rounded" /><br />
-
-      <label for="city" class="block font-semibold">City</label>
-      <input type="text" id="city" name="city" class="w-full p-2 border rounded" required /><br />
-
-      <label for="state" class="block font-semibold">State (2-letter)</label>
-      <input type="text" id="state" name="state" class="w-full p-2 border rounded" required maxlength="2" /><br />
-
-      <label for="zip" class="block font-semibold">ZIP Code</label>
-      <input type="text" id="zip" name="zip" class="w-full p-2 border rounded" required /><br />
-
-      <label for="country" class="block font-semibold">Country</label>
-      <input type="text" id="country" name="country" class="w-full p-2 border rounded" required /><br />
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+        <div class="md:col-span-2">
+          <label for="street1" class="block font-semibold">Street Address</label>
+          <input type="text" id="street1" name="street1" class="w-full p-2 border rounded" required />
+          <p class="text-xs text-gray-500 mt-1">Include a street number and name (e.g., 111 N Main St).</p>
+        </div>
+        <div>
+          <label for="street2" class="block font-semibold">Unit/Suite (optional)</label>
+          <input type="text" id="street2" name="street2" class="w-full p-2 border rounded" />
+        </div>
+        <div>
+          <label for="city" class="block font-semibold">City</label>
+          <input type="text" id="city" name="city" class="w-full p-2 border rounded" required />
+        </div>
+        <div>
+          <label for="state" class="block font-semibold">State (2-letter)</label>
+          <input type="text" id="state" name="state" class="w-full p-2 border rounded" required maxlength="2" />
+        </div>
+        <div>
+          <label for="zip" class="block font-semibold">ZIP Code</label>
+          <input type="text" id="zip" name="zip" class="w-full p-2 border rounded" required />
+        </div>
+        <div>
+          <label for="country" class="block font-semibold">Country</label>
+          <input type="text" id="country" name="country" class="w-full p-2 border rounded" required />
+        </div>
+      </div>
     </div>
 
-    <label class="flex items-center space-x-2">
-      <input type="checkbox" id="hide_email" name="hide_email" />
-      <span class="text-sm">Hide my email from employers</span>
-    </label>
+    <div class="md:col-span-2">
+      <label class="flex items-center space-x-2">
+        <input type="checkbox" id="hide_email" name="hide_email" />
+        <span class="text-sm">Hide my email from employers</span>
+      </label>
+    </div>
 
-    <p id="profileError" class="text-sm text-red-600"></p>
-    <button type="submit" class="text-purple px-4 py-2 rounded">Save</button>
+    <div class="md:col-span-2">
+      <p id="profileError" class="text-sm text-red-600"></p>
+      <button type="submit" class="text-purple px-4 py-2 rounded">Save</button>
+    </div>
   </form>
 
     <div id="jobboard-links" class="mt-4"></div>
+    <div id="companyOwnerSection" class="mt-8 hidden"></div>
     <div id="savedJobsSection" class="mt-6"></div>
     <div id="jobAlertsSection" class="mt-6"></div>
 
@@ -110,11 +152,11 @@ export function renderProfile(container) {
   const roleLabel     = container.querySelector('#roleLabel');
   const previewImg    = container.querySelector('#avatarPreview');
   const profileStatus = container.querySelector('#profileStatus');
-  const toggleAddressBtn = container.querySelector('#toggleAddressBtn');
   const addressSection = container.querySelector('#addressSection');
   const hideEmailToggle = container.querySelector('#hide_email')?.closest('label');
   const savedJobsSection = container.querySelector('#savedJobsSection');
   const jobAlertsSection = container.querySelector('#jobAlertsSection');
+  const companyOwnerSection = container.querySelector('#companyOwnerSection');
 
   // Fetch profile + role info
   function applyProfileData(data) {
@@ -160,8 +202,13 @@ export function renderProfile(container) {
       jobboardLinks.innerHTML = `
         <p class="mt-2"><a href="/#admin" class="text-blue-600">Open Admin Panel</a></p>
       `;
-      if (toggleAddressBtn) toggleAddressBtn.classList.add('hidden');
-      if (addressSection) addressSection.classList.add('hidden');
+      if (addressSection) {
+        addressSection.classList.add('hidden');
+        ['street1', 'city', 'state', 'zip', 'country'].forEach((id) => {
+          const el = container.querySelector(`#${id}`);
+          if (el) el.required = false;
+        });
+      }
       if (hideEmailToggle) hideEmailToggle.classList.add('hidden');
       return;
     }
@@ -242,17 +289,87 @@ export function renderProfile(container) {
 
   }
 
+  async function loadCompanyOwner() {
+    if (!companyOwnerSection) return;
+    try {
+      const res = await fetch('/api/company-owner', { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok || !data?.company) {
+        companyOwnerSection.classList.add('hidden');
+        return;
+      }
+      const company = data.company;
+      companyOwnerSection.classList.remove('hidden');
+      companyOwnerSection.innerHTML = `
+        <div class="border rounded-lg p-4 bg-white">
+          <h3 class="text-lg font-semibold mb-3">Company Page</h3>
+          <p class="text-xs text-gray-500 mb-3">Update how your company appears publicly.</p>
+          <form id="companyOwnerForm" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input name="logo_url" class="p-2 border rounded" placeholder="Logo URL" value="${company.logo_url || ''}" />
+            <input name="logo_file" type="file" accept="image/*" class="p-2 border rounded" />
+            <input name="street1" class="p-2 border rounded" placeholder="Street Address" value="${company.street1 || ''}" />
+            <input name="street2" class="p-2 border rounded" placeholder="Unit/Suite" value="${company.street2 || ''}" />
+            <input name="city" class="p-2 border rounded" placeholder="City" value="${company.city || ''}" />
+            <input name="state" class="p-2 border rounded" placeholder="State" value="${company.state || ''}" />
+            <input name="zip" class="p-2 border rounded" placeholder="ZIP" value="${company.zip || ''}" />
+            <input name="country" class="p-2 border rounded" placeholder="Country" value="${company.country || ''}" />
+            <button type="submit" class="text-purple px-4 py-2 rounded md:col-span-2">Save Company</button>
+          </form>
+          <p id="companyOwnerMsg" class="text-sm mt-2"></p>
+        </div>
+      `;
+      const form = companyOwnerSection.querySelector('#companyOwnerForm');
+      const msg = companyOwnerSection.querySelector('#companyOwnerMsg');
+      const logoUrlInput = companyOwnerSection.querySelector('input[name="logo_url"]');
+      const logoFileInput = companyOwnerSection.querySelector('input[name="logo_file"]');
+      logoFileInput?.addEventListener('change', () => {
+        const file = logoFileInput.files && logoFileInput.files[0];
+        if (!file || !logoUrlInput) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          logoUrlInput.value = typeof reader.result === 'string' ? reader.result : '';
+        };
+        reader.readAsDataURL(file);
+      });
+
+      form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        msg.textContent = 'Saving...';
+        const payload = Object.fromEntries(new FormData(form).entries());
+        delete payload.logo_file;
+        const saveRes = await fetch('/api/company-owner', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload),
+        });
+        const saveData = await saveRes.json();
+        if (!saveRes.ok) {
+          msg.textContent = saveData.error || 'Save failed.';
+          msg.className = 'text-sm text-red-600 mt-2';
+          return;
+        }
+        msg.textContent = 'Company updated.';
+        msg.className = 'text-sm text-green-700 mt-2';
+      });
+    } catch (err) {
+      companyOwnerSection.classList.add('hidden');
+    }
+  }
+
   async function getProfileInfo() {
     try {
       // Stale-while-revalidate: show cached data immediately if available
       const cached = getUserProfileCachedAny({ light: false });
       if (cached) {
         applyProfileData(cached);
+        loadCompanyOwner();
       }
 
       const data = await getUserProfileCached({ maxAgeMs: 30000, light: false });
       if (data) {
         applyProfileData(data);
+        loadCompanyOwner();
       } else {
         alert('❌ Error fetching profile: Unable to load profile.');
         window.location.hash = '#/login';
@@ -264,22 +381,9 @@ export function renderProfile(container) {
 
   getProfileInfo();
 
-  let addressCollapsed = false;
-  const updateAddressVisibility = () => {
-    if (!addressSection || !toggleAddressBtn) return;
-    if (addressCollapsed) {
-      addressSection.classList.add('hidden');
-      toggleAddressBtn.textContent = 'Show Address Details';
-    } else {
-      addressSection.classList.remove('hidden');
-      toggleAddressBtn.textContent = 'Hide Address Details';
-    }
-  };
-  updateAddressVisibility();
-  toggleAddressBtn?.addEventListener('click', () => {
-    addressCollapsed = !addressCollapsed;
-    updateAddressVisibility();
-  });
+  if (addressSection) {
+    addressSection.classList.remove('hidden');
+  }
 }
 async function handleProfileUpdate(event) {
   event.preventDefault();
@@ -307,21 +411,34 @@ async function handleProfileUpdate(event) {
   }
 
   try {
-    const response = await fetch('/wp-json/customapi/v1/user-profile-update', {
+    const response = await fetch('/api/user-profile-update', {
       method: 'POST',
       body: formData,
       credentials: 'include'
     });
+    let data = {};
+    try {
+      data = await response.json();
+    } catch (err) {
+      data = {};
+    }
 
-    const data = await response.json();
-
-    if (response.ok && data.success) {
-      alert('✅ Profile updated successfully!');
+    if (response.ok && (data.success || Object.keys(data).length === 0)) {
+      if (errorEl) {
+        errorEl.textContent = 'Profile updated successfully.';
+        errorEl.className = 'text-sm text-green-700';
+      }
     } else {
-      alert('❌ Failed to update profile: ' + (data.message || 'Unknown error'));
+      if (errorEl) {
+        errorEl.textContent = 'Failed to update profile: ' + (data.message || 'Unknown error');
+        errorEl.className = 'text-sm text-red-600';
+      }
     }
   } catch (err) {
-    alert('❌ Network error: ' + err.message);
+    if (errorEl) {
+      errorEl.textContent = 'Network error: ' + err.message;
+      errorEl.className = 'text-sm text-red-600';
+    }
   }
 }
 

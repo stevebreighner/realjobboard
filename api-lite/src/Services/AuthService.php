@@ -56,9 +56,51 @@ class AuthService {
     return $user ?: [];
   }
 
+  public function getWpUserByEmailOrUsername(string $value): array {
+    $prefix = $GLOBALS['DB_PREFIX'] ?? 'wp_';
+    $table = "{$prefix}users";
+    $stmt = $this->pdo->prepare("SELECT ID, user_login, user_email, user_pass FROM {$table} WHERE user_email = :val OR user_login = :val LIMIT 1");
+    $stmt->execute([':val' => $value]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) return [];
+    return [
+      'wp_user_id' => (int) $row['ID'],
+      'username' => $row['user_login'],
+      'email' => $row['user_email'],
+      'password_hash' => $row['user_pass'],
+      'role' => 'employee',
+      'email_verified' => 1,
+      'employer_verified' => 0,
+    ];
+  }
+
+  public function createUserFromWp(array $wpUser): array {
+    $now = date('Y-m-d H:i:s');
+    $stmt = $this->pdo->prepare("
+      INSERT INTO jb_users (wp_user_id, username, email, password_hash, role, email_verified, employer_verified, created_at, updated_at)
+      VALUES (:wp_user_id, :username, :email, :password_hash, :role, :email_verified, :employer_verified, :created_at, :updated_at)
+    ");
+    $stmt->execute([
+      ':wp_user_id' => $wpUser['wp_user_id'],
+      ':username' => $wpUser['username'],
+      ':email' => $wpUser['email'],
+      ':password_hash' => $wpUser['password_hash'],
+      ':role' => $wpUser['role'] ?? 'employee',
+      ':email_verified' => $wpUser['email_verified'] ?? 1,
+      ':employer_verified' => $wpUser['employer_verified'] ?? 0,
+      ':created_at' => $now,
+      ':updated_at' => $now,
+    ]);
+    $id = (int) $this->pdo->lastInsertId();
+    return $this->getUserById($id);
+  }
+
   public function validatePassword(array $user, string $password): bool {
     if (!isset($user['password_hash'])) return false;
     $hash = $user['password_hash'];
+    if ($this->startsWith($hash, '$wp$')) {
+      $hash = substr($hash, 4);
+    }
     if ($this->startsWith($hash, '$2y$') || $this->startsWith($hash, '$2a$') || $this->startsWith($hash, '$2b$')) {
       return password_verify($password, $hash);
     }
@@ -126,10 +168,17 @@ class AuthService {
       ':expires_at' => $expires->format('Y-m-d H:i:s'),
     ]);
 
+    $secure = false;
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+      $secure = true;
+    }
+    if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+      $secure = true;
+    }
     setcookie($this->sessionCookie, $sessionId, [
       'expires' => $expires->getTimestamp(),
       'path' => '/',
-      'secure' => isset($_SERVER['HTTPS']),
+      'secure' => $secure,
       'httponly' => true,
       'samesite' => 'Lax',
     ]);
@@ -142,10 +191,17 @@ class AuthService {
       $stmt = $this->pdo->prepare("DELETE FROM jb_sessions WHERE session_id = :sid");
       $stmt->execute([':sid' => $_COOKIE[$this->sessionCookie]]);
     }
+    $secure = false;
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+      $secure = true;
+    }
+    if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+      $secure = true;
+    }
     setcookie($this->sessionCookie, '', [
       'expires' => time() - 3600,
       'path' => '/',
-      'secure' => isset($_SERVER['HTTPS']),
+      'secure' => $secure,
       'httponly' => true,
       'samesite' => 'Lax',
     ]);

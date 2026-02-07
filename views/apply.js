@@ -1,13 +1,15 @@
+import { escapeHtml } from '../utils/sanitize.js';
+
 export async function renderApply(container, jobId) {
     try {
       // --- Fetch job detail (for job title) ---
-      const jobRes = await fetch(`/wp-json/customapi/v1/get-list-detail?id=${jobId}`);
+      const jobRes = await fetch(`/api/job?id=${jobId}`);
       const jobData = await jobRes.json();
       if (!jobRes.ok) throw new Error(jobData.message || "Failed to fetch job details");
-      const jobTitle = jobData.title || `Job #${jobId}`;
+      const jobTitle = escapeHtml(jobData.title || `Job #${jobId}`);
   
       // --- Check application status ---
-      const statusRes = await fetch(`/wp-json/customapi/v1/check-application?jobId=${jobId}`, {
+      const statusRes = await fetch(`/api/check-application?jobId=${jobId}`, {
         credentials: "include"
       });
       if (statusRes.status === 401 || statusRes.status === 403) {
@@ -36,7 +38,7 @@ export async function renderApply(container, jobId) {
       }
   
       // --- Fetch user profile (for resumes and covers) ---
-      const profileRes = await fetch("/wp-json/customapi/v1/user-profile?_=" + Date.now(), {
+      const profileRes = await fetch("/api/user-profile?_=" + Date.now(), {
         credentials: "include"
       });
       if (profileRes.status === 401 || profileRes.status === 403) {
@@ -73,7 +75,11 @@ export async function renderApply(container, jobId) {
                       </label>
                     </div>
                   `).join("")
-                : `<p class="text-gray-500 text-sm">No resumes uploaded. <a href="/#resume" class="text-blue-600 hover:underline">Upload here</a>.</p>`
+                : `
+                  <p class="text-gray-500 text-sm mb-2">No resumes uploaded.</p>
+                  <label class="text-sm block mb-1" for="resume-link">Resume link</label>
+                  <input id="resume-link" name="resume_link" type="url" class="w-full p-2 border rounded" placeholder="https://..." />
+                `
             }
           </div>
   
@@ -89,7 +95,11 @@ export async function renderApply(container, jobId) {
                       </label>
                     </div>
                   `).join("")
-                : `<p class="text-gray-500 text-sm">No cover letters uploaded. <a href="/#resume" class="text-blue-600 hover:underline">Upload here</a>.</p>`
+                : `
+                  <p class="text-gray-500 text-sm mb-2">No cover letters uploaded.</p>
+                  <label class="text-sm block mb-1" for="cover-link">Cover letter link (optional)</label>
+                  <input id="cover-link" name="cover_letter_link" type="url" class="w-full p-2 border rounded" placeholder="https://..." />
+                `
             }
           </div>
   
@@ -125,19 +135,20 @@ export async function renderApply(container, jobId) {
 
         const messageEl = document.getElementById("applyMessage");
         const formData = new FormData(e.target);
-        const selectedResume = formData.get("resume");
-        const selectedCover = formData.get("cover_letter");
+        const selectedResume = formData.get("resume") || formData.get("resume_link");
+        const selectedCover = formData.get("cover_letter") || formData.get("cover_letter_link") || "";
+        const resumeRequired = true;
 
-        if (!selectedResume || !selectedCover) {
+        if (resumeRequired && !selectedResume) {
           if (messageEl) {
             messageEl.className = "mb-4 text-sm text-amber-700";
-            messageEl.textContent = "Please select both a resume and a cover letter.";
+            messageEl.textContent = "Please provide a resume link or select a resume.";
           }
           return;
         }
   
         try {
-          const response = await fetch("/wp-json/customapi/v1/submit-application", {
+          const response = await fetch("/api/submit-application", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ jobId, resume: selectedResume, cover_letter: selectedCover }),

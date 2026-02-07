@@ -1,23 +1,23 @@
 // 2fa.js
 
 export async function start2FA() {
-    const response = await fetch('/wp-json/customapi/v1/2fa-start', {
-      method: 'POST',
-      credentials: 'include',
-    });
-    return response.ok;
-  }
+  const response = await fetch('/api/2fa-start', {
+    method: 'POST',
+    credentials: 'include',
+  });
+  return response.ok;
+}
   
-  export async function verify2FA(code) {
-    const response = await fetch('/wp-json/customapi/v1/2fa-verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code }),
-      credentials: 'include',
-    });
-    const data = await response.json();
-    return { ok: response.ok, message: data.message };
-  }
+export async function verify2FA(code) {
+  const response = await fetch('/api/2fa-verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+    credentials: 'include',
+  });
+  const data = await response.json();
+  return { ok: response.ok, message: data.message };
+}
   
   // Add this new function to render the 2FA page UI:
   export function render2FA(container) {

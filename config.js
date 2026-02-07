@@ -64,9 +64,11 @@ export const CONFIG = {
     COMPANY_NAME: 'JobBoard', // or "PetFinder", etc.
     COMPANY_BUSINESS_THING: 'Job', // or "Pet", etc.
     COMPANY_BUSINESS_THING_PLURAL: 'Jobs', // or "Pets"
+    COMPANY_ENTITY_LABEL: 'Company page',
     LOGO_URL: '/logo.svg',
+    EMAIL_FROM_NAME: 'JobBoard', // display name for system emails
     APP_DOMAIN,
-    WEBSITE_URL: `https://${APP_DOMAIN}`, // or "Pets"
+    WEBSITE_URL: `https://${APP_DOMAIN}`, // used by frontend links
     COMPANY_SUPPORT_EMAIL: `support@${APP_DOMAIN}`, // or "Pets"
     API_BASE: '',
     SUBMIT_LABEL: 'Apply Now', // or 'Submit Offer', etc.

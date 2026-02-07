@@ -34,7 +34,7 @@ window.handleResetPassword = async function(event) {
   }
 
   try {
-    const response = await fetch('/wp-json/customapi/v1/reset-password', {
+    const response = await fetch('/api/reset-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, new_password: newPassword }),

@@ -343,15 +343,16 @@ export async function renderMyJobPostDetail(container, jobId) {
     if (payNowBtn) {
       payNowBtn.addEventListener('click', async () => {
         try {
-          const configRes = await fetch('/wp-json/customapi/v1/stripe-config');
+          const configRes = await fetch('/api/stripe-config');
           const stripeConfig = await configRes.json();
           if (!stripeConfig?.publishableKey) {
             alert('Stripe is not configured yet. Please contact support.');
             return;
           }
-          const checkoutRes = await fetch('/wp-json/customapi/v1/stripe-checkout', {
+          const checkoutRes = await fetch('/api/stripe-checkout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ job_id: jobId, tier: tierId })
           });
           const checkoutData = await checkoutRes.json();

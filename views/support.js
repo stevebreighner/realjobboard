@@ -4,35 +4,58 @@ const FORMSPREE_URL = 'https://formspree.io/f/xgozgqzd';
 
 export function renderSupport(container, params = {}) {
   container.innerHTML = `
-    <div class="max-w-xl mx-auto px-4 py-6">
-      <h1 class="text-2xl font-bold mb-4">Support</h1>
-
-      <div id="statusBox" class="bg-gray-100 border-l-4 border-yellow-500 p-4 mb-6 text-sm text-gray-800">
-        Checking site status...
+    <div class="max-w-3xl mx-auto px-4 py-8">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div>
+          <h1 class="text-3xl font-bold">Support</h1>
+          <p class="text-sm text-gray-600">We respond quickly — usually within 1–2 business days.</p>
+        </div>
+        <div id="statusBox" class="rounded-xl border px-4 py-3 text-sm text-gray-800 bg-gray-50 border-gray-200 w-full md:w-auto">
+          Checking site status...
+        </div>
       </div>
 
-      <p class="mb-4">
-        If you have any questions, issues, or feedback, please reach out to us below.
-      </p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="border rounded-2xl p-4 bg-white shadow-sm">
+          <div class="text-xs uppercase tracking-widest text-indigo-600 mb-2">Report Abuse</div>
+          <p class="text-sm text-gray-700 mb-3">
+            See spam, scams, or harassment? Report it and we’ll review quickly.
+          </p>
+          <a href="/#support?subject=Report%20Abuse&context=support" class="text-indigo-600 hover:underline text-sm">Report abuse →</a>
+        </div>
+        <div class="border rounded-2xl p-4 bg-white shadow-sm">
+          <div class="text-xs uppercase tracking-widest text-indigo-600 mb-2">Account Help</div>
+          <p class="text-sm text-gray-700 mb-3">
+            Need help with verification, login, or billing? We’ve got you.
+          </p>
+          <a href="/#support?subject=Account%20Help&context=support" class="text-indigo-600 hover:underline text-sm">Get account help →</a>
+        </div>
+      </div>
 
-      <form id="supportForm" class="space-y-3">
-        <input type="text" name="name" class="w-full p-2 border rounded" placeholder="Your name" required />
-        <input type="email" name="email" class="w-full p-2 border rounded" placeholder="Your email" required />
-        <input type="text" name="subject" class="w-full p-2 border rounded" placeholder="Subject" value="${params.subject || ''}" />
-        <textarea name="message" class="w-full p-2 border rounded" rows="5" placeholder="Message" required></textarea>
-        <input type="hidden" name="context" value="${params.context || ''}" />
-        <input type="hidden" name="type" value="${params.subject ? 'abuse_report' : 'contact'}" />
-        <label class="flex items-center space-x-2 text-sm">
-          <input type="checkbox" id="confirmAdmin" required />
-          <span>I understand this will be sent to site admins.</span>
-        </label>
-        <button type="submit" class="text-purple px-4 py-2 rounded">Send Message</button>
-        <p id="supportMessage" class="text-sm"></p>
-      </form>
+      <div class="border rounded-2xl p-5 md:p-6 bg-white shadow-sm">
+        <p class="mb-4 text-gray-700">
+          If you have any questions, issues, or feedback, please reach out to us below.
+        </p>
+
+        <form id="supportForm" class="space-y-3">
+          <input type="text" name="name" class="w-full p-2 border rounded" placeholder="Your name" required />
+          <input type="email" name="email" class="w-full p-2 border rounded" placeholder="Your email" required />
+          <input type="text" name="subject" class="w-full p-2 border rounded" placeholder="Subject" value="${params.subject || ''}" />
+          <textarea name="message" class="w-full p-2 border rounded" rows="5" placeholder="Message" required></textarea>
+          <input type="hidden" name="context" value="${params.context || ''}" />
+          <input type="hidden" name="type" value="${params.subject ? 'abuse_report' : 'contact'}" />
+          <label class="flex items-center space-x-2 text-sm">
+            <input type="checkbox" id="confirmAdmin" required />
+            <span>I understand this will be sent to site admins.</span>
+          </label>
+          <button type="submit" class="text-purple px-4 py-2 rounded">Send Message</button>
+          <p id="supportMessage" class="text-sm"></p>
+        </form>
+      </div>
 
       <p class="mt-6 text-sm text-gray-600">
         Visit our website: 
-        <a href="https://${CONFIG.WEBSITE_URL}" class="text-blue-600 underline" target="_blank">
+        <a href="https://${CONFIG.WEBSITE_URL}" class="text-blue-600 underline" target="_blank" rel="noopener">
           ${CONFIG.WEBSITE_URL}
         </a>
       </p>

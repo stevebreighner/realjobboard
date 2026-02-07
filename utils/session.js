@@ -85,6 +85,22 @@ export async function getUserProfileCached({ maxAgeMs = 30000, force = false, li
       method: 'GET',
       credentials: 'include',
     });
+    if (res.ok) {
+      const data = await res.json();
+      setCache(cacheKey, data);
+      return data;
+    }
+  } catch {
+    // fall through
+  }
+  try {
+    const url = light
+      ? '/api/user-profile?light=1&_=' + Date.now()
+      : '/api/user-profile?_=' + Date.now();
+    const res = await fetch(url, {
+      method: 'GET',
+      credentials: 'include',
+    });
     if (!res.ok) return null;
     const data = await res.json();
     setCache(cacheKey, data);

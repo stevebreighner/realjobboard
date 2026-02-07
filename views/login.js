@@ -82,7 +82,8 @@ export function renderLogin(container) {
     let response = await fetch('/wp-json/customapi/v1/login', requestOpts);
     let data = await response.json().catch(() => ({}));
 
-    if (!response.ok) {
+    const needsFallback = !response.ok || !data || (!data.user && !data.message && !data.twoFARequired);
+    if (needsFallback) {
       response = await fetch('/api/login', requestOpts);
       data = await response.json().catch(() => ({}));
     }
@@ -155,7 +156,7 @@ export function renderLogin(container) {
       return;
     }
 
-    const response = await fetch('/wp-json/customapi/v1/resend-verification', {
+    const response = await fetch('/api/resend-verification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
@@ -181,7 +182,7 @@ export function renderLogin(container) {
       return;
     }
 
-    const response = await fetch('/wp-json/customapi/v1/magic-link', {
+    const response = await fetch('/api/magic-link', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),

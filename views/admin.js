@@ -60,6 +60,14 @@ export async function renderAdmin(container) {
 
       <div class="mb-10">
         <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Companies</h2>
+          <button id="refreshCompanies" class="text-sm text-indigo-600 hover:underline">Refresh</button>
+        </div>
+        <div id="companiesContainer" class="space-y-3 text-sm"></div>
+      </div>
+
+      <div class="mb-10">
+        <div class="flex items-center justify-between mb-2">
           <h2 class="text-xl font-semibold">Jobs</h2>
           <div class="flex items-center space-x-3">
             <button id="exportJobs" class="text-sm text-indigo-600 hover:underline">Export CSV</button>
@@ -97,6 +105,35 @@ export async function renderAdmin(container) {
         </div>
         <div id="templatesContainer" class="space-y-3"></div>
       </div>
+
+      <div class="mb-10">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Promo Codes</h2>
+          <button id="refreshPromos" class="text-sm text-indigo-600 hover:underline">Refresh</button>
+        </div>
+        <form id="promoForm" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+          <select name="discount" class="p-2 border rounded">
+            <option value="20">20% off</option>
+            <option value="50">50% off</option>
+            <option value="100">Free</option>
+          </select>
+          <input name="max_uses" class="p-2 border rounded" placeholder="Max uses (optional)" />
+          <button type="submit" class="text-purple px-4 py-2 rounded">Generate</button>
+        </form>
+        <div id="promoMsg" class="text-sm mb-2"></div>
+        <div id="promoList" class="space-y-2 text-sm"></div>
+      </div>
+
+      <div class="mb-10">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">System Log</h2>
+          <div class="flex items-center gap-3">
+            <button id="downloadLog" class="text-sm text-indigo-600 hover:underline">Download</button>
+            <button id="refreshLog" class="text-sm text-indigo-600 hover:underline">Refresh</button>
+          </div>
+        </div>
+        <div id="logContainer" class="text-xs bg-slate-50 border rounded p-3 whitespace-pre-wrap"></div>
+      </div>
     </div>
   `;
 
@@ -104,6 +141,8 @@ export async function renderAdmin(container) {
   const usersContainer = container.querySelector('#usersContainer');
   const jobsContainer = container.querySelector('#jobsContainer');
   const companyGroups = container.querySelector('#companyGroups');
+  const companiesContainer = container.querySelector('#companiesContainer');
+  const refreshCompaniesBtn = container.querySelector('#refreshCompanies');
   const refreshUsersBtn = container.querySelector('#refreshUsers');
   const refreshJobsBtn = container.querySelector('#refreshJobs');
   const exportUsersBtn = container.querySelector('#exportUsers');
@@ -123,6 +162,13 @@ export async function renderAdmin(container) {
   const restoreHistoryBtn = container.querySelector('#restoreHistory');
   const devModeToggle = container.querySelector('#devModeToggle');
   const devModeStatus = container.querySelector('#devModeStatus');
+  const promoForm = container.querySelector('#promoForm');
+  const promoList = container.querySelector('#promoList');
+  const promoMsg = container.querySelector('#promoMsg');
+  const refreshPromosBtn = container.querySelector('#refreshPromos');
+  const refreshLogBtn = container.querySelector('#refreshLog');
+  const downloadLogBtn = container.querySelector('#downloadLog');
+  const logContainer = container.querySelector('#logContainer');
 
   const session = await getSessionCached({ maxAgeMs: 30000 });
   const roles = Array.isArray(session?.roles) ? session.roles : [];
@@ -133,7 +179,7 @@ export async function renderAdmin(container) {
   noticeEl.innerHTML = `
     <div class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
       <strong>Stripe note:</strong> If you change the site URL/domain, remember to update your Stripe webhook
-      endpoint URL and any Stripe env vars in <code>.htaccess</code> (or hosting settings).
+      endpoint URL and any Stripe env vars in <code>.env</code> (or hosting settings).
     </div>
   `;
 
@@ -172,6 +218,83 @@ export async function renderAdmin(container) {
   });
 
   await loadDevFlags();
+
+  async function loadPromos() {
+    if (!promoList) return;
+    promoList.innerHTML = '<p class="text-xs text-gray-500">Loading promos...</p>';
+    try {
+      const res = await fetch('/api/admin/promos', { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data)) {
+        promoList.innerHTML = `<p class="text-xs text-red-600">${data.error || 'Failed to load promos.'}</p>`;
+        return;
+      }
+      promoList.innerHTML = data.length ? data.map(p => `
+        <div class="border rounded p-2 flex items-center justify-between">
+          <div>
+            <div class="font-medium">${p.code}</div>
+            <div class="text-xs text-gray-500">${p.is_free ? 'Free' : `${p.percent_off}% off`} • Uses: ${p.uses}/${p.max_uses || '∞'}</div>
+          </div>
+          <div class="text-xs text-gray-400">${p.expires_at ? `Expires ${new Date(p.expires_at).toLocaleDateString()}` : 'No expiry'}</div>
+        </div>
+      `).join('') : '<p class="text-xs text-gray-500">No promo codes yet.</p>';
+    } catch (err) {
+      promoList.innerHTML = '<p class="text-xs text-red-600">Failed to load promos.</p>';
+    }
+  }
+
+  refreshPromosBtn?.addEventListener('click', loadPromos);
+  promoForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!promoMsg) return;
+    promoMsg.textContent = 'Creating...';
+    const formData = Object.fromEntries(new FormData(promoForm).entries());
+    const payload = {
+      discount: parseInt(formData.discount || '0', 10),
+      max_uses: formData.max_uses ? parseInt(formData.max_uses, 10) : null,
+    };
+    try {
+      const res = await fetch('/api/admin/promos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        promoMsg.textContent = data.error || 'Failed to create promo.';
+        return;
+      }
+      promoMsg.textContent = `Created: ${data.promo?.code || ''}`;
+      await loadPromos();
+    } catch (err) {
+      promoMsg.textContent = 'Failed to create promo.';
+    }
+  });
+
+  await loadPromos();
+
+  async function loadLog() {
+    if (!logContainer) return;
+    logContainer.textContent = 'Loading...';
+    try {
+      const res = await fetch('/api/admin/error-log', { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) {
+        logContainer.textContent = data.error || 'Failed to load log.';
+        return;
+      }
+      logContainer.textContent = (data.lines || []).join('\n') || 'Log is empty.';
+    } catch (err) {
+      logContainer.textContent = 'Failed to load log.';
+    }
+  }
+
+  refreshLogBtn?.addEventListener('click', loadLog);
+  downloadLogBtn?.addEventListener('click', () => {
+    window.location.href = '/api/admin/error-log-download';
+  });
+  await loadLog();
 
   async function fetchUsers() {
     usersContainer.innerHTML = '<p class="text-sm text-gray-500">Loading users...</p>';
@@ -224,9 +347,48 @@ export async function renderAdmin(container) {
     `).join('');
   }
 
+  async function fetchCompanies() {
+    if (!companiesContainer) return;
+    companiesContainer.innerHTML = '<p class="text-sm text-gray-500">Loading companies...</p>';
+    const res = await fetch(`/api/admin/companies?_=${Date.now()}`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) {
+      companiesContainer.innerHTML = `<p class="text-sm text-red-600">${data.error || 'Failed to load companies.'}</p>`;
+      return;
+    }
+    companiesContainer.innerHTML = data.length
+      ? data.map(c => {
+          const verified = Number(c.verified) === 1;
+          return `
+            <div class="border rounded p-3">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <div class="font-semibold">${c.name}</div>
+                  <div class="text-xs text-gray-500">Slug: ${c.slug} • Code: ${c.code || ''}</div>
+                  <div class="text-xs text-gray-500">Members: ${c.member_count || 0}</div>
+                  <div class="text-xs ${verified ? 'text-green-700' : 'text-amber-700'}">${verified ? 'Verified' : 'Not verified'}</div>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <button class="text-sm text-indigo-600 hover:underline" data-action="toggle-company" data-id="${c.id}" data-verified="${verified ? 1 : 0}">
+                    ${verified ? 'Unverify' : 'Verify'}
+                  </button>
+                  <button class="text-sm text-indigo-600 hover:underline" data-action="members" data-id="${c.id}">
+                    Members
+                  </button>
+                </div>
+              </div>
+              <div class="hidden mt-3 border-t pt-3" id="company-detail-${c.id}">
+                <div class="text-sm text-gray-600">Loading...</div>
+              </div>
+            </div>
+          `;
+        }).join('')
+      : '<p class="text-sm text-gray-500">No companies yet.</p>';
+  }
+
   async function fetchJobs() {
     jobsContainer.innerHTML = '<p class="text-sm text-gray-500">Loading jobs...</p>';
-    const res = await fetch(`/wp-json/customapi/v1/admin/jobs?_=${Date.now()}`, { credentials: 'include' });
+    const res = await fetch(`/api/admin/jobs?_=${Date.now()}`, { credentials: 'include' });
     const data = await res.json();
     if (!res.ok) {
       jobsContainer.innerHTML = `<p class="text-sm text-red-600">${data.message || 'Failed to load jobs.'}</p>`;
@@ -261,6 +423,8 @@ export async function renderAdmin(container) {
       </div>
     `).join('');
   }
+
+  refreshCompaniesBtn?.addEventListener('click', fetchCompanies);
 
   async function fetchAudit() {
     auditContainer.innerHTML = '<p class="text-gray-500">Loading audit log...</p>';
@@ -540,7 +704,7 @@ export async function renderAdmin(container) {
       const titleInput = container.querySelector(`#job-title-${jobId}`);
       const statusSelect = container.querySelector(`#job-status-${jobId}`);
       const msg = container.querySelector(`#job-msg-${jobId}`);
-      const res = await fetch('/wp-json/customapi/v1/admin/job-update', {
+      const res = await fetch('/api/admin/job-update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -563,7 +727,7 @@ export async function renderAdmin(container) {
     }
     if (action === 'delete-job') {
       if (!confirm('Delete this job?')) return;
-      const res = await fetch('/wp-json/customapi/v1/admin/job-delete', {
+      const res = await fetch('/api/admin/job-delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -576,6 +740,107 @@ export async function renderAdmin(container) {
       }
       fetchJobs();
       fetchAudit();
+    }
+  });
+
+  companiesContainer?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const companyId = Number(btn.dataset.id || 0);
+    if (!companyId) return;
+
+    if (action === 'toggle-company') {
+      const currentlyVerified = btn.dataset.verified === '1';
+      const res = await fetch('/api/admin/company-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ company_id: companyId, verified: currentlyVerified ? 0 : 1 }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Update failed');
+        return;
+      }
+      fetchCompanies();
+      return;
+    }
+
+    if (action === 'members') {
+      const panel = container.querySelector(`#company-detail-${companyId}`);
+      if (!panel) return;
+      if (!panel.classList.contains('hidden')) {
+        panel.classList.add('hidden');
+        return;
+      }
+      panel.classList.remove('hidden');
+      panel.innerHTML = '<div class="text-sm text-gray-600">Loading...</div>';
+      try {
+        const res = await fetch(`/api/admin/company?id=${companyId}`, { credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) {
+          panel.innerHTML = `<div class="text-sm text-red-600">${data.error || 'Failed to load company.'}</div>`;
+          return;
+        }
+        const members = Array.isArray(data.members) ? data.members : [];
+        panel.innerHTML = `
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-sm font-semibold">Members</div>
+            <button class="text-xs text-indigo-600 hover:underline" data-action="add-member" data-id="${companyId}">Add member</button>
+          </div>
+          <div class="space-y-2">
+            ${members.length ? members.map(m => `
+              <div class="flex items-center justify-between border rounded px-2 py-1 text-xs">
+                <div>${m.username} • ${m.email} • <strong>${m.role}</strong></div>
+                <button class="text-xs text-red-600 hover:underline" data-action="remove-member" data-id="${companyId}" data-user="${m.user_id}">Remove</button>
+              </div>
+            `).join('') : '<div class="text-xs text-gray-500">No members yet.</div>'}
+          </div>
+        `;
+      } catch (err) {
+        panel.innerHTML = '<div class="text-sm text-red-600">Failed to load company.</div>';
+      }
+      return;
+    }
+
+    if (action === 'add-member') {
+      const userId = Number(prompt('Enter user ID to add:'));
+      if (!userId) return;
+      const role = prompt('Role (owner/editor/member):', 'member') || 'member';
+      const res = await fetch('/api/admin/company-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ company_id: companyId, user_id: userId, role }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Add member failed');
+        return;
+      }
+      fetchCompanies();
+      const panel = container.querySelector(`#company-detail-${companyId}`);
+      panel?.classList.add('hidden');
+      return;
+    }
+
+    if (action === 'remove-member') {
+      const userId = Number(btn.dataset.user || 0);
+      if (!userId) return;
+      if (!confirm('Remove this member?')) return;
+      const res = await fetch('/api/admin/company-member-remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ company_id: companyId, user_id: userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Remove failed');
+        return;
+      }
+      fetchCompanies();
     }
   });
 
@@ -628,6 +893,7 @@ export async function renderAdmin(container) {
   });
 
   fetchUsers();
+  fetchCompanies();
   fetchJobs();
   fetchAudit();
   fetchTemplates();

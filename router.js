@@ -24,12 +24,20 @@ import { renderAdmin } from './views/admin.js';
 import { renderEmployers } from './views/employers.js';
 import { renderEmployees } from './views/employees.js';
 import { renderSpeed } from './views/speed.js';
+import { renderCompany } from './views/company.js';
+import { renderMagicLogin } from './views/magicLogin.js';
+import { renderVerifyEmail } from './views/verifyEmail.js';
 
 function parseHash() {
   const rawHash = window.location.hash.slice(1);
   const [pathPart, queryString = ''] = rawHash.split('?');
   const params = Object.fromEntries(new URLSearchParams(queryString));
-  return { path: pathPart.toLowerCase(), params };
+  const pathLower = pathPart.toLowerCase();
+  if (pathLower.startsWith('company/')) {
+    params.slug = pathPart.split('/').slice(1).join('/') || params.slug;
+    return { path: 'company', params };
+  }
+  return { path: pathLower, params };
 }
 
 function kebabToCamel(str) {
@@ -142,6 +150,19 @@ case 'myApplications':
       return scrollToTop();
     case 'speed':
       renderSpeed(app);
+      return scrollToTop();
+    case 'company':
+      if (params.slug) {
+        renderCompany(app, params.slug);
+        return scrollToTop();
+      }
+      app.innerHTML = '<h1 class="text-xl">Missing company slug</h1>';
+      return;
+    case 'magicLogin':
+      renderMagicLogin(app, params);
+      return scrollToTop();
+    case 'verifyEmail':
+      renderVerifyEmail(app, params);
       return scrollToTop();
         case '2fa':
           render2FA(app);

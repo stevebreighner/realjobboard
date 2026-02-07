@@ -4,7 +4,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://js.stripe.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.zippopotam.us https://formspree.io https://api.stripe.com https://js.stripe.com; frame-src https://js.stripe.com https://checkout.stripe.com; font-src 'self' data: https:;">
   <title>Plain JS SPA</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="alternate icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
 
    <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -36,8 +41,12 @@ body {
   margin: 0;
 
   place-items: center;
-  min-width: 500px;
+  min-width: 320px;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  color: #111827;
 }
 
 h1 {
@@ -149,6 +158,13 @@ body {
   word-wrap: break-word;
   padding: 1rem;
   box-sizing: border-box;
+  flex: 1 0 auto;
+  width: 100%;
+}
+#site-footer,
+footer {
+  flex-shrink: 0;
+  width: 100%;
 }
 #avatarPreview {
   width: 80px;
@@ -160,10 +176,21 @@ body {
 }
 </style>
 </head>
-<body class="bg-gray-50 text-gray-900">
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
   <div id="navbar"></div>
-  <div id="app" class="p-6"></div>
+  <div id="app" class="p-6 flex-1"></div>
   <footer class="text-center p-4 text-sm text-gray-500 border-t mt-8">
+    <div class="flex flex-wrap items-center justify-center gap-3 mb-2">
+      <a href="/#about" class="text-gray-600 hover:text-gray-900">About</a>
+      <span class="text-gray-300">•</span>
+      <a href="/#support" class="text-gray-600 hover:text-gray-900">Support</a>
+      <span class="text-gray-300">•</span>
+      <a href="/#privacy" class="text-gray-600 hover:text-gray-900">Privacy</a>
+      <span class="text-gray-300">•</span>
+      <a href="/#terms" class="text-gray-600 hover:text-gray-900">Terms</a>
+      <span class="text-gray-300">•</span>
+      <a href="/#support?subject=Report%20Abuse&context=footer" class="text-gray-600 hover:text-gray-900">Report Abuse</a>
+    </div>
     &copy; <span id="year"></span> <span id="companyName"></span>. All rights reserved.
   </footer>
 

@@ -26,7 +26,9 @@ export function renderRegister(container) {
 
       <div id="employerFields" class="hidden border rounded p-3 bg-white">
         <h3 class="text-base font-semibold mb-2">Employer Details</h3>
-        <input type="text" name="company" placeholder="Company Name" class="w-full p-2 border rounded mb-2" />
+        <input type="text" name="company" placeholder="Company Name" class="w-full p-2 border rounded mb-2" list="companySuggestions" />
+        <datalist id="companySuggestions"></datalist>
+        <div id="companySuggestionHint" class="text-xs text-gray-500 mb-2 hidden"></div>
         <input type="url" name="company_site" placeholder="Company Website (https://...)" class="w-full p-2 border rounded mb-2" />
         <input type="email" name="company_email" placeholder="Company Email (name@company.com)" class="w-full p-2 border rounded" />
         <p class="text-xs text-gray-500 mt-2">Employer accounts require a company email that matches your website domain.</p>
@@ -61,6 +63,9 @@ export function renderRegister(container) {
   const togglePasswordBtn = container.querySelector('#toggleRegisterPassword');
   const roleSelect = container.querySelector('select[name="role"]');
   const employerFields = container.querySelector('#employerFields');
+  const companyInput = container.querySelector('input[name="company"]');
+  const companySuggestions = container.querySelector('#companySuggestions');
+  const companySuggestionHint = container.querySelector('#companySuggestionHint');
   const zipInput = container.querySelector('input[name="zip"]');
   const cityInput = container.querySelector('input[name="city"]');
   const stateSelect = container.querySelector('select[name="state"]');
@@ -125,9 +130,53 @@ export function renderRegister(container) {
   roleSelect?.addEventListener('change', updateEmployerFields);
   updateEmployerFields();
 
+  let companyLookupTimer = null;
+  companyInput?.addEventListener('input', () => {
+    const query = companyInput.value.trim();
+    if (companyLookupTimer) clearTimeout(companyLookupTimer);
+    companyLookupTimer = setTimeout(async () => {
+      if (!query || query.length < 2) {
+        if (companySuggestions) companySuggestions.innerHTML = '';
+        if (companySuggestionHint) companySuggestionHint.classList.add('hidden');
+        return;
+      }
+      try {
+        const res = await fetch(`/api/companies?query=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data)) return;
+        if (companySuggestions) {
+          companySuggestions.innerHTML = data.map(c => `<option value="${c.name}"></option>`).join('');
+        }
+        const top = data[0];
+        if (companySuggestionHint && top && top.name && top.name.toLowerCase() !== query.toLowerCase()) {
+          companySuggestionHint.textContent = `Did you mean "${top.name}"?`;
+          companySuggestionHint.classList.remove('hidden');
+        } else if (companySuggestionHint) {
+          companySuggestionHint.classList.add('hidden');
+        }
+      } catch (err) {
+        // ignore
+      }
+    }, 250);
+  });
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = Object.fromEntries(new FormData(form).entries());
+    const devFlags = await getDevFlags();
+    const password = (formData.password || '').toString();
+    if (!devFlags.dev_mode) {
+      const strongEnough =
+        password.length >= 10 &&
+        /[a-z]/.test(password) &&
+        /[A-Z]/.test(password) &&
+        /\d/.test(password) &&
+        /[^A-Za-z0-9]/.test(password);
+      if (!strongEnough) {
+        alert('Password must be at least 10 characters and include uppercase, lowercase, number, and symbol.');
+        return;
+      }
+    }
     const country = (formData.country || '').trim();
     const state = (formData.state || '').trim();
     const zip = (formData.zip || '').trim();
@@ -171,7 +220,6 @@ export function renderRegister(container) {
       alert('Unable to verify ZIP code. Please try again.');
       return;
     }
-    const devFlags = await getDevFlags();
     if (!devFlags.dev_mode) {
       if (window.turnstile && turnstileWidgetId !== null) {
         formData.turnstile_token = window.turnstile.getResponse(turnstileWidgetId);
@@ -219,7 +267,8 @@ export function renderRegister(container) {
       let response = await fetch('/wp-json/customapi/v1/register', requestOpts);
       let data = await response.json().catch(() => ({}));
 
-      if (!response.ok) {
+      const needsFallback = !response.ok || !data || (!data.user && !data.message && !data.error);
+      if (needsFallback) {
         response = await fetch('/api/register', requestOpts);
         data = await response.json().catch(() => ({}));
       }

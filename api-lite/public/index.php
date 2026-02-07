@@ -23,7 +23,20 @@ try {
   header('Content-Type: application/json; charset=utf-8');
   echo json_encode($result);
 } catch (Throwable $e) {
+  $logDir = __DIR__ . '/../logs';
+  if (!is_dir($logDir)) {
+    @mkdir($logDir, 0755, true);
+  }
+  $logFile = $logDir . '/api-error.log';
+  $line = sprintf(
+    "[%s] %s in %s:%d\n",
+    date('c'),
+    $e->getMessage(),
+    $e->getFile(),
+    $e->getLine()
+  );
+  @file_put_contents($logFile, $line, FILE_APPEND);
   http_response_code(500);
   header('Content-Type: application/json; charset=utf-8');
-  echo json_encode(['error' => 'Server error', 'message' => $e->getMessage()]);
+  echo json_encode(['error' => 'Server error']);
 }

@@ -12,7 +12,7 @@ window.handleForgotPassword = async function(event) {
   event.preventDefault();
   const email = document.getElementById('forgot_email').value;
 
-  const res = await fetch('/wp-json/customapi/v1/forgot-password', {
+  const res = await fetch('/api/forgot-password', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email })

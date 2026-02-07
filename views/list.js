@@ -1,4 +1,6 @@
 import { getUserProfileCached, getUserProfileCachedAny } from '../utils/session.js';
+import { CONFIG } from '../config.js';
+import { escapeHtml, safeUrl } from '../utils/sanitize.js';
 
 export function renderList(container) {
  
@@ -320,7 +322,7 @@ export function renderList(container) {
     applyFilters();
   }
 
-  fetch('/wp-json/customapi/v1/get-list')
+  fetch('/api/jobs')
     .then(res => res.json())
     .then(data => {
       window.__preload = window.__preload || {};
@@ -509,6 +511,7 @@ export function renderList(container) {
               const field = getMetaValue(item, 'field');
               const rawCompany = getMetaValue(item, 'company');
               const company = rawCompany && rawCompany.includes('@') ? '' : rawCompany;
+              const companySlug = getMetaValue(item, 'company_slug');
               const companySite = getMetaValue(item, 'company_site');
               const rateType = formatRateType(getMetaValue(item, 'rate_type'));
               const rateMin = getMetaValue(item, 'rate_min');
@@ -520,49 +523,62 @@ export function renderList(container) {
               const featured = isFeatured(item);
               const isNew = isNewListing(item);
               const isSaved = savedJobIds.has(Number(id));
+              const title = escapeHtml(item.title || item.name || '');
+              const safeCompany = escapeHtml(company);
+              const safeCompanySlug = escapeHtml(companySlug || '');
+              const summary = escapeHtml(item.summary || '');
+              const safeField = escapeHtml(field);
+              const safeRate = escapeHtml(`${rateMin || ''}${rateMax ? `–${rateMax}` : ''} ${rateType || ''}`.trim());
+              const safeLocation = escapeHtml(location);
+              const safeDistance = escapeHtml(distanceLabel);
+              const safeCompanySite = safeUrl(companySite);
+              const companyLink = companySlug ? `/#company/${encodeURIComponent(companySlug)}` : '';
               return `
                 <div class="group relative border border-slate-200 rounded-2xl p-6 bg-white shadow-sm hover:shadow-lg transition">
                   <div class="absolute inset-y-0 left-0 w-1 rounded-l-2xl bg-gradient-to-b from-indigo-500 via-pink-500 to-amber-400 opacity-70"></div>
                   <div class="flex items-start justify-between gap-3">
                     <div>
-                      <h2 class="text-xl font-medium text-slate-900 font-serif">${item.title || item.name}</h2>
-                      ${company ? `<div class="text-base text-slate-600 mt-1">${company}</div>` : ''}
+                      <h2 class="text-xl font-medium text-slate-900 font-serif">${title}</h2>
+                      ${company ? `<div class="text-base text-slate-600 mt-1">${safeCompanySlug ? `<a class="hover:underline" href="/#company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany}</div>` : ''}
                     </div>
                     <div class="flex items-center gap-2">
                       ${isNew ? `<span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-1 rounded-full">New</span>` : ''}
                       ${featured ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">Featured</span>` : ''}
                     </div>
                   </div>
-                  <p class="text-base text-slate-600 mt-3 line-clamp-3">${item.summary || ''}</p>
+                  <p class="text-base text-slate-600 mt-3 line-clamp-3">${summary}</p>
                   <div class="mt-4 flex flex-wrap gap-2 text-sm text-slate-600">
                     ${field ? `<span class="px-3 py-1.5 rounded-full bg-slate-100 inline-flex items-center gap-2">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M4 7h16M4 12h16M4 17h16"></path>
                       </svg>
-                      ${field}
+                      ${safeField}
                     </span>` : ''}
                     ${(rateType || rateMin || rateMax) ? `<span class="px-3 py-1.5 rounded-full bg-slate-100 inline-flex items-center gap-2">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 2v20M5 7h14M5 17h14"></path>
                       </svg>
-                      ${rateMin || ''}${rateMax ? `–${rateMax}` : ''} ${rateType || ''}
+                      ${safeRate}
                     </span>` : ''}
                     ${location ? `<span class="px-3 py-1.5 rounded-full bg-slate-100 inline-flex items-center gap-2">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 21s-6-5.686-6-10a6 6 0 1 1 12 0c0 4.314-6 10-6 10z"></path>
                         <circle cx="12" cy="11" r="2"></circle>
                       </svg>
-                      ${location}
+                      ${safeLocation}
                     </span>` : ''}
                     ${distanceLabel ? `<span class="px-3 py-1.5 rounded-full bg-slate-100 inline-flex items-center gap-2">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.36-6.36-2.83 2.83M9.47 14.53l-2.83 2.83m0-11.32 2.83 2.83m8.06 8.06 2.83 2.83" />
                       </svg>
-                      ${distanceLabel}
+                      ${safeDistance}
                     </span>` : ''}
                   </div>
                   <div class="mt-5 flex items-center justify-between text-base">
-                    ${companySite ? `<a href="${companySite}" class="text-indigo-600 hover:underline" target="_blank" rel="noopener">Company site</a>` : '<span></span>'}
+                    <div class="flex items-center gap-3 text-sm">
+                      ${companyLink ? `<a href="${companyLink}" class="text-indigo-600 hover:underline">${escapeHtml(CONFIG.COMPANY_ENTITY_LABEL || 'Company page')}</a>` : ''}
+                      ${safeCompanySite ? `<a href="${safeCompanySite}" class="text-indigo-600 hover:underline" target="_blank" rel="noopener">Company site</a>` : ''}
+                    </div>
                     <div class="flex items-center gap-3">
                       <button data-save-id="${id}" class="text-sm ${isSaved ? 'text-amber-700' : 'text-indigo-600'} hover:underline">
                         ${isSaved ? 'Saved' : 'Save'}

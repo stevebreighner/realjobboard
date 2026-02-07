@@ -18,7 +18,10 @@ export function renderPost(container) {
             </label>
           `).join('')}
         </div>
-        <p class="text-xs text-gray-500 mt-2">Promo codes can be entered at Stripe checkout.</p>
+        <div class="mt-3">
+          <label class="text-xs text-gray-500 block mb-1">Promo code (optional)</label>
+          <input type="text" name="promo_code" class="w-full p-2 border rounded" placeholder="Enter code" />
+        </div>
       </div>
     `
     : '';
@@ -156,43 +159,38 @@ export function renderPost(container) {
       return;
     }
 
-    const response = await fetch('/wp-json/customapi/v1/create-post', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...formData, rate_min: rateMin, rate_max: rateMax })
-    });
-
-    if (!response.ok) {
-      const data = await response.json();
-      alert('❌ Failed to post: ' + (data.message || 'Unknown error'));
-      return;
-    }
-
-    const data = await response.json();
-    const postId = data.post_id;
-    const tier = formData.job_tier || (tiers[0]?.id || 'standard');
-
-    if (!postId) {
-      alert('Job created, but missing post ID for checkout.');
-      return;
-    }
-
     try {
-      const configRes = await fetch('/wp-json/customapi/v1/stripe-config');
+      const configRes = await fetch('/api/stripe-config');
       const stripeConfig = await configRes.json();
       if (!stripeConfig?.publishableKey) {
         alert('Stripe is not configured yet. Please contact support.');
         return;
       }
 
-      const checkoutRes = await fetch('/wp-json/customapi/v1/stripe-checkout', {
+      const tier = formData.job_tier || (tiers[0]?.id || 'standard');
+      const promoCode = (formData.promo_code || '').trim();
+      const payload = { ...formData, rate_min: rateMin, rate_max: rateMax, tier, promo_code: promoCode };
+
+      const checkoutRes = await fetch('/api/stripe-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_id: postId, tier })
+        credentials: 'include',
+        body: JSON.stringify(payload)
       });
       const checkoutData = await checkoutRes.json();
-      if (!checkoutRes.ok || !checkoutData.sessionId) {
+      if (!checkoutRes.ok) {
         alert('❌ Payment setup failed: ' + (checkoutData.message || checkoutData.error || 'Unknown error'));
+        return;
+      }
+
+      if (checkoutData.free && checkoutData.job_id) {
+        alert('✅ Job draft created. You can publish it from your dashboard.');
+        window.location.hash = '#my-job-posts';
+        return;
+      }
+
+      if (!checkoutData.sessionId) {
+        alert('❌ Payment setup failed: Missing Stripe session.');
         return;
       }
 

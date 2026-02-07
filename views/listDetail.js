@@ -1,9 +1,10 @@
 import { CONFIG } from '../config.js';
 import { getSessionCached, getUserProfileCached, getUserProfileCachedAny } from '../utils/session.js';
+import { escapeHtml, safeUrl } from '../utils/sanitize.js';
 
 export async function renderListDetail(container, id) {
   try {
-    const response = await fetch(`/wp-json/customapi/v1/get-list-detail?id=${id}`);
+    const response = await fetch(`/api/job?id=${id}`);
     const data = await response.json();
 
     if (!response.ok) throw new Error(data.message || 'Failed to fetch post');
@@ -43,10 +44,10 @@ export async function renderListDetail(container, id) {
                 const dateLabel = isNaN(date.getTime()) ? '' : ` • ${date.toLocaleString()}`;
                 return `
                   <div class="border rounded p-3">
-                    <div class="text-sm text-gray-700">Applicant ID: ${app.user_id}${dateLabel}</div>
+                    <div class="text-sm text-gray-700">Applicant ID: ${escapeHtml(app.user_id)}${dateLabel}</div>
                     <div class="text-sm">
-                      <a href="${app.resume}" class="text-indigo-600 hover:underline" target="_blank" rel="noopener">Resume</a>
-                      ${app.cover_letter ? ` • <a href="${app.cover_letter}" class="text-indigo-600 hover:underline" target="_blank" rel="noopener">Cover Letter</a>` : ''}
+                      ${safeUrl(app.resume) ? `<a href="${safeUrl(app.resume)}" class="text-indigo-600 hover:underline" target="_blank" rel="noopener">Resume</a>` : ''}
+                      ${app.cover_letter && safeUrl(app.cover_letter) ? ` • <a href="${safeUrl(app.cover_letter)}" class="text-indigo-600 hover:underline" target="_blank" rel="noopener">Cover Letter</a>` : ''}
                     </div>
                   </div>
                 `;
@@ -55,12 +56,20 @@ export async function renderListDetail(container, id) {
           </div>
         `;
       }
-      return val;
+      return escapeHtml(val);
     };
 
     const rawCompany = data.meta?.company || '';
     const company = rawCompany && rawCompany.includes('@') ? '' : rawCompany;
     const companySite = data.meta?.company_site || '';
+    const companySlug = data.meta?.company_slug || '';
+    const companyLink = companySlug ? `/#company/${encodeURIComponent(companySlug)}` : '';
+    const safeCompanySite = safeUrl(companySite);
+    const safeTitle = escapeHtml(data.title || data.name || '');
+    const safeCompany = escapeHtml(company || '');
+    const safeCompanySlug = escapeHtml(companySlug || '');
+    const safeDate = escapeHtml(data.date || '');
+    const safeDesc = escapeHtml(data.description || '');
     const rawRateType = data.meta?.rate_type || '';
     const rateType = (() => {
       const t = rawRateType.toString().toLowerCase();
@@ -82,7 +91,7 @@ export async function renderListDetail(container, id) {
       if (!rateType && !rateMin && !rateMax) return '';
       const range = `${rateMin || ''}${rateMax ? `–${rateMax}` : ''}`.trim();
       const typeLabel = rateType ? rateType.charAt(0).toUpperCase() + rateType.slice(1) : '';
-      return `${range}${typeLabel ? ` ${typeLabel}` : ''}`.trim();
+      return escapeHtml(`${range}${typeLabel ? ` ${typeLabel}` : ''}`.trim());
     };
 
     const session = await getSessionCached({ maxAgeMs: 30000 });
@@ -140,44 +149,44 @@ export async function renderListDetail(container, id) {
       if (typeof miles !== 'number') return;
       const locEl = document.getElementById('jobLocationLine');
       if (locEl) {
-        locEl.innerHTML = `<strong>Location:</strong> ${locationLine} • ${miles.toFixed(1)} mi away`;
+        locEl.innerHTML = `<strong>Location:</strong> ${escapeHtml(locationLine)} • ${miles.toFixed(1)} mi away`;
       }
     };
 
     container.innerHTML = `
       <div class="flex items-center justify-between mb-4">
-        <h1 class="text-2xl font-bold">${data.title}</h1>
+        <h1 class="text-2xl font-bold">${safeTitle}</h1>
         <div class="flex items-center gap-2">
           <button id="saveJobBtn" class="text-xs px-2 py-1 rounded border text-slate-700 hover:border-indigo-500">Save</button>
           ${isFeatured ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">Featured</span>` : ''}
         </div>
       </div>
       <p class="text-gray-600 text-sm mb-2">
-        ${company ? `Posted by ${company}` : 'Posted by Employer'} on ${data.date}
+        ${company ? `Posted by ${safeCompanySlug ? `<a class="text-indigo-600 hover:underline" href="/#company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany}` : 'Posted by Employer'} on ${safeDate}
       </p>
       ${formatRate() ? `
         <p class="text-sm text-gray-700 mb-2"><strong>Rate:</strong> ${formatRate()}</p>
       ` : ''}
-      ${company || companySite ? `
+      ${company || companySite || companyLink ? `
         <p class="text-sm text-gray-700 mb-2">
-          <strong>Company:</strong> ${company || ' '}
-          ${companySite ? `<a href="${companySite}" class="text-indigo-600 hover:underline ml-1" target="_blank" rel="noopener">Website</a>` : ''}
+          <strong>Company:</strong> ${safeCompanySlug ? `<a class="text-indigo-600 hover:underline" href="/#company/${safeCompanySlug}">${safeCompany || ' '}</a>` : (safeCompany || ' ')}
+          ${companyLink ? `<a href="${companyLink}" class="text-indigo-600 hover:underline ml-2">${escapeHtml(CONFIG.COMPANY_ENTITY_LABEL || 'Company page')}</a>` : ''}
+          ${safeCompanySite ? `<a href="${safeCompanySite}" class="text-indigo-600 hover:underline ml-2" target="_blank" rel="noopener">Website</a>` : ''}
         </p>
       ` : ''}
       ${locationLine.trim() ? `
-        <p class="text-sm text-gray-700 mb-2" id="jobLocationLine"><strong>Location:</strong> ${locationLine}</p>
+        <p class="text-sm text-gray-700 mb-2" id="jobLocationLine"><strong>Location:</strong> ${escapeHtml(locationLine)}</p>
       ` : ''}
-      <div class="prose mb-4">${data.description}</div>
+      <div class="prose mb-4">${safeDesc}</div>
       <div class="mb-4 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-3">
         Privacy note: Employers may contact you using the details you provide. If you choose to hide your email, they will only see your resume link.
-        <a class="text-blue-600 hover:underline ml-2" href="/#support?subject=Report%20Abuse&context=job:${id}">Report abuse</a>
       </div>
 
       ${data.meta ? Object.entries(data.meta)
         .map(([key, val]) => {
           const formatted = formatMetaValue(key, val);
           if (!formatted) return '';
-          return `<div class="mb-1"><strong>${key}:</strong> ${formatted}</div>`;
+          return `<div class="mb-1"><strong>${escapeHtml(key)}:</strong> ${formatted}</div>`;
         })
         .join('') : ''}
 
@@ -189,20 +198,32 @@ export async function renderListDetail(container, id) {
           <h2 class="text-lg font-semibold mb-2">Message the Employer</h2>
           <p class="text-xs text-gray-500 mb-3">This sends an email to the employer. Your email will be included as the reply-to.</p>
           ${isLoggedIn ? `
-            <form id="employerMessageForm" class="space-y-3">
-              <input type="text" name="name" class="w-full p-2 border rounded" placeholder="Your name" required />
-              <input type="email" name="email" class="w-full p-2 border rounded" placeholder="Your email" required />
-              <select id="applicantTemplate" class="w-full p-2 border rounded">
-                <option value="" selected>Quick template (optional)</option>
-              </select>
-              <textarea name="message" class="w-full p-2 border rounded" rows="4" placeholder="Your message" required></textarea>
-              <div id="turnstile-container" class="mt-2"></div>
-              <button type="submit" class="text-purple px-4 py-2 rounded">Send Message</button>
-              <p id="employerMessageStatus" class="text-sm"></p>
-            </form>
+            <button id="openMessageModal" class="text-sm text-indigo-600 hover:underline">Open contact form</button>
+            <div id="messageModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
+              <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-4">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-lg font-semibold">Contact Employer</h3>
+                  <button id="closeMessageModal" class="text-sm text-gray-500 hover:text-gray-800">Close</button>
+                </div>
+                <form id="employerMessageForm" class="space-y-3">
+                  <input type="text" name="name" class="w-full p-2 border rounded" placeholder="Your name" required />
+                  <input type="email" name="email" class="w-full p-2 border rounded" placeholder="Your email" required />
+                  <select id="applicantTemplate" class="w-full p-2 border rounded">
+                    <option value="" selected>Quick template (optional)</option>
+                  </select>
+                  <textarea name="message" class="w-full p-2 border rounded" rows="4" placeholder="Your message" required></textarea>
+                  <div id="turnstile-container" class="mt-2"></div>
+                  <button type="submit" class="text-purple px-4 py-2 rounded">Send Message</button>
+                  <p id="employerMessageStatus" class="text-sm"></p>
+                </form>
+              </div>
+            </div>
           ` : `
             <p class="text-sm text-gray-600">Please <a href="/#login" class="text-indigo-600 hover:underline">log in</a> to message this employer.</p>
           `}
+          <div class="mt-3 text-xs text-gray-500">
+            <a class="text-blue-600 hover:underline" href="/#support?subject=Report%20Abuse&context=job:${id}">Report abuse</a>
+          </div>
         </div>
       </div>
 
@@ -216,6 +237,29 @@ export async function renderListDetail(container, id) {
     applyDistance();
 
     const saveBtn = document.getElementById('saveJobBtn');
+    const openModalBtn = document.getElementById('openMessageModal');
+    const modalEl = document.getElementById('messageModal');
+    const closeModalBtn = document.getElementById('closeMessageModal');
+    if (openModalBtn && modalEl) {
+      openModalBtn.addEventListener('click', () => {
+        modalEl.classList.remove('hidden');
+        modalEl.classList.add('flex');
+      });
+    }
+    if (closeModalBtn && modalEl) {
+      closeModalBtn.addEventListener('click', () => {
+        modalEl.classList.add('hidden');
+        modalEl.classList.remove('flex');
+      });
+    }
+    if (modalEl) {
+      modalEl.addEventListener('click', (e) => {
+        if (e.target === modalEl) {
+          modalEl.classList.add('hidden');
+          modalEl.classList.remove('flex');
+        }
+      });
+    }
     if (saveBtn && isLoggedIn) {
       fetch('/wp-json/customapi/v1/saved-jobs', { credentials: 'include' })
         .then(res => res.json())

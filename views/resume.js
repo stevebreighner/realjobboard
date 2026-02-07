@@ -1,7 +1,7 @@
 export async function renderResume(container) {
     try {
       // Fetch user profile
-      const profileRes = await fetch("/wp-json/customapi/v1/user-profile?_=" + Date.now(), {
+      const profileRes = await fetch("/api/user-profile?_=" + Date.now(), {
         credentials: "include"
       });
       const profileData = await profileRes.json();
@@ -16,7 +16,7 @@ export async function renderResume(container) {
             ${profileData.resumes?.map(r => `
               <li class="flex items-center justify-between border rounded px-3 py-2">
                 <a href="${r.url}" target="_blank" class="text-blue-600 hover:underline">${r.name}</a>
-                <button data-time="${r.time}" class="deleteResume text-red-600 hover:underline text-sm">Delete</button>
+                <button data-id="${r.id}" data-time="${r.time}" class="deleteResume text-red-600 hover:underline text-sm">Delete</button>
               </li>
             `).join("") || `<p class="text-gray-500">No resumes uploaded yet.</p>`}
           </ul>
@@ -34,7 +34,7 @@ export async function renderResume(container) {
             ${profileData.cover_letters?.map(c => `
               <li class="flex items-center justify-between border rounded px-3 py-2">
                 <a href="${c.url}" target="_blank" class="text-blue-600 hover:underline">${c.name}</a>
-                <button data-time="${c.time}" class="deleteCover text-red-600 hover:underline text-sm">Delete</button>
+                <button data-id="${c.id}" data-time="${c.time}" class="deleteCover text-red-600 hover:underline text-sm">Delete</button>
               </li>
             `).join("") || `<p class="text-gray-500">No cover letters uploaded yet.</p>`}
           </ul>
@@ -51,10 +51,10 @@ export async function renderResume(container) {
       document.getElementById("resumeUpload")?.addEventListener("submit", async (e) => {
         e.preventDefault();
         const formData = new FormData();
-        formData.append("resume", e.target.querySelector('input[name="resume"]').files[0]);
+        formData.append("file", e.target.querySelector('input[name="resume"]').files[0]);
   
         try {
-          const res = await fetch("/wp-json/customapi/v1/user-profile-update", {
+          const res = await fetch("/api/user-files-upload?kind=resume", {
             method: "POST",
             body: formData,
             credentials: "include"
@@ -62,7 +62,7 @@ export async function renderResume(container) {
           if (!res.ok) throw new Error("Failed to upload resume");
           location.reload(); // refresh list
         } catch (err) {
-          alert("❌ " + err.message);
+          container.querySelector('#resumeList')?.insertAdjacentHTML('beforebegin', `<p class="text-red-600 text-sm">❌ ${err.message}</p>`);
         }
       });
   
@@ -70,10 +70,10 @@ export async function renderResume(container) {
       document.getElementById("coverUpload")?.addEventListener("submit", async (e) => {
         e.preventDefault();
         const formData = new FormData();
-        formData.append("cover_letter", e.target.querySelector('input[name="cover_letter"]').files[0]);
+        formData.append("file", e.target.querySelector('input[name="cover_letter"]').files[0]);
   
         try {
-          const res = await fetch("/wp-json/customapi/v1/user-profile-update", {
+          const res = await fetch("/api/user-files-upload?kind=cover", {
             method: "POST",
             body: formData,
             credentials: "include"
@@ -81,7 +81,7 @@ export async function renderResume(container) {
           if (!res.ok) throw new Error("Failed to upload cover letter");
           location.reload();
         } catch (err) {
-          alert("❌ " + err.message);
+          container.querySelector('#coverList')?.insertAdjacentHTML('beforebegin', `<p class="text-red-600 text-sm">❌ ${err.message}</p>`);
         }
       });
   
@@ -90,14 +90,16 @@ export async function renderResume(container) {
         btn.addEventListener("click", async () => {
           if (!confirm("Delete this resume?")) return;
           try {
-            const res = await fetch("/wp-json/customapi/v1/delete-resume/" + btn.dataset.time, {
-              method: "DELETE",
-              credentials: "include"
+            const res = await fetch("/api/user-files-delete", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ id: Number(btn.dataset.id || 0) || Number(btn.dataset.time || 0) })
             });
             if (!res.ok) throw new Error("Failed to delete resume");
             location.reload();
           } catch (err) {
-            alert("❌ " + err.message);
+            container.querySelector('#resumeList')?.insertAdjacentHTML('beforebegin', `<p class="text-red-600 text-sm">❌ ${err.message}</p>`);
           }
         })
       );
@@ -107,14 +109,16 @@ export async function renderResume(container) {
         btn.addEventListener("click", async () => {
           if (!confirm("Delete this cover letter?")) return;
           try {
-            const res = await fetch("/wp-json/customapi/v1/delete-cover/" + btn.dataset.time, {
-              method: "DELETE",
-              credentials: "include"
+            const res = await fetch("/api/user-files-delete", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ id: Number(btn.dataset.id || 0) || Number(btn.dataset.time || 0) })
             });
             if (!res.ok) throw new Error("Failed to delete cover letter");
             location.reload();
           } catch (err) {
-            alert("❌ " + err.message);
+            container.querySelector('#coverList')?.insertAdjacentHTML('beforebegin', `<p class="text-red-600 text-sm">❌ ${err.message}</p>`);
           }
         })
       );

@@ -23,7 +23,7 @@ function preloadData() {
     if (!window.__preload) {
       window.__preload = {};
     }
-    fetch('/wp-json/customapi/v1/get-list')
+    fetch('/api/jobs')
       .then(res => res.json())
       .then(data => {
         window.__preload.list = { data, ts: Date.now() };
