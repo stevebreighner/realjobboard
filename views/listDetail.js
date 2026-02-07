@@ -68,7 +68,10 @@ export async function renderListDetail(container, id) {
     const safeTitle = escapeHtml(data.title || data.name || '');
     const safeCompany = escapeHtml(company || '');
     const safeCompanySlug = escapeHtml(companySlug || '');
-    const safeDate = escapeHtml(data.date || '');
+    const dateObj = data.date ? new Date(data.date) : null;
+    const safeDate = dateObj && !isNaN(dateObj.getTime())
+      ? escapeHtml(dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }))
+      : escapeHtml(data.date || '');
     const safeDesc = escapeHtml(data.description || '');
     const rawRateType = data.meta?.rate_type || '';
     const rateType = (() => {
@@ -87,9 +90,17 @@ export async function renderListDetail(container, id) {
     const zip = data.meta?.zip || '';
     const locationLine = [city, state].filter(Boolean).join(', ') + (zip ? ` ${zip}` : '');
 
+    const formatMoney = (val) => {
+      const num = parseFloat(val);
+      if (isNaN(num)) return val;
+      const decimals = Number.isInteger(num) ? 0 : 2;
+      return new Intl.NumberFormat('en-US', { maximumFractionDigits: decimals, minimumFractionDigits: decimals }).format(num);
+    };
     const formatRate = () => {
       if (!rateType && !rateMin && !rateMax) return '';
-      const range = `${rateMin || ''}${rateMax ? `–${rateMax}` : ''}`.trim();
+      const min = rateMin ? `$${formatMoney(rateMin)}` : '';
+      const max = rateMax ? `$${formatMoney(rateMax)}` : '';
+      const range = min && max ? `${min}–${max}` : (min || max);
       const typeLabel = rateType ? rateType.charAt(0).toUpperCase() + rateType.slice(1) : '';
       return escapeHtml(`${range}${typeLabel ? ` ${typeLabel}` : ''}`.trim());
     };
@@ -154,32 +165,31 @@ export async function renderListDetail(container, id) {
     };
 
     container.innerHTML = `
-      <div class="flex items-center justify-between mb-4">
-        <h1 class="text-2xl font-bold">${safeTitle}</h1>
-        <div class="flex items-center gap-2">
-          <button id="saveJobBtn" class="text-xs px-2 py-1 rounded border text-slate-700 hover:border-indigo-500">Save</button>
-          ${isFeatured ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">Featured</span>` : ''}
+      <div class="border border-slate-200 rounded-2xl p-6 bg-white shadow-sm">
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <p class="text-xs uppercase tracking-wide text-slate-500">${CONFIG.JOB_COPY?.POSTED_BY || 'Posted by'} ${company ? (safeCompanySlug ? `<a class="text-indigo-600 hover:underline" href="/#company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany) : (CONFIG.JOB_COPY?.POSTED_BY_FALLBACK || 'Employer')} • ${safeDate}</p>
+            <h1 class="text-2xl font-semibold text-slate-900 mt-2">${safeTitle}</h1>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="saveJobBtn" class="text-xs px-3 py-1.5 rounded border border-indigo-300 text-indigo-700 hover:border-indigo-500 hover:bg-indigo-50 transition">Save</button>
+            ${isFeatured ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">Featured</span>` : ''}
+          </div>
         </div>
-      </div>
-      <p class="text-gray-600 text-sm mb-2">
-        ${company ? `${CONFIG.JOB_COPY?.POSTED_BY || 'Posted by'} ${safeCompanySlug ? `<a class="text-indigo-600 hover:underline" href="/#company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany}` : (CONFIG.JOB_COPY?.POSTED_BY_FALLBACK || 'Posted by Employer')} on ${safeDate}
-      </p>
-      ${formatRate() ? `
-        <p class="text-sm text-gray-700 mb-2"><strong>Rate:</strong> ${formatRate()}</p>
-      ` : ''}
-      ${company || companySite || companyLink ? `
-        <p class="text-sm text-gray-700 mb-2">
-          <strong>${CONFIG.JOB_COPY?.COMPANY_LABEL || 'Company:'}</strong> ${safeCompanySlug ? `<a class="text-indigo-600 hover:underline" href="/#company/${safeCompanySlug}">${safeCompany || ' '}</a>` : (safeCompany || ' ')}
-          ${companyLink ? `<a href="${companyLink}" class="text-indigo-600 hover:underline ml-2">${escapeHtml(CONFIG.COMPANY_ENTITY_LABEL || 'Company page')}</a>` : ''}
-          ${safeCompanySite ? `<a href="${safeCompanySite}" class="text-indigo-600 hover:underline ml-2" target="_blank" rel="noopener">${CONFIG.JOB_COPY?.WEBSITE_LABEL || 'Website'}</a>` : ''}
-        </p>
-      ` : ''}
-      ${locationLine.trim() ? `
-        <p class="text-sm text-gray-700 mb-2" id="jobLocationLine"><strong>Location:</strong> ${escapeHtml(locationLine)}</p>
-      ` : ''}
-      <div class="prose mb-4">${safeDesc}</div>
-      <div class="mb-4 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-3">
-        ${CONFIG.JOB_COPY?.PRIVACY_NOTE_APPLY || 'Privacy note: Employers may contact you using the details you provide. If you choose to hide your email, they will only see your resume link.'}
+        <div class="flex flex-wrap gap-2 text-xs text-slate-600 mb-4">
+          ${formatRate() ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>Rate:</strong> ${formatRate()}</span>` : ''}
+          ${company ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>${CONFIG.JOB_COPY?.COMPANY_LABEL || 'Company'}:</strong> ${safeCompanySlug ? `<a class="text-indigo-600 hover:underline" href="/#company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany}</span>` : ''}
+          ${locationLine.trim() ? `<span class="px-3 py-1.5 rounded-full bg-slate-100" id="jobLocationLine"><strong>Location:</strong> ${escapeHtml(locationLine)}</span>` : ''}
+        </div>
+        <div class="prose mb-4">${safeDesc}</div>
+        <div class="mb-4 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-3">
+          ${CONFIG.JOB_COPY?.PRIVACY_NOTE_APPLY || 'Privacy note: Employers may contact you using the details you provide. If you choose to hide your email, they will only see your resume link.'}
+        </div>
+        <div class="mt-4 flex flex-wrap gap-3">
+          <button id="submitAction" class="text-indigo-700 border border-indigo-300 px-4 py-2 rounded hover:border-indigo-500 hover:bg-indigo-50 transition">
+            ${CONFIG.SUBMIT_LABEL}
+          </button>
+        </div>
       </div>
 
       ${data.meta ? Object.entries(data.meta)
@@ -191,19 +201,16 @@ export async function renderListDetail(container, id) {
         .join('') : ''}
 
       <div class="mt-6 space-y-4">
-        <button id="submitAction" class="text-purple px-4 py-2 rounded hover:bg-indigo-700 transition">
-          ${CONFIG.SUBMIT_LABEL}
-        </button>
-        <div class="border rounded p-4 bg-white">
+        <div class="border rounded-2xl p-5 bg-white shadow-sm">
           <h2 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.MESSAGE_EMPLOYER_TITLE || 'Message the Employer'}</h2>
           <p class="text-xs text-gray-500 mb-3">This sends an email to the employer. Your email will be included as the reply-to.</p>
           ${isLoggedIn ? `
-            <button id="openMessageModal" class="text-sm text-indigo-600 hover:underline">${CONFIG.JOB_COPY?.OPEN_CONTACT_FORM || 'Open contact form'}</button>
+            <button id="openMessageModal" class="text-sm border border-indigo-300 text-indigo-700 px-3 py-1.5 rounded hover:border-indigo-500 hover:bg-indigo-50 transition">${CONFIG.JOB_COPY?.OPEN_CONTACT_FORM || 'Open contact form'}</button>
             <div id="messageModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
               <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-4">
                 <div class="flex items-center justify-between mb-3">
                   <h3 class="text-lg font-semibold">${CONFIG.JOB_COPY?.CONTACT_EMPLOYER_TITLE || 'Contact Employer'}</h3>
-                  <button id="closeMessageModal" class="text-sm text-gray-500 hover:text-gray-800">${CONFIG.JOB_COPY?.CLOSE_LABEL || 'Close'}</button>
+                  <button id="closeMessageModal" class="text-sm border border-gray-300 text-gray-600 px-2 py-1 rounded hover:bg-gray-50">${CONFIG.JOB_COPY?.CLOSE_LABEL || 'Close'}</button>
                 </div>
                 <form id="employerMessageForm" class="space-y-3">
                   <input type="text" name="name" class="w-full p-2 border rounded" placeholder="Your name" required />
@@ -213,7 +220,7 @@ export async function renderListDetail(container, id) {
                   </select>
                   <textarea name="message" class="w-full p-2 border rounded" rows="4" placeholder="Your message" required></textarea>
                   <div id="turnstile-container" class="mt-2"></div>
-                  <button type="submit" class="text-purple px-4 py-2 rounded">${CONFIG.JOB_COPY?.SEND_MESSAGE || 'Send Message'}</button>
+                  <button type="submit" class="text-indigo-700 border border-indigo-300 px-4 py-2 rounded hover:border-indigo-500 hover:bg-indigo-50 transition">${CONFIG.JOB_COPY?.SEND_MESSAGE || 'Send Message'}</button>
                   <p id="employerMessageStatus" class="text-sm"></p>
                 </form>
               </div>
@@ -221,13 +228,13 @@ export async function renderListDetail(container, id) {
           ` : `
             <p class="text-sm text-gray-600">Please <a href="/#login" class="text-indigo-600 hover:underline">log in</a> to message this employer.</p>
           `}
-          <div class="mt-3 text-xs text-gray-500">
-            <a class="text-blue-600 hover:underline" href="/#support?subject=Report%20Abuse&context=job:${id}">${CONFIG.JOB_COPY?.REPORT_ABUSE || 'Report abuse'}</a>
-          </div>
         </div>
       </div>
 
-      <p class="mt-4"><a href="/#list" class="text-blue-600 hover:underline">← Back to List</a></p>
+      <div class="mt-6 text-xs text-gray-500 flex items-center justify-between">
+        <a href="/#list" class="text-blue-600 hover:underline">← Back to List</a>
+        <a class="text-blue-600 hover:underline" href="/#support?subject=Report%20Abuse&context=job:${id}">${CONFIG.JOB_COPY?.REPORT_ABUSE || 'Report abuse'}</a>
+      </div>
     `;
 
     document.getElementById('submitAction')?.addEventListener('click', () => {

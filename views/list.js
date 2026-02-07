@@ -216,6 +216,11 @@ export function renderList(container) {
       .map(t => normalize(t))
       .filter(t => t.length);
     const useMulti = terms.length >= 2;
+    const wordTerms = rawQuery
+      .trim()
+      .split(/\s+/)
+      .map(t => normalize(t))
+      .filter(t => t.length);
     const fieldQuery = normalize(filterField.value);
     const cityQuery = normalize(filterCity.value);
     const stateQuery = normalize(filterState.value);
@@ -231,8 +236,12 @@ export function renderList(container) {
         const matchCount = terms.reduce((acc, term) => acc + (searchText.includes(term) ? 1 : 0), 0);
         if (matchCount === 0) return false;
         item.__matchCount = matchCount;
-      } else if (query && !searchText.includes(query)) {
-        return false;
+      } else if (query) {
+        if (wordTerms.length > 1) {
+          if (!wordTerms.every(term => searchText.includes(term))) return false;
+        } else if (!searchText.includes(query)) {
+          return false;
+        }
       }
       if (fieldQuery && !normalize(getMetaValue(item, 'field')).includes(fieldQuery)) return false;
       if (cityQuery && !normalize(getMetaValue(item, 'city')).includes(cityQuery)) return false;
@@ -512,7 +521,6 @@ export function renderList(container) {
               const rawCompany = getMetaValue(item, 'company');
               const company = rawCompany && rawCompany.includes('@') ? '' : rawCompany;
               const companySlug = getMetaValue(item, 'company_slug');
-              const companySite = getMetaValue(item, 'company_site');
               const rateType = formatRateType(getMetaValue(item, 'rate_type'));
               const rateMin = getMetaValue(item, 'rate_min');
               const rateMax = getMetaValue(item, 'rate_max');
@@ -531,23 +539,21 @@ export function renderList(container) {
               const safeRate = escapeHtml(`${rateMin || ''}${rateMax ? `–${rateMax}` : ''} ${rateType || ''}`.trim());
               const safeLocation = escapeHtml(location);
               const safeDistance = escapeHtml(distanceLabel);
-              const safeCompanySite = safeUrl(companySite);
-              const companyLink = companySlug ? `/#company/${encodeURIComponent(companySlug)}` : '';
               return `
                 <div class="group relative border border-slate-200 rounded-2xl p-6 bg-white shadow-sm hover:shadow-lg transition">
                   <div class="absolute inset-y-0 left-0 w-1 rounded-l-2xl bg-gradient-to-b from-indigo-500 via-pink-500 to-amber-400 opacity-70"></div>
                   <div class="flex items-start justify-between gap-3">
                     <div>
-                      <h2 class="text-xl font-medium text-slate-900 font-serif">${title}</h2>
-                      ${company ? `<div class="text-base text-slate-600 mt-1">${safeCompanySlug ? `<a class="hover:underline" href="/#company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany}</div>` : ''}
+                      <h2 class="text-lg font-medium text-slate-900 font-serif">${title}</h2>
+                      ${company ? `<div class="text-sm text-slate-600 mt-1">${safeCompanySlug ? `<a class="hover:underline" href="/#company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany}</div>` : ''}
                     </div>
                     <div class="flex items-center gap-2">
-                      ${isNew ? `<span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-1 rounded-full">New</span>` : ''}
-                      ${featured ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">Featured</span>` : ''}
+                      ${isNew ? `<span class="text-[11px] bg-emerald-100 text-emerald-800 px-2 py-1 rounded-full">New</span>` : ''}
+                      ${featured ? `<span class="text-[11px] bg-amber-100 text-amber-800 px-2 py-1 rounded-full">Featured</span>` : ''}
                     </div>
                   </div>
-                  <p class="text-base text-slate-600 mt-3 line-clamp-3">${summary}</p>
-                  <div class="mt-4 flex flex-wrap gap-2 text-sm text-slate-600">
+                  <p class="text-sm text-slate-600 mt-3 line-clamp-3">${summary}</p>
+                  <div class="mt-4 flex flex-wrap gap-2 text-xs text-slate-600">
                     ${field ? `<span class="px-3 py-1.5 rounded-full bg-slate-100 inline-flex items-center gap-2">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M4 7h16M4 12h16M4 17h16"></path>
@@ -574,11 +580,7 @@ export function renderList(container) {
                       ${safeDistance}
                     </span>` : ''}
                   </div>
-                  <div class="mt-5 flex items-center justify-between text-base">
-                    <div class="flex items-center gap-3 text-sm">
-                      ${companyLink ? `<a href="${companyLink}" class="text-indigo-600 hover:underline">${escapeHtml(CONFIG.COMPANY_ENTITY_LABEL || 'Company page')}</a>` : ''}
-                      ${safeCompanySite ? `<a href="${safeCompanySite}" class="text-indigo-600 hover:underline" target="_blank" rel="noopener">Company site</a>` : ''}
-                    </div>
+                  <div class="mt-5 flex items-center justify-between text-sm">
                     <div class="flex items-center gap-3">
                       <button data-save-id="${id}" class="text-sm ${isSaved ? 'text-amber-700' : 'text-indigo-600'} hover:underline">
                         ${isSaved ? 'Saved' : 'Save'}
