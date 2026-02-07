@@ -88,6 +88,10 @@ export function renderPost(container) {
             <input type="checkbox" name="compliance_blocks" value="background_check" />
             <span>Background check consent</span>
           </label>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="compliance_blocks" value="age_minimum" />
+            <span>Age minimum confirmation (18+)</span>
+          </label>
           <label class="flex items-center gap-2 text-sm mt-2">
             <input type="checkbox" name="compliance_federal" value="1" />
             <span>Federal/contractor role</span>

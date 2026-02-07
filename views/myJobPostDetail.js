@@ -418,6 +418,7 @@ export async function renderMyJobPostDetail(container, jobId) {
         work_auth: 'Work Authorization',
         prior_employment: 'Prior Employment',
         background_check: 'Background Check',
+        age_minimum: 'Age 18+',
       };
       const entries = Object.entries(answers).filter(([, v]) => v);
       if (!entries.length) return '';

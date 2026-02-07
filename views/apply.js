@@ -65,6 +65,7 @@ export async function renderApply(container, jobId) {
         work_auth: profileData.compliance_work_auth || '',
         prior_employment: profileData.compliance_prior_employment || '',
         background_check: profileData.compliance_background_check || '',
+        age_minimum: profileData.compliance_age_minimum || '',
       };
   
       // --- Render form ---
@@ -121,7 +122,7 @@ export async function renderApply(container, jobId) {
           ${complianceEnabled ? `
           <div class="border rounded p-4 bg-white">
             <h2 class="text-lg font-semibold mb-2">Optional compliance questions</h2>
-            <p class="text-xs text-gray-500 mb-3">You may skip these unless the employer requires them.</p>
+            <p class="text-xs text-gray-500 mb-3">You may skip these unless the employer requires them. “Prefer not to say” is always acceptable.</p>
             ${complianceBlocks.includes('eeo') ? `
               <div class="mb-3">
                 <label class="block text-sm font-semibold">Gender (optional)</label>
@@ -197,6 +198,16 @@ export async function renderApply(container, jobId) {
                 </select>
               </div>
             ` : ''}
+            ${complianceBlocks.includes('age_minimum') ? `
+              <div class="mb-3">
+                <label class="block text-sm font-semibold">Age confirmation (required)</label>
+                <select name="compliance_age_minimum" class="w-full p-2 border rounded" required>
+                  <option value="">Select...</option>
+                  <option value="yes" ${compliancePrefill.age_minimum === 'yes' ? 'selected' : ''}>I am at least 18 years old</option>
+                  <option value="no" ${compliancePrefill.age_minimum === 'no' ? 'selected' : ''}>I am under 18</option>
+                </select>
+              </div>
+            ` : ''}
             <label class="flex items-center gap-2 text-xs text-slate-600 mt-2">
               <input type="checkbox" name="save_compliance" value="1" checked />
               <span>Save these responses to my profile for next time</span>
@@ -245,6 +256,7 @@ export async function renderApply(container, jobId) {
           work_auth: formData.get('compliance_work_auth') || '',
           prior_employment: formData.get('compliance_prior_employment') || '',
           background_check: formData.get('compliance_background_check') || '',
+          age_minimum: formData.get('compliance_age_minimum') || '',
         };
         const saveCompliance = formData.get('save_compliance') === '1';
         if (saveCompliance) {
@@ -257,6 +269,7 @@ export async function renderApply(container, jobId) {
             compliance_work_auth: compliance.work_auth,
             compliance_prior_employment: compliance.prior_employment,
             compliance_background_check: compliance.background_check,
+            compliance_age_minimum: compliance.age_minimum,
           }).forEach(([k, v]) => fd.append(k, v));
           fetch('/api/user-profile-update', { method: 'POST', body: fd, credentials: 'include' }).catch(() => {});
         }

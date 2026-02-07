@@ -35,7 +35,7 @@ class ProfileController {
       'hide_email', 'avatar_url',
       'compliance_gender', 'compliance_race', 'compliance_disability',
       'compliance_veteran', 'compliance_work_auth', 'compliance_prior_employment',
-      'compliance_background_check',
+      'compliance_background_check', 'compliance_age_minimum',
     ]);
 
     if ($light) {
@@ -74,6 +74,7 @@ class ProfileController {
       'compliance_work_auth' => $meta['compliance_work_auth'] ?? '',
       'compliance_prior_employment' => $meta['compliance_prior_employment'] ?? '',
       'compliance_background_check' => $meta['compliance_background_check'] ?? '',
+      'compliance_age_minimum' => $meta['compliance_age_minimum'] ?? '',
       'resumes' => array_map(function (array $row): array {
         $time = $row['created_at'] ? strtotime($row['created_at']) : time();
         $token = $row['access_token'] ?? '';
@@ -111,7 +112,7 @@ class ProfileController {
       'avatar_url',
       'compliance_gender', 'compliance_race', 'compliance_disability',
       'compliance_veteran', 'compliance_work_auth', 'compliance_prior_employment',
-      'compliance_background_check',
+      'compliance_background_check', 'compliance_age_minimum',
     ];
 
     foreach ($fields as $field) {
