@@ -39,9 +39,23 @@ if (file_exists($envPath)) {
   }
 }
 
-// Reuse WP DB settings without loading full WP
+// Prefer .env DB settings (for non-WP environments)
+if (!defined('DB_NAME') && !empty($_ENV['DB_NAME'])) {
+  define('DB_NAME', $_ENV['DB_NAME']);
+}
+if (!defined('DB_USER') && !empty($_ENV['DB_USER'])) {
+  define('DB_USER', $_ENV['DB_USER']);
+}
+if (!defined('DB_PASSWORD') && array_key_exists('DB_PASSWORD', $_ENV)) {
+  define('DB_PASSWORD', $_ENV['DB_PASSWORD']);
+}
+if (!defined('DB_HOST') && !empty($_ENV['DB_HOST'])) {
+  define('DB_HOST', $_ENV['DB_HOST']);
+}
+
+// Fallback: reuse WP DB settings without loading full WP
 $wpConfig = __DIR__ . '/../../wp-config.php';
-if (file_exists($wpConfig)) {
+if (file_exists($wpConfig) && (!defined('DB_HOST') || !defined('DB_NAME') || !defined('DB_USER'))) {
   $configRaw = file_get_contents($wpConfig);
   if ($configRaw !== false) {
     $defs = [
