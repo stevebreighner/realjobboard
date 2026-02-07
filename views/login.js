@@ -131,7 +131,13 @@ export function renderLogin(container) {
     if (!CONFIG.TURNSTILE_SITE_KEY) {
       turnstileToken = '';
     }
-    if (!turnstileToken && turnstileContainer && !turnstileContainer.textContent.includes('captcha disabled') && CONFIG.TURNSTILE_SITE_KEY) {
+    const captchaDisabled = turnstileContainer && turnstileContainer.textContent.includes('captcha disabled');
+    if (CONFIG.TURNSTILE_SITE_KEY && !window.turnstile) {
+      messageEl.className = 'mt-4 text-sm text-amber-700';
+      messageEl.textContent = 'Captcha is blocked by the browser. Please refresh or disable blockers.';
+      return;
+    }
+    if (!turnstileToken && turnstileContainer && !captchaDisabled && CONFIG.TURNSTILE_SITE_KEY) {
       messageEl.className = 'mt-4 text-sm text-amber-700';
       messageEl.textContent = 'Please complete the captcha.';
       return;
