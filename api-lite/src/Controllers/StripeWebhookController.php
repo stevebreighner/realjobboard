@@ -7,6 +7,7 @@ use App\Models\JobIntentModel;
 use App\Models\JobModel;
 use App\Models\CompanyModel;
 use App\Models\PromoModel;
+use App\Services\Mailer;
 
 class StripeWebhookController {
   public function handle(): array {
@@ -92,6 +93,7 @@ class StripeWebhookController {
     $meta = [
       'description' => $payload['description'] ?? '',
       'field' => $payload['field'] ?? '',
+      'employment_type' => $payload['employment_type'] ?? '',
       'street1' => $payload['street1'] ?? '',
       'street2' => $payload['street2'] ?? '',
       'city' => $payload['city'] ?? '',
@@ -106,10 +108,39 @@ class StripeWebhookController {
       'company_site' => $payload['company_site'] ?? '',
       'job_featured' => $tier === 'premium' ? '1' : '0',
     ];
-    $jobs->createDraft($payload['title'], $meta, 'draft');
+    $jobId = $jobs->createDraft($payload['title'], $meta, 'draft');
     if (!empty($intent['promo_code_id'])) {
       $promos->incrementUses((int) $intent['promo_code_id']);
     }
     $intents->markCompleted($intentId);
+
+    // Notify site admins + employer contact (if available)
+    $pdo = $GLOBALS['DB_PDO'];
+    $admins = $pdo->query("SELECT email FROM jb_users WHERE role IN ('site_admin','administrator')")->fetchAll();
+    $adminEmails = array_values(array_filter(array_map(fn($r) => $r['email'] ?? '', $admins ?: [])));
+    $toList = $adminEmails;
+    $employerEmail = $payload['company_email'] ?? '';
+    if ($employerEmail && !in_array($employerEmail, $toList, true)) {
+      $toList[] = $employerEmail;
+    }
+    if ($toList) {
+      $siteName = $_ENV['EMAIL_FROM_NAME'] ?? 'JobBoard';
+      $subject = $siteName . ' — Job post received';
+      $jobUrl = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/#list-detail?id=' . $jobId;
+      $html = '
+        <div style="font-family: Arial, sans-serif; background:#f8fafc; padding:24px;">
+          <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;">
+            <h2 style="margin:0 0 12px 0;color:#0f172a;">Job post received</h2>
+            <p style="margin:0 0 12px 0;color:#475569;">Title: <strong>' . htmlspecialchars($payload['title'] ?? 'Job', ENT_QUOTES) . '</strong></p>
+            <p style="margin:0 0 12px 0;color:#475569;">Company: ' . htmlspecialchars($meta['company'] ?? '', ENT_QUOTES) . '</p>
+            <p style="margin:0;color:#64748b;font-size:13px;">View: <a href="' . htmlspecialchars($jobUrl, ENT_QUOTES) . '">' . htmlspecialchars($jobUrl, ENT_QUOTES) . '</a></p>
+          </div>
+        </div>
+      ';
+      $mailer = new Mailer();
+      foreach ($toList as $to) {
+        $mailer->send($to, $subject, $html);
+      }
+    }
   }
 }
