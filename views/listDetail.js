@@ -21,7 +21,7 @@ export async function renderListDetail(container, id) {
     const formatMetaValue = (key, val) => {
       if (hiddenMetaKeys.has(key)) return '';
       if (key === 'company' && typeof val === 'string' && val.includes('@')) return '';
-      if (['company_slug', 'location', 'description'].includes(key)) return '';
+      if (['company_slug', 'location', 'description', 'rate_min', 'rate_max', 'rate_type'].includes(key)) return '';
       if (key === 'job_applications' && typeof val === 'string') {
         const apps = [];
         const entryRegex = /s:7:"user_id";i:(\d+);s:6:"resume";s:\d+:"([^"]*)";s:12:"cover_letter";s:\d+:"([^"]*)";s:4:"time";i:(\d+);/g;
@@ -193,9 +193,6 @@ export async function renderListDetail(container, id) {
               ${Object.entries(data.meta)
                 .map(([key, val]) => {
                   const labelMap = {
-                    rate_type: 'Rate Type',
-                    rate_min: 'Rate Min',
-                    rate_max: 'Rate Max',
                     job_type: 'Job Type',
                     field: 'Field',
                     city: 'City',
@@ -205,12 +202,6 @@ export async function renderListDetail(container, id) {
                   };
                   const displayKey = labelMap[key] || key.replace(/_/g, ' ');
                   let formatted = formatMetaValue(key, val);
-                  if (key === 'rate_min' || key === 'rate_max') {
-                    formatted = escapeHtml(`$${formatMoney(val)}`);
-                  }
-                  if (key === 'rate_type') {
-                    formatted = escapeHtml((val || '').toString().replace(/_/g, ' '));
-                  }
                   if (!formatted) return '';
                   return `
                     <div class="border border-slate-200 rounded-lg px-3 py-2 bg-white">

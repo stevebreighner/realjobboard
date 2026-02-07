@@ -15,57 +15,12 @@ export function renderList(container) {
         <div class="text-xs text-gray-500">Sorted by featured + most recent</div>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-        <input
-          type="text"
-          id="filterField"
-          class="w-full p-2 border rounded"
-          placeholder="Filter by field (e.g. Tech)"
-        />
-        <input
-          type="text"
-          id="filterCity"
-          class="w-full p-2 border rounded"
-          placeholder="Filter by city"
-        />
-        <input
-          type="text"
-          id="filterState"
-          class="w-full p-2 border rounded"
-          placeholder="Filter by state"
-        />
-        <input
-          type="text"
-          id="filterZip"
-          class="w-full p-2 border rounded"
-          placeholder="Filter by ZIP"
-        />
-        <input
-          type="text"
-          id="filterRateType"
-          class="w-full p-2 border rounded"
-          placeholder="Filter by rate type"
-        />
-        <input
-          type="text"
-          id="filterRateMin"
-          class="w-full p-2 border rounded"
-          placeholder="Min rate"
-        />
-        <input
-          type="text"
-          id="filterRateMax"
-          class="w-full p-2 border rounded"
-          placeholder="Max rate"
-        />
-      </div>
-
       <div class="flex flex-col md:flex-row gap-3 mb-4">
         <input
           type="text"
           id="searchInput"
           class="w-full p-2 border rounded"
-          placeholder="Search (comma-separated: react, node, aws)"
+          placeholder="Search (e.g. nurse in Des Moines or react, node, aws)"
         />
         <select id="sortSelect" class="w-full md:w-56 p-2 border rounded">
           <option value="featured" selected>Featured + Recent</option>
@@ -85,6 +40,53 @@ export function renderList(container) {
           <option value="100">Within 100 miles</option>
         </select>
       </div>
+      <details class="mb-4 border border-slate-200 rounded-xl p-4 bg-white">
+        <summary class="cursor-pointer text-sm text-slate-700 font-medium">Advanced search filters</summary>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+          <input
+            type="text"
+            id="filterField"
+            class="w-full p-2 border rounded"
+            placeholder="Filter by field (e.g. Tech)"
+          />
+          <input
+            type="text"
+            id="filterCity"
+            class="w-full p-2 border rounded"
+            placeholder="Filter by city"
+          />
+          <input
+            type="text"
+            id="filterState"
+            class="w-full p-2 border rounded"
+            placeholder="Filter by state"
+          />
+          <input
+            type="text"
+            id="filterZip"
+            class="w-full p-2 border rounded"
+            placeholder="Filter by ZIP"
+          />
+          <input
+            type="text"
+            id="filterRateType"
+            class="w-full p-2 border rounded"
+            placeholder="Filter by rate type"
+          />
+          <input
+            type="text"
+            id="filterRateMin"
+            class="w-full p-2 border rounded"
+            placeholder="Min rate"
+          />
+          <input
+            type="text"
+            id="filterRateMax"
+            class="w-full p-2 border rounded"
+            placeholder="Max rate"
+          />
+        </div>
+      </details>
       <p class="text-xs text-gray-500 mb-4">
         Tip: use comma-separated search terms to rank results by match count (e.g. "react, node, aws").
       </p>
@@ -224,18 +226,23 @@ export function renderList(container) {
   const applyFilters = async () => {
     const rawQuery = searchInput.value || '';
     const query = normalize(rawQuery);
-    const terms = rawQuery
+    const cityMatch = rawQuery.match(/\bin\s+([a-z\s]+)$/i);
+    const inferredCity = cityMatch ? cityMatch[1].trim() : '';
+    const queryWithoutCity = inferredCity
+      ? rawQuery.replace(/\bin\s+[a-z\s]+$/i, '').trim()
+      : rawQuery;
+    const terms = queryWithoutCity
       .split(',')
       .map(t => normalize(t))
       .filter(t => t.length);
     const useMulti = terms.length >= 2;
-    const wordTerms = rawQuery
+    const wordTerms = queryWithoutCity
       .trim()
       .split(/\s+/)
       .map(t => normalize(t))
       .filter(t => t.length);
     const fieldQuery = normalize(filterField.value);
-    const cityQuery = normalize(filterCity.value);
+    const cityQuery = normalize(filterCity.value || inferredCity);
     const stateQuery = normalize(filterState.value);
     const zipQuery = normalize(filterZip.value);
     const rateTypeQuery = normalize(filterRateType.value);
