@@ -35,7 +35,7 @@ export async function renderAdmin(container) {
           <input name="email" type="email" class="p-2 border rounded" placeholder="Email" required />
           <input name="password" type="text" class="p-2 border rounded" placeholder="Temp Password" required />
           <select name="role" class="p-2 border rounded">
-            <option value="employee">Employee</option>
+            <option value="employee">Job Seeker</option>
             <option value="employer">Employer</option>
             <option value="site_admin">Site Admin</option>
           </select>
@@ -771,7 +771,7 @@ export async function renderAdmin(container) {
         </div>
         <div class="mt-3 flex items-center space-x-2">
           <select class="p-2 border rounded text-sm" id="role-${userId}">
-            <option value="employee">Employee</option>
+            <option value="employee">Job Seeker</option>
             <option value="employer">Employer</option>
             <option value="site_admin">Site Admin</option>
           </select>

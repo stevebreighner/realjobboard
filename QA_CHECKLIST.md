@@ -25,3 +25,13 @@
 - /api/jobs returns list
 - Login/register/session OK
 - File uploads: resume + avatar save to /uploads
+
+## Latest Run (Post-WP Cutover)
+- Date: 2026-02-07
+- Scope: ping/jobs/company endpoints + role check
+
+### Results
+- /api/ping OK
+- /api/jobs OK
+- /api/companies OK
+- steve.breighner@gmail.com role set to employer

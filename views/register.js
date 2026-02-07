@@ -32,7 +32,7 @@ export function renderRegister(container) {
       
       <select name="role" class="w-full p-2 border rounded" required>
         <option value="" disabled selected>Select Role</option>
-        <option value="employee">Employee</option>
+        <option value="employee">Job Seeker</option>
         <option value="employer">Employer</option>
       </select>
 
