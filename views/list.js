@@ -7,12 +7,12 @@ export function renderList(container) {
 
   container.innerHTML = `
     <div class="max-w-5xl mx-auto px-4">
-      <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-4">
+      <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-3">
         <div>
           <h1 class="text-3xl font-bold">${CONFIG.JOB_COPY?.LIST_TITLE || 'Open Roles'}</h1>
           <p class="text-sm text-gray-600">${CONFIG.JOB_COPY?.LIST_SUBTITLE || 'Curated listings with privacy-first applications.'}</p>
         </div>
-        <div class="text-xs text-gray-500">Sorted by featured + most recent</div>
+        <div class="text-[11px] text-gray-400">Sorted by featured + most recent</div>
       </div>
 
       <div class="flex flex-col md:flex-row gap-3 mb-4">
@@ -87,15 +87,21 @@ export function renderList(container) {
           />
         </div>
       </details>
-      <p class="text-xs text-gray-500 mb-4">
-        Tip: use comma-separated search terms to rank results by match count (e.g. "react, node, aws").
-      </p>
-      <p id="distanceHint" class="text-xs text-gray-500 mb-4 hidden">
+      <details class="mb-3 text-xs text-gray-500">
+        <summary class="cursor-pointer">Search tips</summary>
+        <div class="mt-2">
+          Tip: use comma-separated terms to rank results (e.g. “react, node, aws”). You can also type “nurse in des moines”.
+        </div>
+      </details>
+      <p id="distanceHint" class="text-[11px] text-gray-400 mb-3 hidden">
         Add your ZIP in Profile to enable distance filtering.
       </p>
-      <p id="searchStatus" class="text-xs text-slate-500 mb-4 hidden">Searching...</p>
+      <p id="searchStatus" class="text-xs text-slate-500 mb-3 hidden">Searching...</p>
 
-      <div class="mb-6 border rounded-2xl p-4 bg-white shadow-sm">
+      <div id="itemsContainer" class="grid gap-6 md:grid-cols-2"></div>
+      <div id="pagination" class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm"></div>
+
+      <div class="mt-6 border rounded-2xl p-4 bg-white shadow-sm">
         <div class="flex items-center justify-between mb-3">
           <div>
             <h2 class="text-lg font-semibold">${CONFIG.JOB_COPY?.ALERTS_TITLE || 'Job Alerts'}</h2>
@@ -105,9 +111,6 @@ export function renderList(container) {
         </div>
         <div id="alertsContainer" class="space-y-2"></div>
       </div>
-
-      <div id="itemsContainer" class="grid gap-6 md:grid-cols-2"></div>
-      <div id="pagination" class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm"></div>
     </div>
   `;
 
