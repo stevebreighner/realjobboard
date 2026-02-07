@@ -36,8 +36,16 @@ class StripeWebhookController {
       $session = $event['data']['object'] ?? [];
       $intentId = isset($session['metadata']['intent_id']) ? (int) $session['metadata']['intent_id'] : 0;
       if ($intentId) {
-        $this->finalizeIntent($intentId);
+        $this->finalizeIntent($intentId, $session);
       }
+    }
+    if ($type === 'checkout.session.expired') {
+      $session = $event['data']['object'] ?? [];
+      $this->notifyPaymentIssue($session, 'Checkout expired');
+    }
+    if ($type === 'payment_intent.payment_failed') {
+      $intent = $event['data']['object'] ?? [];
+      $this->notifyPaymentIssue($intent, 'Payment failed');
     }
     return ['received' => true];
   }
@@ -70,7 +78,7 @@ class StripeWebhookController {
     return false;
   }
 
-  private function finalizeIntent(int $intentId): void {
+  private function finalizeIntent(int $intentId, array $session = []): void {
     $intents = new JobIntentModel();
     $jobs = new JobModel();
     $companies = new CompanyModel();
@@ -139,6 +147,34 @@ class StripeWebhookController {
       ';
       $mailer = new Mailer();
       foreach ($toList as $to) {
+        $mailer->send($to, $subject, $html);
+      }
+    }
+  }
+
+  private function notifyPaymentIssue(array $session, string $label): void {
+    $email = $session['customer_details']['email'] ?? ($session['customer_email'] ?? '');
+    $siteName = $_ENV['EMAIL_FROM_NAME'] ?? 'JobBoard';
+    $subject = $siteName . ' — ' . $label;
+    $html = '
+      <div style="font-family: Arial, sans-serif; background:#f8fafc; padding:24px;">
+        <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;">
+          <h2 style="margin:0 0 12px 0;color:#0f172a;">' . htmlspecialchars($label, ENT_QUOTES) . '</h2>
+          <p style="margin:0 0 12px 0;color:#475569;">We couldn’t complete your payment. Please try again or contact support.</p>
+        </div>
+      </div>
+    ';
+    if ($email) {
+      $mailer = new Mailer();
+      $mailer->send($email, $subject, $html);
+    }
+    // Always notify admins
+    $pdo = $GLOBALS['DB_PDO'];
+    $admins = $pdo->query("SELECT email FROM jb_users WHERE role IN ('site_admin','administrator')")->fetchAll();
+    $adminEmails = array_values(array_filter(array_map(fn($r) => $r['email'] ?? '', $admins ?: [])));
+    if ($adminEmails) {
+      $mailer = new Mailer();
+      foreach ($adminEmails as $to) {
         $mailer->send($to, $subject, $html);
       }
     }
