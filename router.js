@@ -56,8 +56,9 @@ export async function router() {
   console.log('Hash path:', path);
   console.log('Normalized path:', normalizedPath);
   console.log('Params:', params);
-  const scrollToTop = () => window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-  scrollToTop();
+  const scrollToTopAfterRender = () => {
+    requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
+  };
   if (protectedRoutes.includes(normalizedPath)) {
     const session = await getSessionCached({ maxAgeMs: 30000 });
     if (!session) {
@@ -86,96 +87,96 @@ export async function router() {
   switch (normalizedPath) {
     case 'home':
       renderHome(app);
-      return scrollToTop();
+      return scrollToTopAfterRender();
     case 'login':
       renderLogin(app);
-      return scrollToTop();
+      return scrollToTopAfterRender();
        case 'about':
       renderAbout(app);
-      return scrollToTop();
+      return scrollToTopAfterRender();
     case 'register':
       renderRegister(app);
-      return scrollToTop();
+      return scrollToTopAfterRender();
     case 'list':
       renderList(app);
-      return scrollToTop();
+      return scrollToTopAfterRender();
       case 'listDetail':
         if (params.id) {
           renderListDetail(app, params.id);
-          return scrollToTop();
+          return scrollToTopAfterRender();
         }
         app.innerHTML = '<h1 class="text-xl">Missing ID for List Detail</h1>';
         return;
         case 'myJobPosts':
   renderMyJobPosts(app);
-  return scrollToTop();
+  return scrollToTopAfterRender();
 case 'myJobPostDetail':
   renderMyJobPostDetail(app, params.id);
-  return scrollToTop();
+  return scrollToTopAfterRender();
 case 'myApplications':
   renderMyApplications(app);
-  return scrollToTop();
+  return scrollToTopAfterRender();
     case 'post':
       renderPost(app);
-      return scrollToTop();
+      return scrollToTopAfterRender();
     case 'profile':
       renderProfile(app);
-      return scrollToTop();
+      return scrollToTopAfterRender();
     case 'admin':
       renderAdmin(app);
-      return scrollToTop();
+      return scrollToTopAfterRender();
     case 'updatePassword':
       renderUpdatePassword(app);
-      return scrollToTop();
+      return scrollToTopAfterRender();
     case 'forgotPassword':
       renderForgotPassword(app);
-      return scrollToTop();
+      return scrollToTopAfterRender();
     case 'resetPassword':
       renderResetPassword(app, params);
-      return scrollToTop();
+      return scrollToTopAfterRender();
     case 'support':
       renderSupport(app, params);
-      return scrollToTop();
+      return scrollToTopAfterRender();
     case 'privacy':
       renderPrivacy(app);
-      return scrollToTop();
+      return scrollToTopAfterRender();
     case 'terms':
       renderTerms(app);
-      return scrollToTop();
+      return scrollToTopAfterRender();
     case 'employers':
       renderEmployers(app);
-      return scrollToTop();
+      return scrollToTopAfterRender();
     case 'employees':
       renderEmployees(app);
-      return scrollToTop();
+      return scrollToTopAfterRender();
     case 'speed':
       renderSpeed(app);
-      return scrollToTop();
+      return scrollToTopAfterRender();
     case 'company':
       if (params.slug) {
         renderCompany(app, params.slug);
-        return scrollToTop();
+        return scrollToTopAfterRender();
       }
       app.innerHTML = '<h1 class="text-xl">Missing company slug</h1>';
       return;
     case 'magicLogin':
       renderMagicLogin(app, params);
-      return scrollToTop();
+      return scrollToTopAfterRender();
     case 'verifyEmail':
       renderVerifyEmail(app, params);
-      return scrollToTop();
+      return scrollToTopAfterRender();
         case '2fa':
           render2FA(app);
-          return scrollToTop();
+          return scrollToTopAfterRender();
           // specific to jobboard
           case 'resume':
             renderResume(app);
-            return scrollToTop();
+            return scrollToTopAfterRender();
         
           case 'apply':
   if (params.id) {
     renderApply(app, params.id);
-    return scrollToTop();
+    return scrollToTopAfterRender();
   }
   app.innerHTML = '<h1 class="text-xl">Missing Job ID for Apply</h1>';
   return;
