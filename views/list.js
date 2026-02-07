@@ -132,6 +132,38 @@ export function renderList(container) {
 
   const normalize = (val) => (val || '').toString().toLowerCase();
   const tokenize = (val) => normalize(val).split(/[^a-z0-9]+/).filter(Boolean);
+  const synonymMap = {
+    nurse: ['rn', 'registered nurse', 'lpn', 'lvn'],
+    developer: ['software engineer', 'engineer', 'programmer'],
+    'software engineer': ['developer', 'programmer', 'engineer'],
+    server: ['waiter', 'waitress'],
+    cashier: ['retail associate', 'sales associate'],
+    barista: ['coffee'],
+    caregiver: ['cna', 'home health', 'aide'],
+  };
+  const soundex = (word) => {
+    const w = (word || '').toString().toUpperCase().replace(/[^A-Z]/g, '');
+    if (!w) return '';
+    const first = w[0];
+    const map = {
+      B: '1', F: '1', P: '1', V: '1',
+      C: '2', G: '2', J: '2', K: '2', Q: '2', S: '2', X: '2', Z: '2',
+      D: '3', T: '3',
+      L: '4',
+      M: '5', N: '5',
+      R: '6',
+    };
+    let result = first;
+    let prev = map[first] || '';
+    for (let i = 1; i < w.length; i++) {
+      const ch = w[i];
+      const code = map[ch] || '';
+      if (code && code !== prev) result += code;
+      if (result.length === 4) break;
+      prev = code;
+    }
+    return (result + '000').slice(0, 4);
+  };
   const levenshtein = (a, b) => {
     if (a === b) return 0;
     const alen = a.length;
@@ -156,9 +188,19 @@ export function renderList(container) {
   const fuzzyIncludes = (term, text) => {
     if (!term) return true;
     if (text.includes(term)) return true;
+    const compactText = text.replace(/\s+/g, '');
+    const compactTerm = term.replace(/\s+/g, '');
+    if (compactText.includes(compactTerm)) return true;
     const tokens = tokenize(text);
     const limit = term.length <= 4 ? 1 : term.length <= 7 ? 2 : 3;
-    return tokens.some(tok => tok.length >= 3 && levenshtein(term, tok) <= limit);
+    if (tokens.some(tok => tok.length >= 3 && levenshtein(term, tok) <= limit)) return true;
+    const termSound = soundex(term);
+    if (termSound && tokens.some(tok => soundex(tok) === termSound)) return true;
+    const syns = synonymMap[term] || [];
+    if (syns.length) {
+      return syns.some(syn => text.includes(normalize(syn)));
+    }
+    return false;
   };
   const getMetaValue = (item, key) =>
     (item?.meta && item.meta[key] != null ? item.meta[key] : item?.[key]) ?? '';
