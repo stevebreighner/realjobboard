@@ -26,6 +26,10 @@ export function renderProfile(container) {
       <span class="profile-spinner" aria-hidden="true"></span>
       Decrypting profile...
     </div>
+    <div class="mb-4 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded px-3 py-2">
+      Some fields are required to use the site (location, role details, and contact preferences). If you signed in with Google,
+      we only receive your name and email, so please complete the rest here.
+    </div>
 
     <div id="avatar-preview-container" class="mb-4">
       <img id="avatarPreview" src="/default-avatar.svg"
