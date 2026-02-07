@@ -32,9 +32,8 @@ class SubscriberController {
     $this->audit->log($row['user_id'] ? (int) $row['user_id'] : null, 'unsubscribe', 'Email unsubscribed', [
       'email' => $row['email'] ?? '',
     ]);
-    $target = '/#support?notice=unsubscribed';
+    $target = '/#unsubscribe?status=success';
     header('Location: ' . $target, true, 302);
     exit;
   }
 }
-

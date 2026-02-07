@@ -27,6 +27,7 @@ import { renderSpeed } from './views/speed.js';
 import { renderCompany } from './views/company.js';
 import { renderMagicLogin } from './views/magicLogin.js';
 import { renderVerifyEmail } from './views/verifyEmail.js';
+import { renderUnsubscribe } from './views/unsubscribe.js';
 
 function parseHash() {
   const rawHash = window.location.hash.slice(1);
@@ -175,6 +176,9 @@ case 'myApplications':
       return scrollToTopAfterRender();
     case 'verifyEmail':
       renderVerifyEmail(app, params);
+      return scrollToTopAfterRender();
+    case 'unsubscribe':
+      renderUnsubscribe(app);
       return scrollToTopAfterRender();
         case '2fa':
           render2FA(app);
