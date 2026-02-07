@@ -57,25 +57,28 @@ class JobModel {
     }
 
     $postsTable = "{$prefix}posts";
-    $sql = "SELECT ID, post_title, post_content, post_date
-            FROM {$postsTable}
-            WHERE post_type IN ('post','job') AND post_status = 'publish'
-            ORDER BY post_date DESC
-            LIMIT :limit";
-    $stmt = $pdo->prepare($sql);
-    $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
-    $stmt->execute();
-    $rows = $stmt->fetchAll();
-    $posts = array_map(function (array $row): array {
-      return [
-        'id' => (int) $row['ID'],
-        'title' => $row['post_title'] ?? '',
-        'description' => $row['post_content'] ?? '',
-        'date' => $row['post_date'] ?? '',
-        'meta' => [],
-      ];
-    }, $rows);
-    return array_merge($results, $posts);
+    if ($this->tableExists($postsTable)) {
+      $sql = "SELECT ID, post_title, post_content, post_date
+              FROM {$postsTable}
+              WHERE post_type IN ('post','job') AND post_status = 'publish'
+              ORDER BY post_date DESC
+              LIMIT :limit";
+      $stmt = $pdo->prepare($sql);
+      $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+      $stmt->execute();
+      $rows = $stmt->fetchAll();
+      $posts = array_map(function (array $row): array {
+        return [
+          'id' => (int) $row['ID'],
+          'title' => $row['post_title'] ?? '',
+          'description' => $row['post_content'] ?? '',
+          'date' => $row['post_date'] ?? '',
+          'meta' => [],
+        ];
+      }, $rows);
+      return array_merge($results, $posts);
+    }
+    return $results;
   }
 
   public function listByOwner(int $userId): array {
@@ -194,21 +197,23 @@ class JobModel {
     }
 
     $postsTable = "{$prefix}posts";
-    $sql = "SELECT ID, post_title, post_content, post_date
-            FROM {$postsTable}
-            WHERE ID = :id
-            LIMIT 1";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([':id' => $id]);
-    $row = $stmt->fetch();
-    if ($row) {
-      return [
-        'id' => (int) $row['ID'],
-        'title' => $row['post_title'] ?? '',
-        'description' => $row['post_content'] ?? '',
-        'date' => $row['post_date'] ?? '',
-        'meta' => [],
-      ];
+    if ($this->tableExists($postsTable)) {
+      $sql = "SELECT ID, post_title, post_content, post_date
+              FROM {$postsTable}
+              WHERE ID = :id
+              LIMIT 1";
+      $stmt = $pdo->prepare($sql);
+      $stmt->execute([':id' => $id]);
+      $row = $stmt->fetch();
+      if ($row) {
+        return [
+          'id' => (int) $row['ID'],
+          'title' => $row['post_title'] ?? '',
+          'description' => $row['post_content'] ?? '',
+          'date' => $row['post_date'] ?? '',
+          'meta' => [],
+        ];
+      }
     }
 
     return [];
