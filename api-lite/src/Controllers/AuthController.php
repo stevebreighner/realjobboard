@@ -252,6 +252,10 @@ class AuthController {
       http_response_code(401);
       return ['error' => 'Invalid current password'];
     }
+    if ($this->auth->validatePassword($user, $new)) {
+      http_response_code(422);
+      return ['error' => 'New password must be different from your current password'];
+    }
     $devMode = ($_ENV['DEV_MODE'] ?? '') === '1' || ($this->settings->get('dev_mode') === '1');
     if (!$devMode) {
       $strongEnough =
