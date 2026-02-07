@@ -54,6 +54,7 @@ export async function router() {
   if (app) {
     app.style.opacity = '0';
     app.style.transition = 'opacity 120ms ease';
+    app.style.visibility = 'hidden';
   }
   const { path, params } = parseHash();
   const normalizedPath = (!path || path === '/') ? 'home' : kebabToCamel(path);
@@ -63,7 +64,10 @@ export async function router() {
   const scrollToTopAfterRender = () => {
     requestAnimationFrame(() => {
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-      if (app) app.style.opacity = '1';
+      if (app) {
+        app.style.visibility = 'visible';
+        app.style.opacity = '1';
+      }
     });
   };
   if (protectedRoutes.includes(normalizedPath)) {
