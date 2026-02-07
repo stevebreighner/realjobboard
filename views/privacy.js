@@ -49,6 +49,14 @@ export function renderPrivacy(container) {
           </p>
         </div>
         <div>
+          <h2 class="text-xl font-semibold mb-2">Minimal First‑Party Analytics</h2>
+          <p class="text-gray-700">
+            We do not send analytics data to Google or other third‑party trackers. We collect only minimal first‑party
+            metrics (page views, basic referrer, and coarse device info) to keep the site reliable and improve
+            performance. We do not sell or share this data.
+          </p>
+        </div>
+        <div>
           <h2 class="text-xl font-semibold mb-2">Contact</h2>
           <p class="text-gray-700">
             Questions or requests? Use the support form and we’ll respond quickly.

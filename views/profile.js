@@ -1,4 +1,5 @@
 import { getUserProfileCached, getUserProfileCachedAny } from '../utils/session.js';
+import { CONFIG } from '../config.js';
 
 export function renderProfile(container) {
   container.innerHTML = `
@@ -215,25 +216,27 @@ export function renderProfile(container) {
 
     if (roles.includes('employer')) {
       const verified = data.employer_verified;
-      roleLabel.textContent = verified ? "Employer (Verified)" : "Employer (Pending Verification)";
+      roleLabel.textContent = verified
+        ? (CONFIG.JOB_COPY?.ROLE_EMPLOYER_VERIFIED || "Employer (Verified)")
+        : (CONFIG.JOB_COPY?.ROLE_EMPLOYER_PENDING || "Employer (Pending Verification)");
       jobboardLinks.innerHTML = `
-        <p class="mt-2"><a href="/#my-job-posts" class="text-blue-600">Manage My Openings</a></p>
+        <p class="mt-2"><a href="/#my-job-posts" class="text-blue-600">${CONFIG.JOB_COPY?.MANAGE_OPENINGS || 'Manage My Openings'}</a></p>
       `;
     } else {
-      roleLabel.textContent = "Job Seeker";
+      roleLabel.textContent = CONFIG.JOB_COPY?.ROLE_EMPLOYEE || "Job Seeker";
       jobboardLinks.innerHTML = `
-        <p class="mt-2"><a href="/#resume" class="text-blue-600">Manage Resume & Cover Letter</a></p>
-        <p class="mt-2"><a href="/#my-applications" class="text-blue-600">My Applications</a></p>
+        <p class="mt-2"><a href="/#resume" class="text-blue-600">${CONFIG.JOB_COPY?.MANAGE_RESUME || 'Manage Resume & Cover Letter'}</a></p>
+        <p class="mt-2"><a href="/#my-applications" class="text-blue-600">${CONFIG.JOB_COPY?.MY_APPLICATIONS || 'My Applications'}</a></p>
       `;
 
       const renderSavedJobs = async () => {
         if (!savedJobsSection) return;
-        savedJobsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">Saved Jobs</h3><p class="text-sm text-gray-500">Loading...</p>`;
+        savedJobsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.SAVED_JOBS || 'Saved Jobs'}</h3><p class="text-sm text-gray-500">Loading...</p>`;
         try {
           const savedRes = await fetch('/wp-json/customapi/v1/saved-jobs', { credentials: 'include' });
           const savedIds = await savedRes.json();
           if (!savedRes.ok || !Array.isArray(savedIds) || !savedIds.length) {
-            savedJobsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">Saved Jobs</h3><p class="text-sm text-gray-500">No saved jobs yet.</p>`;
+            savedJobsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.SAVED_JOBS || 'Saved Jobs'}</h3><p class="text-sm text-gray-500">No saved jobs yet.</p>`;
             return;
           }
           const listRes = await fetch('/wp-json/customapi/v1/get-list');
@@ -241,34 +244,34 @@ export function renderProfile(container) {
           const savedSet = new Set(savedIds.map(Number));
           const matches = (Array.isArray(list) ? list : []).filter(j => savedSet.has(Number(j.id || j._id || j.slug)));
           savedJobsSection.innerHTML = `
-            <h3 class="text-lg font-semibold mb-2">Saved Jobs</h3>
+            <h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.SAVED_JOBS || 'Saved Jobs'}</h3>
             <div class="space-y-2">
               ${matches.map(job => `
                 <div class="border rounded-lg p-3 bg-white shadow-sm">
                   <div class="font-medium">${job.title || job.name || 'Job'}</div>
                   <div class="text-xs text-gray-500">${job.meta?.company || ''}</div>
-                  <a class="text-sm text-indigo-600 hover:underline" href="/#list-detail?id=${job.id}">View job</a>
+                  <a class="text-sm text-indigo-600 hover:underline" href="/#list-detail?id=${job.id}">${CONFIG.JOB_COPY?.VIEW_JOB || 'View job'}</a>
                 </div>
               `).join('')}
             </div>
           `;
         } catch (err) {
-          savedJobsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">Saved Jobs</h3><p class="text-sm text-gray-500">Unable to load saved jobs.</p>`;
+          savedJobsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.SAVED_JOBS || 'Saved Jobs'}</h3><p class="text-sm text-gray-500">Unable to load saved jobs.</p>`;
         }
       };
 
       const renderAlerts = async () => {
         if (!jobAlertsSection) return;
-        jobAlertsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">Job Alerts</h3><p class="text-sm text-gray-500">Loading...</p>`;
+        jobAlertsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.JOB_ALERTS || 'Job Alerts'}</h3><p class="text-sm text-gray-500">Loading...</p>`;
         try {
           const res = await fetch('/wp-json/customapi/v1/job-alerts', { credentials: 'include' });
           const data = await res.json();
           if (!res.ok || !Array.isArray(data) || !data.length) {
-            jobAlertsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">Job Alerts</h3><p class="text-sm text-gray-500">No alerts yet.</p>`;
+            jobAlertsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.JOB_ALERTS || 'Job Alerts'}</h3><p class="text-sm text-gray-500">No alerts yet.</p>`;
             return;
           }
           jobAlertsSection.innerHTML = `
-            <h3 class="text-lg font-semibold mb-2">Job Alerts</h3>
+            <h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.JOB_ALERTS || 'Job Alerts'}</h3>
             <div class="space-y-2">
               ${data.map(alert => `
                 <div class="border rounded-lg p-3 bg-white shadow-sm">
@@ -279,7 +282,7 @@ export function renderProfile(container) {
             </div>
           `;
         } catch (err) {
-          jobAlertsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">Job Alerts</h3><p class="text-sm text-gray-500">Unable to load alerts.</p>`;
+          jobAlertsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.JOB_ALERTS || 'Job Alerts'}</h3><p class="text-sm text-gray-500">Unable to load alerts.</p>`;
         }
       };
 

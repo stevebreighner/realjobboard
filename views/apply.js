@@ -1,4 +1,5 @@
 import { escapeHtml } from '../utils/sanitize.js';
+import { CONFIG } from '../config.js';
 
 export async function renderApply(container, jobId) {
     try {
@@ -6,7 +7,8 @@ export async function renderApply(container, jobId) {
       const jobRes = await fetch(`/api/job?id=${jobId}`);
       const jobData = await jobRes.json();
       if (!jobRes.ok) throw new Error(jobData.message || "Failed to fetch job details");
-      const jobTitle = escapeHtml(jobData.title || `Job #${jobId}`);
+      const jobLabel = CONFIG.JOB_COPY?.SINGULAR || 'Job';
+      const jobTitle = escapeHtml(jobData.title || `${jobLabel} #${jobId}`);
   
       // --- Check application status ---
       const statusRes = await fetch(`/api/check-application?jobId=${jobId}`, {
@@ -20,19 +22,19 @@ export async function renderApply(container, jobId) {
   
       if (statusData.already_applied) {
         container.innerHTML = `
-          <h1 class="text-2xl font-bold mb-4">Apply for: ${jobTitle}</h1>
-          <p class="text-red-600 mb-4">⚠️ You have already applied to this job.</p>
-          <p><a href="/#resume" class="text-blue-600 hover:underline">Manage resumes/cover letters</a></p>
-          <p><a href="/#list-detail?id=${jobId}" class="text-blue-600 hover:underline">← Back to Job Detail</a></p>
+          <h1 class="text-2xl font-bold mb-4">${CONFIG.JOB_COPY?.APPLY_FOR_PREFIX || 'Apply for:'} ${jobTitle}</h1>
+          <p class="text-red-600 mb-4">⚠️ ${CONFIG.JOB_COPY?.ALREADY_APPLIED || 'You have already applied to this job.'}</p>
+          <p><a href="/#resume" class="text-blue-600 hover:underline">${CONFIG.JOB_COPY?.MANAGE_RESUMES_LABEL || 'Manage resumes/cover letters'}</a></p>
+          <p><a href="/#list-detail?id=${jobId}" class="text-blue-600 hover:underline">${CONFIG.JOB_COPY?.BACK_TO_DETAIL || '← Back to Job Detail'}</a></p>
         `;
         return;
       }
   
       if (statusData.limit_reached) {
         container.innerHTML = `
-          <h1 class="text-2xl font-bold mb-4">Apply for: ${jobTitle}</h1>
-          <p class="text-red-600 mb-4">🚫 This job has reached the maximum of 25 applications.</p>
-          <p><a href="/#list-detail?id=${jobId}" class="text-blue-600 hover:underline">← Back to Job Detail</a></p>
+          <h1 class="text-2xl font-bold mb-4">${CONFIG.JOB_COPY?.APPLY_FOR_PREFIX || 'Apply for:'} ${jobTitle}</h1>
+          <p class="text-red-600 mb-4">🚫 ${CONFIG.JOB_COPY?.MAX_APPS_REACHED || 'This job has reached the maximum of 25 applications.'}</p>
+          <p><a href="/#list-detail?id=${jobId}" class="text-blue-600 hover:underline">${CONFIG.JOB_COPY?.BACK_TO_DETAIL || '← Back to Job Detail'}</a></p>
         `;
         return;
       }
@@ -53,16 +55,16 @@ export async function renderApply(container, jobId) {
   
       // --- Render form ---
       container.innerHTML = `
-        <h1 class="text-2xl font-bold mb-4">Apply for: ${jobTitle}</h1>
+        <h1 class="text-2xl font-bold mb-4">${CONFIG.JOB_COPY?.APPLY_FOR_PREFIX || 'Apply for:'} ${jobTitle}</h1>
         <div id="applyMessage" class="mb-4 text-sm"></div>
         <div class="mb-4 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-3">
-          Privacy note: Employers may contact you using the details you provide. If you choose to hide your email, they will only see your resume link.
+          ${CONFIG.JOB_COPY?.PRIVACY_NOTE_APPLY || 'Privacy note: Employers may contact you using the details you provide. If you choose to hide your email, they will only see your resume link.'}
           <a class="text-blue-600 hover:underline ml-2" href="/#support?subject=Report%20Abuse&context=apply:${jobId}">Report abuse</a>
         </div>
         <form id="applyForm" class="space-y-6">
           <div>
                   <p class="mt-4">
-          <a href="/#resume" class="text-blue-600 hover:underline">Manage resumes/cover letters</a>
+          <a href="/#resume" class="text-blue-600 hover:underline">${CONFIG.JOB_COPY?.MANAGE_RESUMES_LABEL || 'Manage resumes/cover letters'}</a>
         </p>
            <h2>Resume</h2>
             ${
@@ -110,7 +112,7 @@ export async function renderApply(container, jobId) {
   
 
         <p class="mt-2">
-          <a href="/#list-detail?id=${jobId}" class="text-blue-600 hover:underline">← Back to Job Detail</a>
+          <a href="/#list-detail?id=${jobId}" class="text-blue-600 hover:underline">${CONFIG.JOB_COPY?.BACK_TO_DETAIL || '← Back to Job Detail'}</a>
         </p>
       `;
   
@@ -142,7 +144,7 @@ export async function renderApply(container, jobId) {
         if (resumeRequired && !selectedResume) {
           if (messageEl) {
             messageEl.className = "mb-4 text-sm text-amber-700";
-            messageEl.textContent = "Please provide a resume link or select a resume.";
+            messageEl.textContent = CONFIG.JOB_COPY?.RESUME_REQUIRED_MSG || "Please provide a resume link or select a resume.";
           }
           return;
         }
@@ -166,7 +168,7 @@ export async function renderApply(container, jobId) {
             <div class="mt-4 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-3">
               If you experience any issues with an employer, you can <a class="text-blue-600 hover:underline" href="/#support?subject=Report%20Abuse&context=apply:${jobId}">report abuse</a>.
             </div>
-            <p><a href="/#list-detail?id=${jobId}" class="text-blue-600 hover:underline">← Back to Job Detail</a></p>`;
+            <p><a href="/#list-detail?id=${jobId}" class="text-blue-600 hover:underline">${CONFIG.JOB_COPY?.BACK_TO_DETAIL || '← Back to Job Detail'}</a></p>`;
         } catch (err) {
           container.innerHTML += `<p class="text-red-600">❌ Error: ${err.message}</p>`;
         }

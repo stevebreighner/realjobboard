@@ -3,52 +3,54 @@
 import { CONFIG } from '../config.js';
 import { getSessionCached } from '../utils/session.js';
 export function renderHome(container) {
-  const heroes = [
-    {
-      key: 'employers',
-      title: 'Fewer distractions. Better hires.',
-      lines: [
-        'Built to reduce noise and improve applicant quality without penalizing great candidates.',
-        'Smart matching that’s transparent — no black‑box AI.',
-        'Privacy‑first: resumes and files are encrypted by default.',
-      ],
-      primary: { label: 'Post a job', href: '/#post', id: 'postCta' },
-      secondary: { label: 'Browse listings', href: '/#list' },
-    },
-    {
-      key: 'employees',
-      title: 'Find real work faster.',
-      lines: [
-        `Search ${CONFIG.COMPANY_BUSINESS_THING_PLURAL} without spam or tracking.`,
-        'Apply once, reuse your resume, and control what employers see.',
-        'Encrypted by default for safer, cleaner hiring.',
-      ],
-      primary: { label: 'Search openings', href: '/#list' },
-      secondary: { label: 'How privacy works', href: '/#employees' },
-    },
-    {
-      key: 'speed',
-      title: 'Encrypted. Still lightning‑fast.',
-      lines: [
-        'Decryption happens only when needed, then we cache for speed.',
-        'Lightweight front end keeps load times low.',
-        'Security without the slowdown.',
-      ],
-      primary: { label: 'See speed details', href: '/#speed' },
-      secondary: { label: 'Browse listings', href: '/#list' },
-    },
-    {
-      key: 'multisearch',
-      title: 'Multi‑search that actually helps.',
-      lines: [
-        'Search by multiple terms at once to surface better matches.',
-        'Results are ranked by how many terms they match.',
-        'Find the right fit without endless scrolling.',
-      ],
-      primary: { label: 'Try multi‑search', href: '/#list' },
-      secondary: { label: 'Employer tools', href: '/#employers' },
-    },
-  ];
+  const heroes = Array.isArray(CONFIG.HOME_HEROES) && CONFIG.HOME_HEROES.length
+    ? CONFIG.HOME_HEROES
+    : [
+        {
+          key: 'employers',
+          title: 'Fewer distractions. Better hires.',
+          lines: [
+            'Built to reduce noise and improve applicant quality without penalizing great candidates.',
+            'Smart matching that’s transparent — no black‑box AI.',
+            'Privacy‑first: resumes and files are encrypted by default.',
+          ],
+          primary: { label: CONFIG.JOB_COPY?.POST_CTA || 'Post a job', href: '/#post', id: 'postCta' },
+          secondary: { label: 'Browse listings', href: '/#list' },
+        },
+        {
+          key: 'employees',
+          title: 'Find real work faster.',
+          lines: [
+            `Search ${CONFIG.COMPANY_BUSINESS_THING_PLURAL} without spam or tracking.`,
+            'Apply once, reuse your resume, and control what employers see.',
+            'Encrypted by default for safer, cleaner hiring.',
+          ],
+          primary: { label: CONFIG.JOB_COPY?.SEARCH_CTA || 'Search openings', href: '/#list' },
+          secondary: { label: 'How privacy works', href: '/#employees' },
+        },
+        {
+          key: 'speed',
+          title: 'Encrypted. Still lightning‑fast.',
+          lines: [
+            'Decryption happens only when needed, then we cache for speed.',
+            'Lightweight front end keeps load times low.',
+            'Security without the slowdown.',
+          ],
+          primary: { label: 'See speed details', href: '/#speed' },
+          secondary: { label: 'Browse listings', href: '/#list' },
+        },
+        {
+          key: 'multisearch',
+          title: 'Multi‑search that actually helps.',
+          lines: [
+            'Search by multiple terms at once to surface better matches.',
+            'Results are ranked by how many terms they match.',
+            'Find the right fit without endless scrolling.',
+          ],
+          primary: { label: 'Try multi‑search', href: '/#list' },
+          secondary: { label: 'Employer tools', href: '/#employers' },
+        },
+      ];
 
   const hero = heroes[Math.floor(Math.random() * heroes.length)];
   const heroLines = hero.lines.map(line => `<p class="text-white/90 text-sm mt-2">${line}</p>`).join('');
@@ -350,7 +352,7 @@ export function renderHome(container) {
       listEmpty = 'Use the Admin panel to manage users, jobs, and templates.';
     } else if (isEmployer) {
       actions = [
-        { label: 'Post a job', href: '/#post' },
+        { label: CONFIG.JOB_COPY?.POST_CTA || 'Post a job', href: '/#post' },
         { label: 'Manage openings', href: '/#myJobPosts' },
         { label: 'Browse listings', href: '/#list' },
       ];
@@ -359,7 +361,7 @@ export function renderHome(container) {
       listEndpoint = '/wp-json/customapi/v1/user-jobs';
     } else {
       actions = [
-        { label: 'Search openings', href: '/#list' },
+        { label: CONFIG.JOB_COPY?.SEARCH_CTA || 'Search openings', href: '/#list' },
         { label: 'My applications', href: '/#myApplications' },
         { label: 'Update profile', href: '/#profile' },
       ];

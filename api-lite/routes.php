@@ -20,6 +20,8 @@ use App\Controllers\AdminUserController;
 use App\Controllers\AdminAuditController;
 use App\Controllers\EmailTemplateController;
 use App\Controllers\AdminCompanyController;
+use App\Controllers\OAuthController;
+use App\Controllers\TrackingController;
 
 return [
   'GET' => [
@@ -58,6 +60,8 @@ return [
     '/api/user-file' => [new UserFileController(), 'download'],
     '/api/resumes' => [new UserFileController(), 'listResumes'],
     '/api/covers' => [new UserFileController(), 'listCovers'],
+    '/api/oauth/google/start' => [new OAuthController(), 'startGoogle'],
+    '/api/oauth/google/callback' => [new OAuthController(), 'callbackGoogle'],
     // Legacy aliases
     '/wp-json/customapi/v1/dev-flags' => [new DevFlagController(), 'getFlags'],
     '/wp-json/customapi/v1/saved-jobs' => [new SavedJobController(), 'list'],
@@ -133,6 +137,7 @@ return [
     '/api/user-files-delete' => [new UserFileController(), 'delete'],
     '/api/upload-resume' => [new UserFileController(), 'uploadResume'],
     '/api/upload-cover' => [new UserFileController(), 'uploadCover'],
+    '/api/track' => [new TrackingController(), 'track'],
     // Legacy aliases
     '/wp-json/customapi/v1/admin/flags' => [new DevFlagController(), 'adminFlags'],
     '/wp-json/customapi/v1/saved-jobs' => [new SavedJobController(), 'toggle'],
@@ -163,6 +168,7 @@ return [
     '/wp-json/customapi/v1/upload-cover' => [new UserFileController(), 'uploadCover'],
     '/wp-json/customapi/v1/resumes-delete' => [new UserFileController(), 'delete'],
     '/wp-json/customapi/v1/apply-job' => [new ApplicationController(), 'submit'],
+    '/wp-json/customapi/v1/track' => [new TrackingController(), 'track'],
     '/wp-json/customapi/v1/employer-click' => [new JobPostController(), 'employerClick'],
     '/wp-json/customapi/v1/employer-reset-learning' => [new JobPostController(), 'resetLearning'],
     '/wp-json/customapi/v1/contact-applicant' => [new JobPostController(), 'contactApplicant'],

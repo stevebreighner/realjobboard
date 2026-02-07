@@ -9,8 +9,8 @@ export function renderList(container) {
     <div class="max-w-5xl mx-auto px-4">
       <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-4">
         <div>
-          <h1 class="text-3xl font-bold">Open Roles</h1>
-          <p class="text-sm text-gray-600">Curated listings with privacy-first applications.</p>
+          <h1 class="text-3xl font-bold">${CONFIG.JOB_COPY?.LIST_TITLE || 'Open Roles'}</h1>
+          <p class="text-sm text-gray-600">${CONFIG.JOB_COPY?.LIST_SUBTITLE || 'Curated listings with privacy-first applications.'}</p>
         </div>
         <div class="text-xs text-gray-500">Sorted by featured + most recent</div>
       </div>
@@ -74,7 +74,7 @@ export function renderList(container) {
           <option value="payHigh">Highest Pay</option>
           <option value="payLow">Lowest Pay</option>
           <option value="company">Company A–Z</option>
-          <option value="title">Job Title A–Z</option>
+          <option value="title">${CONFIG.JOB_COPY?.SORT_TITLE_LABEL || 'Job Title A–Z'}</option>
         </select>
         <select id="distanceSelect" class="w-full md:w-52 p-2 border rounded">
           <option value="">Distance: Any</option>
@@ -95,7 +95,7 @@ export function renderList(container) {
       <div class="mb-6 border rounded-2xl p-4 bg-white shadow-sm">
         <div class="flex items-center justify-between mb-3">
           <div>
-            <h2 class="text-lg font-semibold">Job Alerts</h2>
+            <h2 class="text-lg font-semibold">${CONFIG.JOB_COPY?.ALERTS_TITLE || 'Job Alerts'}</h2>
             <p class="text-xs text-gray-500">Save this search to get notified about new matches.</p>
           </div>
           <button id="saveAlertBtn" class="text-sm text-indigo-600 hover:underline">Save this search</button>

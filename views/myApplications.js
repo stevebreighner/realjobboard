@@ -1,28 +1,30 @@
+import { CONFIG } from '../config.js';
+
 export function renderMyApplications(container) {
   container.innerHTML = `
     <div class="max-w-4xl mx-auto px-4">
-      <h1 class="text-2xl font-bold mb-4">My Applications</h1>
+      <h1 class="text-2xl font-bold mb-4">${CONFIG.JOB_COPY?.MY_APPLICATIONS_TITLE || 'My Applications'}</h1>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
         <input
           type="text"
           id="searchInput"
           class="w-full p-2 border rounded"
-          placeholder="Search jobs or company..."
+          placeholder="${CONFIG.JOB_COPY?.APPLICATION_SEARCH_PLACEHOLDER || 'Search jobs or company...'}"
         />
         <select id="statusFilter" class="w-full p-2 border rounded">
-          <option value="all" selected>All statuses</option>
-          <option value="new">New</option>
-          <option value="reviewing">Reviewing</option>
-          <option value="shortlisted">Shortlisted</option>
-          <option value="rejected">Rejected</option>
-          <option value="withdrawn">Withdrawn</option>
+          <option value="all" selected>${CONFIG.JOB_COPY?.STATUS_ALL || 'All statuses'}</option>
+          <option value="new">${CONFIG.JOB_COPY?.STATUS_NEW || 'New'}</option>
+          <option value="reviewing">${CONFIG.JOB_COPY?.STATUS_REVIEWING || 'Reviewing'}</option>
+          <option value="shortlisted">${CONFIG.JOB_COPY?.STATUS_SHORTLISTED || 'Shortlisted'}</option>
+          <option value="rejected">${CONFIG.JOB_COPY?.STATUS_REJECTED || 'Rejected'}</option>
+          <option value="withdrawn">${CONFIG.JOB_COPY?.STATUS_WITHDRAWN || 'Withdrawn'}</option>
         </select>
         <select id="sortSelect" class="w-full p-2 border rounded">
-          <option value="newest" selected>Newest first</option>
-          <option value="oldest">Oldest first</option>
-          <option value="company">Company A–Z</option>
-          <option value="title">Job Title A–Z</option>
+          <option value="newest" selected>${CONFIG.JOB_COPY?.SORT_NEWEST || 'Newest first'}</option>
+          <option value="oldest">${CONFIG.JOB_COPY?.SORT_OLDEST || 'Oldest first'}</option>
+          <option value="company">${CONFIG.JOB_COPY?.SORT_COMPANY || 'Company A–Z'}</option>
+          <option value="title">${CONFIG.JOB_COPY?.SORT_TITLE_LABEL || 'Job Title A–Z'}</option>
         </select>
       </div>
 
@@ -92,17 +94,17 @@ export function renderMyApplications(container) {
               </div>
               ${renderTimeline(statusLabel)}
               <div class="mt-3 flex flex-wrap items-center gap-3 text-sm">
-                <a href="/#list-detail?id=${app.job_id}" class="text-indigo-600 hover:underline">View job</a>
+                <a href="/#list-detail?id=${app.job_id}" class="text-indigo-600 hover:underline">${CONFIG.JOB_COPY?.VIEW_JOB || 'View job'}</a>
                 ${app.resume ? `<a href="${app.resume}" target="_blank" rel="noopener" class="text-indigo-600 hover:underline">Resume</a>` : ''}
                 ${app.cover_letter ? `<a href="${app.cover_letter}" target="_blank" rel="noopener" class="text-indigo-600 hover:underline">Cover</a>` : ''}
                 ${statusLabel !== 'withdrawn' && statusLabel !== 'rejected' ? `
-                  <button data-action="withdraw" data-job-id="${app.job_id}" class="text-red-600 hover:underline">Withdraw</button>
+                  <button data-action="withdraw" data-job-id="${app.job_id}" class="text-red-600 hover:underline">${CONFIG.JOB_COPY?.WITHDRAW_ACTION || 'Withdraw'}</button>
                 ` : ''}
               </div>
             </div>
           `;
         }).join('')
-      : `<p class="text-gray-500">No applications found.</p>`;
+      : `<p class="text-gray-500">${CONFIG.JOB_COPY?.APPLICATIONS_EMPTY || 'No applications found.'}</p>`;
   };
 
   const applyFilters = () => {

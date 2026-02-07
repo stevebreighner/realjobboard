@@ -5,22 +5,22 @@ export function renderPost(container) {
   const tierMarkup = tiers.length
     ? `
       <div class="border rounded p-4 bg-white">
-        <h2 class="text-lg font-semibold mb-2">Choose a listing tier</h2>
+        <h2 class="text-lg font-semibold mb-2">${CONFIG.POST_PAGE_COPY?.TIER_TITLE || 'Choose a listing tier'}</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           ${tiers.map((tier, idx) => `
             <label class="border rounded p-3 cursor-pointer flex items-start space-x-3 ${idx === 0 ? 'border-purple-400' : 'border-gray-200'}">
               <input type="radio" name="job_tier" value="${tier.id}" class="mt-1" ${idx === 0 ? 'checked' : ''} />
               <div>
                 <div class="font-semibold">${tier.label} • $${tier.price}</div>
-                <div class="text-xs text-gray-600">${tier.durationDays} days • ${tier.featured ? 'Featured placement' : 'Standard placement'}</div>
+                <div class="text-xs text-gray-600">${tier.durationDays} days • ${tier.featured ? (CONFIG.POST_PAGE_COPY?.TIER_FEATURED || 'Featured placement') : (CONFIG.POST_PAGE_COPY?.TIER_STANDARD || 'Standard placement')}</div>
                 ${tier.blurb ? `<div class="text-xs text-gray-500 mt-1">${tier.blurb}</div>` : ''}
               </div>
             </label>
           `).join('')}
         </div>
         <div class="mt-3">
-          <label class="text-xs text-gray-500 block mb-1">Promo code (optional)</label>
-          <input type="text" name="promo_code" class="w-full p-2 border rounded" placeholder="Enter code" />
+          <label class="text-xs text-gray-500 block mb-1">${CONFIG.POST_PAGE_COPY?.PROMO_LABEL || 'Promo code (optional)'}</label>
+          <input type="text" name="promo_code" class="w-full p-2 border rounded" placeholder="${CONFIG.POST_PAGE_COPY?.PROMO_PLACEHOLDER || 'Enter code'}" />
         </div>
       </div>
     `
@@ -58,9 +58,9 @@ export function renderPost(container) {
         return `<input type="${f.type}" name="${f.name}" class="w-full p-2 border rounded" placeholder="${f.label}" ${f.required ? 'required' : ''} />`;
       }).join('')}
       <p id="postError" class="text-sm text-red-600"></p>
-      <button type="submit" class="text-purple px-4 py-2 rounded">Continue to Payment</button>
+      <button type="submit" class="text-purple px-4 py-2 rounded">${CONFIG.POST_PAGE_COPY?.CONTINUE_PAYMENT || 'Continue to Payment'}</button>
     </form>
-    <p class="mt-4"><a href="/#list" class="text-blue-600 hover:underline">Back to ${CONFIG.COMPANY_BUSINESS_THING_PLURAL}</a></p>
+    <p class="mt-4"><a href="/#list" class="text-blue-600 hover:underline">${CONFIG.POST_PAGE_COPY?.BACK_TO_LIST || `Back to ${CONFIG.COMPANY_BUSINESS_THING_PLURAL}`}</a></p>
   `;
 
   const form = container.querySelector('#postForm');
@@ -184,7 +184,7 @@ export function renderPost(container) {
       }
 
       if (checkoutData.free && checkoutData.job_id) {
-        alert('✅ Job draft created. You can publish it from your dashboard.');
+        alert(`✅ ${CONFIG.JOB_COPY?.DRAFT_CREATED || 'Job draft created. You can publish it from your dashboard.'}`);
         window.location.hash = '#my-job-posts';
         return;
       }

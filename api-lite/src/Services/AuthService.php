@@ -152,10 +152,13 @@ class AuthService {
     return $output;
   }
 
-  public function createSession(int $userId): string {
+  public function createSession(int $userId, int $expiresHours = null): string {
+    if ($expiresHours === null || $expiresHours <= 0) {
+      $expiresHours = $this->sessionHours;
+    }
     $sessionId = bin2hex(random_bytes(32));
     $now = new \DateTimeImmutable();
-    $expires = $now->modify('+' . $this->sessionHours . ' hours');
+    $expires = $now->modify('+' . $expiresHours . ' hours');
 
     $stmt = $this->pdo->prepare("
       INSERT INTO jb_sessions (user_id, session_id, created_at, expires_at)

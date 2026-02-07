@@ -91,6 +91,200 @@ export const CONFIG = {
         blurb: 'Featured placement + verified badge.',
       },
     ],
+    JOB_COPY: {
+      SINGULAR: 'Job',
+      PLURAL: 'Jobs',
+      ROLE_EMPLOYER: 'Employer',
+      ROLE_EMPLOYEE: 'Job Seeker',
+      ROLE_EMPLOYER_VERIFIED: 'Employer (Verified)',
+      ROLE_EMPLOYER_PENDING: 'Employer (Pending Verification)',
+      MANAGE_OPENINGS: 'Manage My Openings',
+      MANAGE_RESUME: 'Manage Resume & Cover Letter',
+      MY_APPLICATIONS: 'My Applications',
+      SAVED_JOBS: 'Saved Jobs',
+      JOB_ALERTS: 'Job Alerts',
+      POST_CTA: 'Post a job',
+      SEARCH_CTA: 'Search openings',
+      APPLY_FOR_PREFIX: 'Apply for:',
+      LIST_TITLE: 'Open Roles',
+      LIST_SUBTITLE: 'Curated listings with privacy-first applications.',
+      ALERTS_TITLE: 'Job Alerts',
+      MY_POSTS_TITLE: 'My Job Posts',
+      BACK_TO_DETAIL: '← Back to Job Detail',
+      VIEW_JOB: 'View job',
+      SORT_TITLE_LABEL: 'Job Title A–Z',
+      MY_APPLICATIONS_TITLE: 'My Applications',
+      APPLICATION_SEARCH_PLACEHOLDER: 'Search jobs or company...',
+      STATUS_ALL: 'All statuses',
+      STATUS_NEW: 'New',
+      STATUS_REVIEWING: 'Reviewing',
+      STATUS_SHORTLISTED: 'Shortlisted',
+      STATUS_REJECTED: 'Rejected',
+      STATUS_WITHDRAWN: 'Withdrawn',
+      SORT_NEWEST: 'Newest first',
+      SORT_OLDEST: 'Oldest first',
+      SORT_COMPANY: 'Company A–Z',
+      WITHDRAW_ACTION: 'Withdraw',
+      APPLICATIONS_EMPTY: 'No applications found.',
+      JOBS_EMPTY: 'No job posts found.',
+      ALREADY_APPLIED: 'You have already applied to this job.',
+      MANAGE_RESUMES_LABEL: 'Manage resumes/cover letters',
+      PRIVACY_NOTE_APPLY: 'Privacy note: Employers may contact you using the details you provide. If you choose to hide your email, they will only see your resume link.',
+      RESUME_REQUIRED_MSG: 'Please provide a resume link or select a resume.',
+      POSTED_BY: 'Posted by',
+      POSTED_BY_FALLBACK: 'Posted by Employer',
+      COMPANY_LABEL: 'Company:',
+      WEBSITE_LABEL: 'Website',
+      MESSAGE_EMPLOYER_TITLE: 'Message the Employer',
+      OPEN_CONTACT_FORM: 'Open contact form',
+      CONTACT_EMPLOYER_TITLE: 'Contact Employer',
+      CLOSE_LABEL: 'Close',
+      SEND_MESSAGE: 'Send Message',
+      REPORT_ABUSE: 'Report abuse',
+      MESSAGE_SENT: 'Message sent.',
+      MAX_APPS_REACHED: 'This job has reached the maximum of 25 applications.',
+      DRAFT_CREATED: 'Job draft created. You can publish it from your dashboard.'
+    },
+    POST_PAGE_COPY: {
+      TIER_TITLE: 'Choose a listing tier',
+      TIER_FEATURED: 'Featured placement',
+      TIER_STANDARD: 'Standard placement',
+      PROMO_LABEL: 'Promo code (optional)',
+      PROMO_PLACEHOLDER: 'Enter code',
+      CONTINUE_PAYMENT: 'Continue to Payment',
+      BACK_TO_LIST: 'Back to Jobs'
+    },
+    EMPLOYERS_PAGE: {
+      heroTitle: 'Employer control, without the noise.',
+      heroSubtitle: 'Verify your company, filter applicants fast, and keep listings focused.',
+      heroSubline: 'Priority placement and transparent matching — no black‑box promises.',
+      ctaPrimary: 'Post a job',
+      ctaSecondary: 'Manage openings',
+      cards: [
+        {
+          eyebrow: 'No Data Sales',
+          title: 'We don’t sell user data',
+          body: 'The platform is funded by paid job posts, so applicant data isn’t sold or monetized.'
+        },
+        {
+          eyebrow: 'Smart Matching',
+          title: 'Resume relevance scoring',
+          body: 'Applicants are scored against the job description using resume text extraction and keyword matching, so you can prioritize stronger matches quickly.'
+        },
+        {
+          eyebrow: 'Applicant Filtering',
+          title: 'Find what matters fast',
+          body: 'Filter applicants by name, resume filename, location, and extracted resume text.'
+        },
+        {
+          eyebrow: 'Verified Employers',
+          title: 'Trust built in',
+          body: 'Employer accounts are verified before posting, helping keep the marketplace trustworthy.'
+        },
+        {
+          eyebrow: 'Privacy‑First Contact',
+          title: 'Respect applicant privacy',
+          body: 'Applicants can hide their email. When hidden, you’ll see “Email hidden — use resume link only.”'
+        }
+      ],
+      founder: {
+        eyebrow: 'Founding Employer',
+        title: 'Lock in founder pricing',
+        body: 'We’re opening early access to the first 10 companies. Founding employers lock in a discounted rate forever and get priority placement, verified badges, and direct founder support.',
+        ctaLabel: 'Apply for founding access',
+        ctaNote: 'Early access: $49/month (regular $99)'
+      }
+    },
+    EMPLOYEES_PAGE: {
+      heroEyebrow: 'Job Seekers',
+      heroTitle: 'More signal. Less spam.',
+      heroSubtitle: 'Apply once, reuse your resume, and control what employers see.',
+      heroSubline: 'Encrypted files and privacy‑first defaults across the board.',
+      ctaPrimary: 'Browse jobs',
+      ctaSecondary: 'Manage profile',
+      cards: [
+        {
+          eyebrow: 'Privacy‑First',
+          title: 'Encrypted by default',
+          body: 'Resumes and cover letters are encrypted at rest and only decrypted when you choose to load them.'
+        },
+        {
+          eyebrow: 'Abuse Prevention',
+          title: 'Report issues fast',
+          body: 'Report abuse directly to admins from any job or application page.'
+        },
+        {
+          eyebrow: 'Email Control',
+          title: 'Hide your email',
+          body: 'You can hide your email from employers and share only your resume link if you prefer.'
+        },
+        {
+          eyebrow: 'Speed',
+          title: 'Fast, lightweight experience',
+          body: 'No heavy frameworks — pages are fast and responsive even on slow connections.'
+        }
+      ]
+    },
+    HOME_HEROES: [
+      {
+        key: 'employers',
+        title: 'Fewer distractions. Better hires.',
+        lines: [
+          'Built to reduce noise and improve applicant quality without penalizing great candidates.',
+          'Smart matching that’s transparent — no black‑box AI.',
+          'Privacy‑first: resumes and files are encrypted by default.'
+        ],
+        primary: { label: 'Post a job', href: '/#post', id: 'postCta' },
+        secondary: { label: 'Browse listings', href: '/#list' }
+      },
+      {
+        key: 'employees',
+        title: 'Find real work faster.',
+        lines: [
+          'Search jobs without spam or tracking.',
+          'Apply once, reuse your resume, and control what employers see.',
+          'Encrypted by default for safer, cleaner hiring.'
+        ],
+        primary: { label: 'Search openings', href: '/#list' },
+        secondary: { label: 'How privacy works', href: '/#employees' }
+      },
+      {
+        key: 'speed',
+        title: 'Encrypted. Still lightning‑fast.',
+        lines: [
+          'Decryption happens only when needed, then we cache for speed.',
+          'Lightweight front end keeps load times low.',
+          'Security without the slowdown.'
+        ],
+        primary: { label: 'See speed details', href: '/#speed' },
+        secondary: { label: 'Browse listings', href: '/#list' }
+      },
+      {
+        key: 'multisearch',
+        title: 'Multi‑search that actually helps.',
+        lines: [
+          'Search by multiple terms at once to surface better matches.',
+          'Results are ranked by how many terms they match.',
+          'Find the right fit without endless scrolling.'
+        ],
+        primary: { label: 'Try multi‑search', href: '/#list' },
+        secondary: { label: 'Employer tools', href: '/#employers' }
+      }
+    ]
+    JOB_COPY: {
+      SINGULAR: 'Job',
+      PLURAL: 'Jobs',
+      POST_CTA: 'Post a job',
+      SEARCH_CTA: 'Search openings',
+      APPLY_FOR_PREFIX: 'Apply for:',
+      LIST_TITLE: 'Open Roles',
+      LIST_SUBTITLE: 'Curated listings with privacy-first applications.',
+      ALERTS_TITLE: 'Job Alerts',
+      MY_POSTS_TITLE: 'My Job Posts',
+      BACK_TO_DETAIL: '← Back to Job Detail',
+      MAX_APPS_REACHED: 'This job has reached the maximum of 25 applications.',
+      DRAFT_CREATED: 'Job draft created. You can publish it from your dashboard.'
+    },
   
     fields: [
       { name: 'title', label: 'Title', type: 'text', required: true },

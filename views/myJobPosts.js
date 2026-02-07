@@ -3,7 +3,7 @@ import { CONFIG } from '../config.js';
 export function renderMyJobPosts(container) {
   container.innerHTML = `
     <div class="max-w-4xl mx-auto px-4">
-      <h1 class="text-2xl font-bold mb-4">My Job Posts</h1>
+      <h1 class="text-2xl font-bold mb-4">${CONFIG.JOB_COPY?.MY_POSTS_TITLE || 'My Job Posts'}</h1>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
         <input
@@ -122,12 +122,12 @@ export function renderMyJobPosts(container) {
                 </div>
                 <p class="text-sm text-gray-600">${job.summary || ''}</p>
                 <a href="/#my-job-post-detail?id=${id}" class="text-indigo-600 text-sm mt-2 inline-block hover:underline">
-                  View Job
+                  ${CONFIG.JOB_COPY?.VIEW_JOB || 'View job'}
                 </a>
               </div>
             `;
           })
           .join('')
-      : `<p>No job posts found.</p>`;
+      : `<p>${CONFIG.JOB_COPY?.JOBS_EMPTY || 'No job posts found.'}</p>`;
   }
 }
