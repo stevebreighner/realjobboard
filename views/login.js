@@ -1,4 +1,5 @@
 import { start2FA, verify2FA } from './2fa.js';
+import { CONFIG } from '../config.js';
 import { renderNavbar } from '../components/navbar.js';
 import { clearProfileCache, clearSessionCache, getSessionCached, notifyAuthChanged } from '../utils/session.js';
 
@@ -17,6 +18,7 @@ export function renderLogin(container) {
             </svg>
           </button>
         </div>
+        <div id="turnstile-container" class="mt-2"></div>
         <button type="submit" class="text-purple px-4 py-2 rounded w-full">Login</button>
       </form>
       <div id="googleLoginWrap" class="mt-4">
@@ -59,6 +61,7 @@ export function renderLogin(container) {
   `;
 
   const form = container.querySelector('#loginForm');
+  const turnstileContainer = container.querySelector('#turnstile-container');
   const googleBtn = container.querySelector('#googleLoginBtn');
   const twoFASection = container.querySelector('#twoFASection');
   const verifyBtn = container.querySelector('#verify2FAButton');
@@ -67,6 +70,39 @@ export function renderLogin(container) {
   const magicForm = container.querySelector('#magicLinkForm');
   const passwordInput = container.querySelector('#loginPassword');
   const togglePasswordBtn = container.querySelector('#toggleLoginPassword');
+
+  let turnstileWidgetId = null;
+
+  (async () => {
+    let devMode = false;
+    try {
+      const res = await fetch('/api/dev-flags', { credentials: 'include' });
+      const data = await res.json();
+      devMode = !!data?.dev_mode;
+    } catch (err) {}
+    if (devMode) {
+      if (turnstileContainer) turnstileContainer.innerHTML = '<div class="text-xs text-gray-500">Dev mode: captcha disabled</div>';
+      return;
+    }
+    if (!window.turnstile) {
+      const script = document.createElement('script');
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        if (CONFIG.TURNSTILE_SITE_KEY && turnstileContainer) {
+          turnstileWidgetId = window.turnstile.render(turnstileContainer, {
+            sitekey: CONFIG.TURNSTILE_SITE_KEY
+          });
+        }
+      };
+      document.head.appendChild(script);
+    } else if (CONFIG.TURNSTILE_SITE_KEY && turnstileContainer) {
+      turnstileWidgetId = window.turnstile.render(turnstileContainer, {
+        sitekey: CONFIG.TURNSTILE_SITE_KEY
+      });
+    }
+  })();
 
   togglePasswordBtn.addEventListener('click', () => {
     const isHidden = passwordInput.type === 'password';
@@ -85,7 +121,20 @@ export function renderLogin(container) {
     const email = form.querySelector('input[type="email"]').value;
     const password = passwordInput.value;
 
-    const payload = JSON.stringify({ email, password });
+    let turnstileToken = '';
+    if (window.turnstile && turnstileWidgetId !== null) {
+      turnstileToken = window.turnstile.getResponse(turnstileWidgetId);
+    }
+    if (turnstileContainer && turnstileContainer.textContent.includes('captcha disabled')) {
+      turnstileToken = '';
+    }
+    if (!turnstileToken && turnstileContainer && !turnstileContainer.textContent.includes('captcha disabled')) {
+      messageEl.className = 'mt-4 text-sm text-amber-700';
+      messageEl.textContent = 'Please complete the captcha.';
+      return;
+    }
+
+    const payload = JSON.stringify({ email, password, turnstile_token: turnstileToken });
     const requestOpts = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -128,6 +177,9 @@ export function renderLogin(container) {
     } else {
       messageEl.className = 'mt-4 text-sm text-red-600';
       messageEl.textContent = `Login failed: ${data.message || data.error || 'Unknown error'}`;
+    }
+    if (window.turnstile && turnstileWidgetId !== null) {
+      window.turnstile.reset(turnstileWidgetId);
     }
   });
 
@@ -174,10 +226,14 @@ export function renderLogin(container) {
       return;
     }
 
+    let turnstileToken = '';
+    if (window.turnstile && turnstileWidgetId !== null) {
+      turnstileToken = window.turnstile.getResponse(turnstileWidgetId);
+    }
     const response = await fetch('/api/resend-verification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, turnstile_token: turnstileToken }),
       credentials: 'include',
     });
 
@@ -200,10 +256,14 @@ export function renderLogin(container) {
       return;
     }
 
+    let turnstileToken = '';
+    if (window.turnstile && turnstileWidgetId !== null) {
+      turnstileToken = window.turnstile.getResponse(turnstileWidgetId);
+    }
     const response = await fetch('/api/magic-link', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, turnstile_token: turnstileToken }),
       credentials: 'include',
     });
 

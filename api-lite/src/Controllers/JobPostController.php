@@ -13,6 +13,7 @@ use App\Models\UserFileModel;
 use App\Services\RateLimiter;
 use App\Services\Mailer;
 use App\Services\EncryptionService;
+use App\Models\SettingsModel;
 
 class JobPostController {
   private AuthService $auth;
@@ -23,6 +24,7 @@ class JobPostController {
   private UserFileModel $files;
   private CompanyModel $companies;
   private EncryptionService $crypto;
+  private SettingsModel $settings;
 
   public function __construct() {
     $this->auth = new AuthService($GLOBALS['DB_PDO']);
@@ -33,6 +35,7 @@ class JobPostController {
     $this->files = new UserFileModel();
     $this->companies = new CompanyModel();
     $this->crypto = new EncryptionService();
+    $this->settings = new SettingsModel();
   }
 
   private function requireEmployer(): array {
@@ -53,6 +56,43 @@ class JobPostController {
     $raw = file_get_contents('php://input');
     $data = json_decode($raw, true);
     return is_array($data) ? $data : [];
+  }
+
+  private function rateLimit(string $action, int $limit, int $windowSeconds): ?array {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $key = "{$action}:{$ip}";
+    $limiter = new RateLimiter($GLOBALS['DB_PDO']);
+    if (!$limiter->check($key, $limit, $windowSeconds)) {
+      http_response_code(429);
+      return ['error' => 'Too many requests. Please try again later.'];
+    }
+    return null;
+  }
+
+  private function passesTurnstile(array $data): bool {
+    $devMode = ($_ENV['DEV_MODE'] ?? '') === '1' || ($this->settings->get('dev_mode') === '1');
+    if ($devMode) return true;
+    $secret = $_ENV['TURNSTILE_SECRET_KEY'] ?? '';
+    if (!$secret) return true;
+    $token = $data['turnstile_token'] ?? '';
+    if (!$token) return false;
+    $payload = http_build_query([
+      'secret' => $secret,
+      'response' => $token,
+      'remoteip' => $_SERVER['REMOTE_ADDR'] ?? '',
+    ]);
+    $context = stream_context_create([
+      'http' => [
+        'method' => 'POST',
+        'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
+        'content' => $payload,
+        'timeout' => 6,
+      ],
+    ]);
+    $resp = @file_get_contents('https://challenges.cloudflare.com/turnstile/v0/siteverify', false, $context);
+    if ($resp === false) return false;
+    $json = json_decode($resp, true);
+    return !empty($json['success']);
   }
 
   public function listUserJobs(): array {
@@ -251,9 +291,16 @@ class JobPostController {
   }
 
   public function contactApplicant(): array {
+    if ($blocked = $this->rateLimit('contact_applicant', 6, 300)) {
+      return $blocked;
+    }
     $user = $this->requireEmployer();
     if (empty($user)) return ['error' => 'Not logged in'];
     $data = $this->jsonInput();
+    if (!$this->passesTurnstile($data)) {
+      http_response_code(403);
+      return ['error' => 'Captcha required'];
+    }
     $applicantId = (int) ($data['user_id'] ?? 0);
     $message = trim((string) ($data['message'] ?? ''));
     if (!$applicantId || !$message) {

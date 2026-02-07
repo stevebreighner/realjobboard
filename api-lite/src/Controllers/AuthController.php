@@ -39,11 +39,41 @@ class AuthController {
     return null;
   }
 
+  private function passesTurnstile(array $data): bool {
+    $devMode = ($_ENV['DEV_MODE'] ?? '') === '1' || ($this->settings->get('dev_mode') === '1');
+    if ($devMode) return true;
+    $secret = $_ENV['TURNSTILE_SECRET_KEY'] ?? '';
+    if (!$secret) return true;
+    $token = $data['turnstile_token'] ?? '';
+    if (!$token) return false;
+    $payload = http_build_query([
+      'secret' => $secret,
+      'response' => $token,
+      'remoteip' => $_SERVER['REMOTE_ADDR'] ?? '',
+    ]);
+    $context = stream_context_create([
+      'http' => [
+        'method' => 'POST',
+        'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
+        'content' => $payload,
+        'timeout' => 6,
+      ],
+    ]);
+    $resp = @file_get_contents('https://challenges.cloudflare.com/turnstile/v0/siteverify', false, $context);
+    if ($resp === false) return false;
+    $json = json_decode($resp, true);
+    return !empty($json['success']);
+  }
+
   public function register(): array {
     if ($blocked = $this->rateLimit('register', 5, 600)) {
       return $blocked;
     }
     $data = $this->jsonInput();
+    if (!$this->passesTurnstile($data)) {
+      http_response_code(403);
+      return ['error' => 'Captcha required'];
+    }
     $username = trim($data['username'] ?? '');
     $email = trim($data['email'] ?? '');
     $password = (string) ($data['password'] ?? '');
@@ -140,6 +170,10 @@ class AuthController {
       return $blocked;
     }
     $data = $this->jsonInput();
+    if (!$this->passesTurnstile($data)) {
+      http_response_code(403);
+      return ['error' => 'Captcha required'];
+    }
     $login = trim($data['email'] ?? '');
     $password = (string) ($data['password'] ?? '');
     if (!$login || !$password) {
@@ -241,6 +275,10 @@ class AuthController {
       return $blocked;
     }
     $data = $this->jsonInput();
+    if (!$this->passesTurnstile($data)) {
+      http_response_code(403);
+      return ['error' => 'Captcha required'];
+    }
     $email = trim($data['email'] ?? '');
     if (!$email) {
       http_response_code(422);
@@ -273,6 +311,10 @@ class AuthController {
       return $blocked;
     }
     $data = $this->jsonInput();
+    if (!$this->passesTurnstile($data)) {
+      http_response_code(403);
+      return ['error' => 'Captcha required'];
+    }
     $token = trim($data['token'] ?? '');
     $password = (string) ($data['password'] ?? '');
     if (!$token || !$password) {
@@ -312,6 +354,10 @@ class AuthController {
       return $blocked;
     }
     $data = $this->jsonInput();
+    if (!$this->passesTurnstile($data)) {
+      http_response_code(403);
+      return ['error' => 'Captcha required'];
+    }
     $email = trim($data['email'] ?? '');
     if (!$email) {
       http_response_code(422);
@@ -423,6 +469,10 @@ class AuthController {
       return $blocked;
     }
     $data = $this->jsonInput();
+    if (!$this->passesTurnstile($data)) {
+      http_response_code(403);
+      return ['error' => 'Captcha required'];
+    }
     $email = trim($data['email'] ?? '');
     if (!$email) {
       http_response_code(422);

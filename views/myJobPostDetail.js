@@ -255,6 +255,7 @@ export async function renderMyJobPostDetail(container, jobId) {
             </select>
             <textarea id="messageBody" class="w-full p-2 border rounded mb-3" rows="5" placeholder="Write your message"></textarea>
             <div id="messagePreview" class="border rounded p-3 bg-slate-50 text-sm text-slate-700 mb-3 hidden"></div>
+            <div id="messageTurnstile" class="mb-3"></div>
             <div class="flex items-center justify-end space-x-3">
               <button id="messagePreviewBtn" class="px-3 py-2 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Preview</button>
               <button id="messageCancelBtn" class="px-3 py-2 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
@@ -327,6 +328,8 @@ export async function renderMyJobPostDetail(container, jobId) {
     const messageTemplate = container.querySelector('#messageTemplate');
     const messagePreview = container.querySelector('#messagePreview');
     const messagePreviewBtn = container.querySelector('#messagePreviewBtn');
+    const messageTurnstile = container.querySelector('#messageTurnstile');
+    let messageTurnstileId = null;
     let messageTargetUserId = null;
     let messageTargetName = '';
     const deleteCancelBtn = container.querySelector('#deleteCancelBtn');
@@ -531,6 +534,7 @@ export async function renderMyJobPostDetail(container, jobId) {
         messageTargetUserId = userId;
         if (messageBody) messageBody.value = '';
         messageModal?.classList.remove('hidden');
+        initMessageTurnstile();
         return;
       }
 
@@ -547,8 +551,8 @@ export async function renderMyJobPostDetail(container, jobId) {
         })
           .then(res => res.json())
           .then(data => {
-            if (!data || data.success !== true) {
-              alert(data.message || 'Remove failed.');
+            if (!data || data.ok !== true) {
+              alert(data.error || data.message || 'Remove failed.');
               return;
             }
             const next = applicants.filter(a => Number(a.id) !== userId);
@@ -578,8 +582,8 @@ export async function renderMyJobPostDetail(container, jobId) {
         })
           .then(res => res.json())
           .then(data => {
-            if (!data || data.success !== true) {
-              alert(data.message || 'Update failed.');
+            if (!data || data.ok !== true) {
+              alert(data.error || data.message || 'Update failed.');
               return;
             }
             const idx = applicants.findIndex(a => Number(a.id) === userId);
@@ -668,6 +672,49 @@ export async function renderMyJobPostDetail(container, jobId) {
       updatePreview();
     });
 
+    const getDevFlags = async () => {
+      if (window.__dev_flags) return window.__dev_flags;
+      try {
+        const res = await fetch('/wp-json/customapi/v1/dev-flags?_=' + Date.now(), { credentials: 'include' });
+        const data = await res.json();
+        if (res.ok) {
+          window.__dev_flags = data;
+          return data;
+        }
+      } catch (err) {}
+      window.__dev_flags = { dev_mode: 0 };
+      return window.__dev_flags;
+    };
+
+    const initMessageTurnstile = async () => {
+      const devFlags = await getDevFlags();
+      if (devFlags.dev_mode) {
+        if (messageTurnstile) messageTurnstile.innerHTML = '<div class="text-xs text-gray-500">Dev mode: captcha disabled</div>';
+        return;
+      }
+      if (!messageTurnstile || messageTurnstileId !== null) return;
+      if (!window.turnstile) {
+        const script = document.createElement('script');
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+          if (CONFIG.TURNSTILE_SITE_KEY && messageTurnstile) {
+            messageTurnstileId = window.turnstile.render(messageTurnstile, {
+              sitekey: CONFIG.TURNSTILE_SITE_KEY,
+              theme: 'light',
+            });
+          }
+        };
+        document.body.appendChild(script);
+      } else if (CONFIG.TURNSTILE_SITE_KEY && messageTurnstile) {
+        messageTurnstileId = window.turnstile.render(messageTurnstile, {
+          sitekey: CONFIG.TURNSTILE_SITE_KEY,
+          theme: 'light',
+        });
+      }
+    };
+
     const updatePreview = () => {
       if (!messagePreview) return;
       const body = (messageBody?.value || '').trim();
@@ -696,21 +743,28 @@ export async function renderMyJobPostDetail(container, jobId) {
     messageSendBtn?.addEventListener('click', () => {
       const message = (messageBody?.value || '').trim();
       if (!messageTargetUserId || !message) return;
+      const payload = { job_id: Number(jobId), user_id: messageTargetUserId, message };
+      if (window.turnstile && messageTurnstileId !== null) {
+        payload.turnstile_token = window.turnstile.getResponse(messageTurnstileId);
+      }
       fetch('/wp-json/customapi/v1/contact-applicant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ job_id: Number(jobId), user_id: messageTargetUserId, message }),
+        body: JSON.stringify(payload),
       })
         .then(res => res.json())
         .then(data => {
-          if (!data || data.success !== true) {
-            alert(data.message || 'Message failed.');
+          if (!data || data.ok !== true) {
+            alert(data.error || data.message || 'Message failed.');
             return;
           }
           messageModal?.classList.add('hidden');
           messageTargetUserId = null;
           alert('Message sent.');
+          if (window.turnstile && messageTurnstileId !== null) {
+            window.turnstile.reset(messageTurnstileId);
+          }
         })
         .catch(() => alert('Message failed.'));
     });
