@@ -32,6 +32,16 @@ class UserFileController {
     return in_array($kind, ['resume', 'cover'], true) ? $kind : '';
   }
 
+  public function listResumes(): array {
+    $_GET['kind'] = 'resume';
+    return $this->list();
+  }
+
+  public function listCovers(): array {
+    $_GET['kind'] = 'cover';
+    return $this->list();
+  }
+
   public function list(): array {
     $user = $this->requireUser();
     if (empty($user)) return ['error' => 'Not logged in'];
@@ -127,6 +137,18 @@ class UserFileController {
       'id' => $id,
       'url' => "/api/user-file?token={$token}",
     ];
+  }
+
+  public function uploadResume(): array {
+    $_POST['kind'] = 'resume';
+    $_GET['kind'] = 'resume';
+    return $this->upload();
+  }
+
+  public function uploadCover(): array {
+    $_POST['kind'] = 'cover';
+    $_GET['kind'] = 'cover';
+    return $this->upload();
   }
 
   public function delete(): array {

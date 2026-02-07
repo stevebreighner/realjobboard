@@ -299,11 +299,13 @@ export function renderProfile(container) {
         return;
       }
       const company = data.company;
+      const isVerified = Number(company.verified) === 1;
       companyOwnerSection.classList.remove('hidden');
       companyOwnerSection.innerHTML = `
         <div class="border rounded-lg p-4 bg-white">
           <h3 class="text-lg font-semibold mb-3">Company Page</h3>
           <p class="text-xs text-gray-500 mb-3">Update how your company appears publicly.</p>
+          ${isVerified ? '' : '<p class="text-xs text-amber-700 mb-3">Company updates are locked until a site admin verifies your company.</p>'}
           <form id="companyOwnerForm" class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input name="logo_url" class="p-2 border rounded" placeholder="Logo URL" value="${company.logo_url || ''}" />
             <input name="logo_file" type="file" accept="image/*" class="p-2 border rounded" />
@@ -313,7 +315,7 @@ export function renderProfile(container) {
             <input name="state" class="p-2 border rounded" placeholder="State" value="${company.state || ''}" />
             <input name="zip" class="p-2 border rounded" placeholder="ZIP" value="${company.zip || ''}" />
             <input name="country" class="p-2 border rounded" placeholder="Country" value="${company.country || ''}" />
-            <button type="submit" class="text-purple px-4 py-2 rounded md:col-span-2">Save Company</button>
+            <button type="submit" class="text-purple px-4 py-2 rounded md:col-span-2" ${isVerified ? '' : 'disabled'}>Save Company</button>
           </form>
           <p id="companyOwnerMsg" class="text-sm mt-2"></p>
         </div>
@@ -334,6 +336,11 @@ export function renderProfile(container) {
 
       form?.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (!isVerified) {
+          msg.textContent = 'Company is not verified yet.';
+          msg.className = 'text-sm text-amber-700 mt-2';
+          return;
+        }
         msg.textContent = 'Saving...';
         const payload = Object.fromEntries(new FormData(form).entries());
         delete payload.logo_file;
