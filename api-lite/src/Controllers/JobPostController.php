@@ -72,8 +72,9 @@ class JobPostController {
   private function passesTurnstile(array $data): bool {
     $devMode = ($_ENV['DEV_MODE'] ?? '') === '1' || ($this->settings->get('dev_mode') === '1');
     if ($devMode) return true;
+    $siteKey = $_ENV['TURNSTILE_SITE_KEY'] ?? '';
     $secret = $_ENV['TURNSTILE_SECRET_KEY'] ?? '';
-    if (!$secret) return true;
+    if (!$siteKey || !$secret) return true;
     $token = $data['turnstile_token'] ?? '';
     if (!$token) return false;
     $payload = http_build_query([
