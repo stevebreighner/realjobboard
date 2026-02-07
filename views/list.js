@@ -106,10 +106,12 @@ export function renderList(container) {
       </div>
 
       <div id="itemsContainer" class="grid gap-6 md:grid-cols-2"></div>
+      <div id="pagination" class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm"></div>
     </div>
   `;
 
   const itemsContainer = container.querySelector('#itemsContainer');
+  const paginationEl = container.querySelector('#pagination');
   const searchInput = container.querySelector('#searchInput');
   const filterField = container.querySelector('#filterField');
   const filterCity = container.querySelector('#filterCity');
@@ -125,6 +127,8 @@ export function renderList(container) {
   const alertsContainer = container.querySelector('#alertsContainer');
   const savedJobIds = new Set();
   let alerts = [];
+  let currentPage = 1;
+  let pageSize = 12;
 
   const normalize = (val) => (val || '').toString().toLowerCase();
   const getMetaValue = (item, key) =>
@@ -335,14 +339,71 @@ export function renderList(container) {
       return dateB - dateA;
     });
 
-    renderItems(sorted);
+    const totalItems = sorted.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    if (currentPage > totalPages) currentPage = totalPages;
+    const start = (currentPage - 1) * pageSize;
+    const pageItems = sorted.slice(start, start + pageSize);
+    renderItems(pageItems);
+    renderPagination(totalItems, totalPages);
   };
 
+  function renderPagination(totalItems, totalPages) {
+    if (!paginationEl) return;
+    if (totalItems <= pageSize) {
+      paginationEl.innerHTML = '';
+      return;
+    }
+    const prevDisabled = currentPage <= 1 ? 'opacity-50 pointer-events-none' : '';
+    const nextDisabled = currentPage >= totalPages ? 'opacity-50 pointer-events-none' : '';
+    paginationEl.innerHTML = `
+      <div class="text-xs text-slate-500">
+        Showing ${Math.min(totalItems, (currentPage - 1) * pageSize + 1)}–${Math.min(totalItems, currentPage * pageSize)} of ${totalItems}
+      </div>
+      <div class="flex items-center gap-2">
+        <button data-page="prev" class="px-3 py-1.5 border border-slate-200 rounded ${prevDisabled}">Prev</button>
+        <span class="text-xs text-slate-600">Page ${currentPage} of ${totalPages}</span>
+        <button data-page="next" class="px-3 py-1.5 border border-slate-200 rounded ${nextDisabled}">Next</button>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-xs text-slate-500" for="pageSizeSelect">Per page</label>
+        <select id="pageSizeSelect" class="border rounded px-2 py-1 text-xs">
+          ${[8, 12, 16, 24].map(size => `<option value="${size}" ${size === pageSize ? 'selected' : ''}>${size}</option>`).join('')}
+        </select>
+      </div>
+    `;
+    paginationEl.querySelector('button[data-page="prev"]')?.addEventListener('click', () => {
+      currentPage = Math.max(1, currentPage - 1);
+      applyFilters();
+    });
+    paginationEl.querySelector('button[data-page="next"]')?.addEventListener('click', () => {
+      currentPage = Math.min(totalPages, currentPage + 1);
+      applyFilters();
+    });
+    paginationEl.querySelector('#pageSizeSelect')?.addEventListener('change', (e) => {
+      const nextSize = parseInt(e.target.value, 10);
+      if (!isNaN(nextSize)) {
+        pageSize = nextSize;
+        currentPage = 1;
+        applyFilters();
+      }
+    });
+  }
+
   [searchInput, filterField, filterCity, filterState, filterZip, filterRateType, filterRateMin, filterRateMax].forEach(input => {
-    input.addEventListener('input', () => applyFilters());
+    input.addEventListener('input', () => {
+      currentPage = 1;
+      applyFilters();
+    });
   });
-  sortSelect?.addEventListener('change', () => applyFilters());
-  distanceSelect?.addEventListener('change', () => applyFilters());
+  sortSelect?.addEventListener('change', () => {
+    currentPage = 1;
+    applyFilters();
+  });
+  distanceSelect?.addEventListener('change', () => {
+    currentPage = 1;
+    applyFilters();
+  });
 
   const cached = window.__preload?.list;
   const cacheFresh = cached && (Date.now() - cached.ts) < 60000;
