@@ -258,6 +258,7 @@ export function renderList(container) {
   let items = [];
   let userZip = '';
   let userCoords = null;
+  let lastDistanceZip = '';
 
   const isNewListing = (item) => {
     const ts = new Date(item.date || 0).getTime();
@@ -333,6 +334,7 @@ export function renderList(container) {
     const minRateQuery = normalize(filterRateMin.value);
     const maxRateQuery = normalize(filterRateMax.value);
     const radiusMiles = parseFloat(distanceSelect?.value || '');
+    const distanceZip = (userZip || zipQuery).trim();
 
     const filtered = items.filter(item => {
       const searchText = getSearchText(item);
@@ -361,7 +363,11 @@ export function renderList(container) {
       return true;
     });
 
-    if (!isNaN(radiusMiles) && radiusMiles > 0 && userZip && userCoords) {
+    if (!isNaN(radiusMiles) && radiusMiles > 0 && distanceZip) {
+      if (!userCoords || lastDistanceZip !== distanceZip) {
+        userCoords = await getZipCoords(distanceZip);
+        lastDistanceZip = distanceZip;
+      }
       const distancePromises = filtered.map(async (item) => {
         const jobZip = (getMetaValue(item, 'zip') || '').toString().trim();
         if (!jobZip) {
@@ -384,7 +390,7 @@ export function renderList(container) {
       });
     }
 
-    const filteredWithRadius = (!isNaN(radiusMiles) && radiusMiles > 0 && userZip && userCoords)
+    const filteredWithRadius = (!isNaN(radiusMiles) && radiusMiles > 0 && distanceZip && userCoords)
       ? filtered.filter(item => typeof item.__distanceMiles === 'number' && item.__distanceMiles <= radiusMiles)
       : filtered;
 
