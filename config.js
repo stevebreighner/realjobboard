@@ -146,6 +146,14 @@ export const CONFIG = {
       MAX_APPS_REACHED: 'This job has reached the maximum of 25 applications.',
       DRAFT_CREATED: 'Job draft created. You can publish it from your dashboard.'
     },
+    EMPLOYMENT_TYPES: [
+      { value: 'full_time', label: 'Full-time' },
+      { value: 'part_time', label: 'Part-time' },
+      { value: 'temp', label: 'Temp' },
+      { value: 'contract', label: 'Contract' },
+      { value: 'internship', label: 'Internship' },
+      { value: 'seasonal', label: 'Seasonal' },
+    ],
     POST_PAGE_COPY: {
       TIER_TITLE: 'Choose a listing tier',
       TIER_FEATURED: 'Featured placement',
@@ -276,6 +284,14 @@ export const CONFIG = {
     fields: [
       { name: 'title', label: 'Title', type: 'text', required: true },
       { name: 'field', label: 'Field (e.g. Tech, Auto)', type: 'text', required: true },
+      { name: 'employment_type', label: 'Employment Type', type: 'select', required: true, options: [
+        { value: 'full_time', label: 'Full-time' },
+        { value: 'part_time', label: 'Part-time' },
+        { value: 'temp', label: 'Temp' },
+        { value: 'contract', label: 'Contract' },
+        { value: 'internship', label: 'Internship' },
+        { value: 'seasonal', label: 'Seasonal' },
+      ] },
       { name: 'street1', label: 'Street Address (optional)', type: 'text', required: false },
       { name: 'street2', label: 'Unit/Suite (optional)', type: 'text', required: false },
       { name: 'city', label: 'City', type: 'text', required: true },
@@ -298,6 +314,7 @@ export const CONFIG = {
       { name: 'city', label: 'City', type: 'text' },
       { name: 'state', label: 'State', type: 'text' },
       { name: 'zip', label: 'ZIP', type: 'text' },
+      { name: 'employment_type', label: 'Employment Type', type: 'text' },
       { name: 'rate_type', label: 'Rate Type', type: 'text' },
       { name: 'rate_min', label: 'Min Rate', type: 'text' },
       { name: 'rate_max', label: 'Max Rate', type: 'text' },

@@ -198,7 +198,7 @@ class JobPostController {
     if (!in_array($status, ['draft','publish'], true)) $status = 'draft';
     $this->jobs->updateJob($jobId, $title ?: 'Untitled', $status);
     $meta = $data['meta'] ?? $data;
-    $allowed = ['description','field','street1','street2','city','state','zip','country','rate_type','rate_min','rate_max','job_type','company','company_site','job_featured','job_payment_status','job_tier','job_tier_label','compliance_enabled','compliance_federal','compliance_blocks'];
+    $allowed = ['description','field','employment_type','street1','street2','city','state','zip','country','rate_type','rate_min','rate_max','job_type','company','company_site','job_featured','job_payment_status','job_tier','job_tier_label','compliance_enabled','compliance_federal','compliance_blocks'];
     $update = [];
     foreach ($allowed as $key) {
       if (array_key_exists($key, $meta)) {

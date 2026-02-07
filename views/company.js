@@ -12,11 +12,12 @@ export async function renderCompany(container, slug) {
     const res = await fetch(`/api/company?slug=${encodeURIComponent(slug)}`);
     const data = await res.json();
     if (!res.ok) {
+      const label = CONFIG.COMPANY_ENTITY_LABEL || 'Company page';
       container.innerHTML = `
         <div class="max-w-3xl mx-auto px-4">
           <div class="border border-slate-200 rounded-2xl p-6 bg-white shadow-sm">
-            <h1 class="text-xl font-semibold mb-2">${escapeHtml(CONFIG.COMPANY_ENTITY_LABEL || 'Company page')}</h1>
-            <p class="text-sm text-slate-600 mb-3">This company page isn’t available yet. It may not be verified or published.</p>
+            <h1 class="text-xl font-semibold mb-2">${escapeHtml(label)}</h1>
+            <p class="text-sm text-slate-600 mb-3">This ${escapeHtml(label.toLowerCase())} isn’t available yet. It may not be verified or published.</p>
             <a href="/#list" class="text-sm text-indigo-600 hover:underline">← Back to listings</a>
           </div>
         </div>

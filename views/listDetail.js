@@ -75,6 +75,7 @@ export async function renderListDetail(container, id) {
       : escapeHtml(data.date || '');
     const safeDesc = escapeHtml(data.description || '');
     const rawRateType = data.meta?.rate_type || '';
+    const employmentType = data.meta?.employment_type || '';
     const rateType = (() => {
       const t = rawRateType.toString().toLowerCase();
       if (t === 'hourly') return 'per hour';
@@ -179,6 +180,7 @@ export async function renderListDetail(container, id) {
         </div>
         <div class="flex flex-wrap gap-2 text-xs text-slate-600 mb-4">
           ${formatRate() ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>Rate:</strong> ${formatRate()}</span>` : ''}
+          ${employmentType ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>Employment:</strong> ${escapeHtml(employmentType)}</span>` : ''}
           ${company ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>${CONFIG.JOB_COPY?.COMPANY_LABEL || 'Company'}</strong> ${safeCompanySlug ? `<a class="text-indigo-600 hover:underline" href="/#company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany}</span>` : ''}
           ${locationLine.trim() ? `<span class="px-3 py-1.5 rounded-full bg-slate-100" id="jobLocationLine"><strong>Location:</strong> ${escapeHtml(locationLine)}</span>` : ''}
         </div>
@@ -194,6 +196,7 @@ export async function renderListDetail(container, id) {
                 .map(([key, val]) => {
                   const labelMap = {
                     job_type: 'Job Type',
+                    employment_type: 'Employment Type',
                     field: 'Field',
                     city: 'City',
                     state: 'State',

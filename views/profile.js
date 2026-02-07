@@ -308,9 +308,10 @@ export function renderProfile(container) {
       const company = data.company;
       const isVerified = Number(company.verified) === 1;
       companyOwnerSection.classList.remove('hidden');
+      const companyLabel = CONFIG.COMPANY_ENTITY_LABEL || 'Company page';
       companyOwnerSection.innerHTML = `
         <div class="border rounded-lg p-4 bg-white">
-          <h3 class="text-lg font-semibold mb-3">Company Page</h3>
+          <h3 class="text-lg font-semibold mb-3">${companyLabel}</h3>
           <p class="text-xs text-gray-500 mb-3">Update how your company appears publicly.</p>
           ${isVerified ? '' : '<p class="text-xs text-amber-700 mb-3">Company updates are locked until a site admin verifies your company.</p>'}
           <form id="companyOwnerForm" class="grid grid-cols-1 md:grid-cols-2 gap-3">

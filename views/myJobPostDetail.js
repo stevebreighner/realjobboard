@@ -25,6 +25,7 @@ export async function renderMyJobPostDetail(container, jobId) {
     let state = getMeta('state');
     let zip = getMeta('zip');
     let country = getMeta('country') || 'United States';
+    let employmentType = getMeta('employment_type');
     let rateType = getMeta('rate_type');
     let rateMin = getMeta('rate_min');
     let rateMax = getMeta('rate_max');
@@ -64,6 +65,7 @@ export async function renderMyJobPostDetail(container, jobId) {
           <div class="text-gray-700 mb-4" id="jobContent">${data.content}</div>
           ${(tierLabel || paymentStatus) ? `<p class="text-sm text-gray-600 mb-1">Tier: ${tierLabel || tierId}${isFeatured ? ' • Featured' : ''}</p>` : ''}
           <p class="text-sm text-gray-600 mb-1 ${jobField ? '' : 'hidden'}" id="jobField">Field: ${jobField || ''}</p>
+          <p class="text-sm text-gray-600 mb-1 ${employmentType ? '' : 'hidden'}" id="jobEmployment">Employment: ${employmentType || ''}</p>
           <p class="text-sm text-gray-600 mb-1 ${rateType || rateMin || rateMax ? '' : 'hidden'}" id="jobRate">Rate: ${rateMin || ''}${rateMax ? `–${rateMax}` : ''} ${rateType || ''}</p>
           <p class="text-sm text-gray-600 mb-2 ${locationFull ? '' : 'hidden'}" id="jobLocation">${locationFull || ''}</p>
           <p class="text-sm text-gray-500 mb-4">Posted on: ${new Date(data.date).toLocaleDateString()}</p>
@@ -78,6 +80,17 @@ export async function renderMyJobPostDetail(container, jobId) {
 
           <label class="block text-sm font-semibold mb-1">Description</label>
           <textarea id="editContent" class="w-full p-2 border rounded mb-3" rows="8">${rawContent}</textarea>
+
+          <label class="block text-sm font-semibold mb-1">Employment Type</label>
+          <select id="editEmploymentType" class="w-full p-2 border rounded mb-3">
+            <option value="" disabled ${employmentType ? '' : 'selected'}>Select Employment Type</option>
+            <option value="full_time">Full-time</option>
+            <option value="part_time">Part-time</option>
+            <option value="temp">Temp</option>
+            <option value="contract">Contract</option>
+            <option value="internship">Internship</option>
+            <option value="seasonal">Seasonal</option>
+          </select>
 
           <label class="block text-sm font-semibold mb-1">Rate Type</label>
           <select id="editRateType" class="w-full p-2 border rounded mb-3">
@@ -151,6 +164,17 @@ export async function renderMyJobPostDetail(container, jobId) {
 
           <label class="block text-sm font-semibold mb-1">Description</label>
           <textarea id="createContent" class="w-full p-2 border rounded mb-3" rows="8" placeholder="Job description"></textarea>
+
+          <label class="block text-sm font-semibold mb-1">Employment Type</label>
+          <select id="createEmploymentType" class="w-full p-2 border rounded mb-3">
+            <option value="" disabled selected>Select Employment Type</option>
+            <option value="full_time">Full-time</option>
+            <option value="part_time">Part-time</option>
+            <option value="temp">Temp</option>
+            <option value="contract">Contract</option>
+            <option value="internship">Internship</option>
+            <option value="seasonal">Seasonal</option>
+          </select>
 
           <label class="block text-sm font-semibold mb-1">Rate Type</label>
           <select id="createRateType" class="w-full p-2 border rounded mb-3">
@@ -288,6 +312,7 @@ export async function renderMyJobPostDetail(container, jobId) {
     const titleInput = container.querySelector('#editTitle');
     const fieldInput = container.querySelector('#editField');
     const contentInput = container.querySelector('#editContent');
+    const editEmploymentType = container.querySelector('#editEmploymentType');
     const editRateType = container.querySelector('#editRateType');
     const editRateMin = container.querySelector('#editRateMin');
     const editRateMax = container.querySelector('#editRateMax');
@@ -305,6 +330,7 @@ export async function renderMyJobPostDetail(container, jobId) {
     const createTitle = container.querySelector('#createTitle');
     const createField = container.querySelector('#createField');
     const createContent = container.querySelector('#createContent');
+    const createEmploymentType = container.querySelector('#createEmploymentType');
     const createRateType = container.querySelector('#createRateType');
     const createRateMin = container.querySelector('#createRateMin');
     const createRateMax = container.querySelector('#createRateMax');
@@ -925,6 +951,7 @@ export async function renderMyJobPostDetail(container, jobId) {
       titleInput.value = data.title || '';
       fieldInput.value = jobField || '';
       contentInput.value = rawContent || '';
+      if (editEmploymentType && employmentType) editEmploymentType.value = employmentType;
       if (editRateType && rateType) editRateType.value = rateType;
       if (editRateMin) editRateMin.value = rateMin || '';
       if (editRateMax) editRateMax.value = rateMax || '';
@@ -946,6 +973,7 @@ export async function renderMyJobPostDetail(container, jobId) {
       createTitle.value = '';
       createField.value = '';
       createContent.value = '';
+      if (createEmploymentType) createEmploymentType.value = '';
       if (createRateType) createRateType.value = '';
       if (createRateMin) createRateMin.value = '';
       if (createRateMax) createRateMax.value = '';
@@ -969,6 +997,11 @@ export async function renderMyJobPostDetail(container, jobId) {
       if (!editFieldValue) {
         editMessage.className = 'text-sm text-red-600';
         editMessage.textContent = 'Field is required.';
+        return;
+      }
+      if (!editEmploymentType?.value) {
+        editMessage.className = 'text-sm text-red-600';
+        editMessage.textContent = 'Employment type is required.';
         return;
       }
 
@@ -1003,6 +1036,7 @@ export async function renderMyJobPostDetail(container, jobId) {
         content: contentInput.value.trim(),
         status: statusInput.value,
         field: editFieldValue,
+        employment_type: editEmploymentType.value.trim(),
         rate_type: editRateType.value.trim(),
         rate_min: rateMinVal,
         rate_max: rateMaxVal,
@@ -1055,10 +1089,16 @@ export async function renderMyJobPostDetail(container, jobId) {
           rateEl.textContent = `Rate: ${payload.rate_min}–${payload.rate_max} ${payload.rate_type}`;
           rateEl.classList.toggle('hidden', !(payload.rate_type || payload.rate_min || payload.rate_max));
         }
+        const employmentEl = container.querySelector('#jobEmployment');
+        if (employmentEl) {
+          employmentEl.textContent = `Employment: ${payload.employment_type || ''}`;
+          employmentEl.classList.toggle('hidden', !payload.employment_type);
+        }
 
         data.title = payload.title;
         data.content = payload.content;
         jobField = payload.field;
+        employmentType = payload.employment_type;
         rateType = payload.rate_type;
         rateMin = payload.rate_min;
         rateMax = payload.rate_max;
@@ -1087,6 +1127,11 @@ export async function renderMyJobPostDetail(container, jobId) {
       if (!createFieldValue) {
         createMessage.className = 'text-sm text-red-600';
         createMessage.textContent = 'Field is required.';
+        return;
+      }
+      if (!createEmploymentType?.value) {
+        createMessage.className = 'text-sm text-red-600';
+        createMessage.textContent = 'Employment type is required.';
         return;
       }
 
@@ -1120,6 +1165,7 @@ export async function renderMyJobPostDetail(container, jobId) {
         description: createContent.value.trim(),
         status: createStatus.value,
         field: createFieldValue,
+        employment_type: createEmploymentType.value.trim(),
         rate_type: createRateType.value.trim(),
         rate_min: createRateMinVal,
         rate_max: createRateMaxVal,

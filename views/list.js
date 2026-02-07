@@ -67,6 +67,12 @@ export function renderList(container) {
             class="w-full p-2 border rounded"
             placeholder="Filter by ZIP"
           />
+          <select id="filterEmploymentType" class="w-full p-2 border rounded">
+            <option value="">Employment type</option>
+            ${(CONFIG.EMPLOYMENT_TYPES || []).map(opt => `
+              <option value="${opt.value}">${opt.label}</option>
+            `).join('')}
+          </select>
           <input
             type="text"
             id="filterRateType"
@@ -121,6 +127,7 @@ export function renderList(container) {
   const filterCity = container.querySelector('#filterCity');
   const filterState = container.querySelector('#filterState');
   const filterZip = container.querySelector('#filterZip');
+  const filterEmploymentType = container.querySelector('#filterEmploymentType');
   const filterRateType = container.querySelector('#filterRateType');
   const filterRateMin = container.querySelector('#filterRateMin');
   const filterRateMax = container.querySelector('#filterRateMax');
@@ -148,6 +155,7 @@ export function renderList(container) {
     if (filterCity) filterCity.value = storedState.city || '';
     if (filterState) filterState.value = storedState.state || '';
     if (filterZip) filterZip.value = storedState.zip || '';
+    if (filterEmploymentType) filterEmploymentType.value = storedState.employment_type || '';
     if (filterRateType) filterRateType.value = storedState.rate_type || '';
     if (filterRateMin) filterRateMin.value = storedState.rate_min || '';
     if (filterRateMax) filterRateMax.value = storedState.rate_max || '';
@@ -270,9 +278,10 @@ export function renderList(container) {
     const title = item.title || item.name || '';
     const summary = item.summary || item.description || '';
     const field = getMetaValue(item, 'field');
+    const employmentType = getMetaValue(item, 'employment_type');
     const company = getMetaValue(item, 'company');
     const location = buildLocation(item);
-    return normalize([title, summary, field, company, location].join(' '));
+    return normalize([title, summary, field, employmentType, company, location].join(' '));
   };
 
   let items = [];
@@ -350,6 +359,7 @@ export function renderList(container) {
     const cityQuery = normalize(filterCity.value || inferredCity);
     const stateQuery = normalize(filterState.value);
     const zipQuery = normalize(filterZip.value);
+    const employmentTypeQuery = normalize(filterEmploymentType?.value);
     const rateTypeQuery = normalize(filterRateType.value);
     const minRateQuery = normalize(filterRateMin.value);
     const maxRateQuery = normalize(filterRateMax.value);
@@ -361,6 +371,7 @@ export function renderList(container) {
       city: filterCity.value || '',
       state: filterState.value || '',
       zip: filterZip.value || '',
+      employment_type: filterEmploymentType?.value || '',
       rate_type: filterRateType.value || '',
       rate_min: filterRateMin.value || '',
       rate_max: filterRateMax.value || '',
@@ -388,6 +399,7 @@ export function renderList(container) {
       if (cityQuery && !normalize(getMetaValue(item, 'city')).includes(cityQuery)) return false;
       if (stateQuery && !normalize(getMetaValue(item, 'state')).includes(stateQuery)) return false;
       if (zipQuery && !normalize(getMetaValue(item, 'zip')).includes(zipQuery)) return false;
+      if (employmentTypeQuery && !normalize(getMetaValue(item, 'employment_type')).includes(employmentTypeQuery)) return false;
       if (rateTypeQuery && !normalize(getMetaValue(item, 'rate_type')).includes(rateTypeQuery)) return false;
       const rateMinVal = parseFloat(getMetaValue(item, 'rate_min') || '');
       const rateMaxVal = parseFloat(getMetaValue(item, 'rate_max') || '');
@@ -518,7 +530,7 @@ export function renderList(container) {
     });
   }
 
-  [searchInput, filterField, filterCity, filterState, filterZip, filterRateType, filterRateMin, filterRateMax].forEach(input => {
+  [searchInput, filterField, filterCity, filterState, filterZip, filterEmploymentType, filterRateType, filterRateMin, filterRateMax].forEach(input => {
     input.addEventListener('input', () => {
       currentPage = 1;
       applyFilters();
@@ -653,6 +665,7 @@ export function renderList(container) {
         city: filterCity.value || '',
         state: filterState.value || '',
         zip: filterZip.value || '',
+        employment_type: filterEmploymentType?.value || '',
         rate_type: filterRateType.value || '',
         rate_min: filterRateMin.value || '',
         rate_max: filterRateMax.value || '',
@@ -730,6 +743,7 @@ export function renderList(container) {
               const rawCompany = getMetaValue(item, 'company');
               const company = rawCompany && rawCompany.includes('@') ? '' : rawCompany;
               const companySlug = getMetaValue(item, 'company_slug');
+              const employmentType = getMetaValue(item, 'employment_type');
               const rateType = formatRateType(getMetaValue(item, 'rate_type'));
               const rateMin = getMetaValue(item, 'rate_min');
               const rateMax = getMetaValue(item, 'rate_max');
@@ -745,6 +759,7 @@ export function renderList(container) {
               const safeCompanySlug = escapeHtml(companySlug || '');
               const summary = escapeHtml(item.summary || '');
               const safeField = escapeHtml(field);
+              const safeEmploymentType = escapeHtml(employmentType || '');
               const safeRate = escapeHtml(formatRate(rateMin, rateMax, rateType));
               const safeLocation = escapeHtml(location);
               const safeDistance = escapeHtml(distanceLabel);
@@ -768,6 +783,13 @@ export function renderList(container) {
                         <path d="M4 7h16M4 12h16M4 17h16"></path>
                       </svg>
                       ${safeField}
+                    </span>` : ''}
+                    ${employmentType ? `<span class="px-3 py-1.5 rounded-full bg-slate-100 inline-flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="7" width="18" height="12" rx="2"></rect>
+                        <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                      </svg>
+                      ${safeEmploymentType}
                     </span>` : ''}
                     ${(rateType || rateMin || rateMax) ? `<span class="px-3 py-1.5 rounded-full bg-slate-100 inline-flex items-center gap-2">
                       <span class="inline-flex items-center justify-center h-4 w-4 text-slate-500 font-semibold">$</span>
