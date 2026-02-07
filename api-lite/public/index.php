@@ -9,6 +9,17 @@ $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 // Strip optional /api-lite/public prefix if present
 $path = rtrim($path, '/');
 
+$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+$blockedRaw = $_ENV['BLOCKED_IPS'] ?? '';
+if ($blockedRaw && $ip) {
+  $blocked = array_filter(array_map('trim', explode(',', $blockedRaw)));
+  if (in_array($ip, $blocked, true)) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Access denied']);
+    exit;
+  }
+}
+
 $routes = require __DIR__ . '/../routes.php';
 
 $handler = $routes[$method][$path] ?? null;
