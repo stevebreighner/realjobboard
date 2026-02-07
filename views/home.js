@@ -122,6 +122,7 @@ export function renderHome(container) {
         <div class="home-blob two"></div>
         <div class="absolute inset-0 bg-black/35 pointer-events-none"></div>
         <div class="relative z-10 text-shadow text-center max-w-5xl mx-auto">
+          <div class="text-xs uppercase tracking-widest text-white/80 mb-2">${CONFIG.SITE_TAGLINE || 'A job search site'}</div>
           <h1 class="text-3xl md:text-5xl font-bold mb-3">${hero.title}</h1>
           ${heroLines}
           <div class="mt-6 flex gap-3 justify-center flex-wrap">

@@ -14,3 +14,7 @@
 - Employer job detail shows compliance answers OK
 - Saved jobs toggle/list OK
 - Job alerts create/list OK
+- Contact employer OK
+- Contact applicant OK
+- Update application status OK
+- Withdraw application OK
