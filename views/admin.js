@@ -188,9 +188,15 @@ export async function renderAdmin(container) {
     return;
   }
   noticeEl.innerHTML = `
-    <div class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
-      <strong>Stripe note:</strong> If you change the site URL/domain, remember to update your Stripe webhook
-      endpoint URL and any Stripe env vars in <code>.env</code> (or hosting settings).
+    <div class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900 space-y-2">
+      <div>
+        <strong>Stripe note:</strong> If you change the site URL/domain, remember to update your Stripe webhook
+        endpoint URL and any Stripe env vars in <code>.env</code> (or hosting settings).
+      </div>
+      <div>
+        <strong>Google Auth note:</strong> When you move to the real domain, update the OAuth Authorized
+        JavaScript origins + redirect URI in Google Cloud Console.
+      </div>
     </div>
   `;
 

@@ -178,12 +178,12 @@ export async function renderListDetail(container, id) {
         </div>
         <div class="flex flex-wrap gap-2 text-xs text-slate-600 mb-4">
           ${formatRate() ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>Rate:</strong> ${formatRate()}</span>` : ''}
-          ${company ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>${CONFIG.JOB_COPY?.COMPANY_LABEL || 'Company'}:</strong> ${safeCompanySlug ? `<a class="text-indigo-600 hover:underline" href="/#company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany}</span>` : ''}
+          ${company ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>${CONFIG.JOB_COPY?.COMPANY_LABEL || 'Company'}</strong> ${safeCompanySlug ? `<a class="text-indigo-600 hover:underline" href="/#company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany}</span>` : ''}
           ${locationLine.trim() ? `<span class="px-3 py-1.5 rounded-full bg-slate-100" id="jobLocationLine"><strong>Location:</strong> ${escapeHtml(locationLine)}</span>` : ''}
         </div>
         <div class="prose mb-4">${safeDesc}</div>
-        <details class="mb-4 border border-slate-200 rounded-xl p-4 bg-slate-50">
-          <summary class="cursor-pointer text-sm text-slate-700 font-medium">Additional details & privacy</summary>
+        <details class="mb-4 border border-slate-200 rounded-xl p-4 bg-slate-50" open>
+          <summary class="cursor-pointer text-sm text-slate-700 font-medium">Details & privacy</summary>
           <div class="mt-3 text-sm text-slate-600">
             ${CONFIG.JOB_COPY?.PRIVACY_NOTE_APPLY || 'Privacy note: Employers may contact you using the details you provide. If you choose to hide your email, they will only see your resume link.'}
           </div>
