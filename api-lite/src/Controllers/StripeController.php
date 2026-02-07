@@ -186,6 +186,10 @@ class StripeController {
       'metadata[user_id]' => (string) $userId,
       'metadata[tier]' => $tier,
     ];
+    $user = $this->auth->getUserById($userId);
+    if (!empty($user['email'])) {
+      $params['customer_email'] = $user['email'];
+    }
 
     $ch = curl_init('https://api.stripe.com/v1/checkout/sessions');
     curl_setopt($ch, CURLOPT_USERPWD, $secret . ':');
