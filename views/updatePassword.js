@@ -54,7 +54,7 @@ window.handleChangePassword = async function(event) {
   }
 
   try {
-    const response = await fetch('/wp-json/customapi/v1/update-password', {
+    const response = await fetch('/api/update-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

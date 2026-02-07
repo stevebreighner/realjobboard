@@ -65,7 +65,7 @@ export function renderSupport(container, params = {}) {
   // Simulated real-time status check
   const statusBox = document.getElementById('statusBox');
 
-  fetch('/wp-json/customapi/v1/ping?_=' + Date.now())
+  fetch('/api/ping?_=' + Date.now())
     .then(res => {
       if (res.ok) {
         statusBox.innerHTML = '✅ All systems are operational.';

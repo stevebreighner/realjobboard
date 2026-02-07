@@ -142,7 +142,7 @@ export function renderMyApplications(container) {
     if (!jobId) return;
     if (!confirm('Withdraw this application?')) return;
     try {
-      const res = await fetch('/wp-json/customapi/v1/withdraw-application', {
+      const res = await fetch('/api/withdraw-application', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -162,7 +162,7 @@ export function renderMyApplications(container) {
     }
   });
 
-  fetch('/wp-json/customapi/v1/user-applications', { credentials: 'include' })
+  fetch('/api/user-applications', { credentials: 'include' })
     .then(res => res.json())
     .then(data => {
       applications = Array.isArray(data) ? data : [];

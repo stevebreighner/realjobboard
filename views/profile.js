@@ -237,13 +237,13 @@ export function renderProfile(container) {
         if (!savedJobsSection) return;
         savedJobsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.SAVED_JOBS || 'Saved Jobs'}</h3><p class="text-sm text-gray-500">Loading...</p>`;
         try {
-          const savedRes = await fetch('/wp-json/customapi/v1/saved-jobs', { credentials: 'include' });
+          const savedRes = await fetch('/api/saved-jobs', { credentials: 'include' });
           const savedIds = await savedRes.json();
           if (!savedRes.ok || !Array.isArray(savedIds) || !savedIds.length) {
             savedJobsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.SAVED_JOBS || 'Saved Jobs'}</h3><p class="text-sm text-gray-500">No saved jobs yet.</p>`;
             return;
           }
-          const listRes = await fetch('/wp-json/customapi/v1/get-list');
+          const listRes = await fetch('/api/get-list');
           const list = await listRes.json();
           const savedSet = new Set(savedIds.map(Number));
           const matches = (Array.isArray(list) ? list : []).filter(j => savedSet.has(Number(j.id || j._id || j.slug)));
@@ -268,7 +268,7 @@ export function renderProfile(container) {
         if (!jobAlertsSection) return;
         jobAlertsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.JOB_ALERTS || 'Job Alerts'}</h3><p class="text-sm text-gray-500">Loading...</p>`;
         try {
-          const res = await fetch('/wp-json/customapi/v1/job-alerts', { credentials: 'include' });
+          const res = await fetch('/api/job-alerts', { credentials: 'include' });
           const data = await res.json();
           if (!res.ok || !Array.isArray(data) || !data.length) {
             jobAlertsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.JOB_ALERTS || 'Job Alerts'}</h3><p class="text-sm text-gray-500">No alerts yet.</p>`;

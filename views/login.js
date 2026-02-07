@@ -151,7 +151,7 @@ export function renderLogin(container) {
       credentials: 'include',
     };
 
-    let response = await fetch('/wp-json/customapi/v1/login', requestOpts);
+    let response = await fetch('/api/login', requestOpts);
     let data = await response.json().catch(() => ({}));
 
     const needsFallback = !response.ok || !data || (!data.user && !data.message && !data.twoFARequired);

@@ -44,7 +44,7 @@ export function renderMyJobPosts(container) {
   const statusFilter = container.querySelector('#statusFilter');
   const sortSelect = container.querySelector('#sortSelect');
 
-  fetch('/wp-json/customapi/v1/user-jobs')
+  fetch('/api/user-jobs')
     .then(res => res.json())
     .then(data => {
       let jobs = data;

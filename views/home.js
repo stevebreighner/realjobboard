@@ -359,7 +359,7 @@ export function renderHome(container) {
       ];
       listTitle = 'Your latest openings';
       listEmpty = 'No openings yet. Post your first job to get started.';
-      listEndpoint = '/wp-json/customapi/v1/user-jobs';
+      listEndpoint = '/api/user-jobs';
     } else {
       actions = [
         { label: CONFIG.JOB_COPY?.SEARCH_CTA || 'Search openings', href: '/#list' },
@@ -368,7 +368,7 @@ export function renderHome(container) {
       ];
       listTitle = 'Your latest applications';
       listEmpty = 'No applications yet. Start browsing to apply.';
-      listEndpoint = '/wp-json/customapi/v1/user-applications';
+      listEndpoint = '/api/user-applications';
     }
 
     container.innerHTML = `

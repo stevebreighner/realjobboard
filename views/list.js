@@ -590,7 +590,7 @@ export function renderList(container) {
 
     async function loadSavedJobs() {
       try {
-        const res = await fetch('/wp-json/customapi/v1/saved-jobs', { credentials: 'include' });
+        const res = await fetch('/api/saved-jobs', { credentials: 'include' });
         const data = await res.json();
         if (res.ok && Array.isArray(data)) {
           data.forEach(id => savedJobIds.add(Number(id)));
@@ -601,7 +601,7 @@ export function renderList(container) {
 
     async function loadAlerts() {
       try {
-        const res = await fetch('/wp-json/customapi/v1/job-alerts', { credentials: 'include' });
+        const res = await fetch('/api/job-alerts', { credentials: 'include' });
         const data = await res.json();
         if (res.ok && Array.isArray(data)) {
           alerts = data;
@@ -637,7 +637,7 @@ export function renderList(container) {
         return;
       }
       try {
-        const res = await fetch('/wp-json/customapi/v1/job-alerts', {
+        const res = await fetch('/api/job-alerts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -680,7 +680,7 @@ export function renderList(container) {
         return;
       }
       try {
-        const res = await fetch('/wp-json/customapi/v1/job-alerts', {
+        const res = await fetch('/api/job-alerts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -699,7 +699,7 @@ export function renderList(container) {
       if (!btn) return;
       const alertId = btn.getAttribute('data-alert-id');
       try {
-        const res = await fetch('/wp-json/customapi/v1/job-alerts-delete', {
+        const res = await fetch('/api/job-alerts-delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -719,7 +719,7 @@ export function renderList(container) {
       const jobId = Number(btn.getAttribute('data-save-id'));
       if (!jobId) return;
       try {
-        const res = await fetch('/wp-json/customapi/v1/saved-jobs', {
+        const res = await fetch('/api/saved-jobs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',

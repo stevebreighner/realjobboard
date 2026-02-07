@@ -235,8 +235,8 @@ export async function renderAdmin(container) {
     if (recentErrors) recentErrors.innerHTML = '';
     try {
       const [auditRes, errorRes] = await Promise.all([
-        fetch(`/wp-json/customapi/v1/admin/audit?_=${Date.now()}`, { credentials: 'include' }),
-        fetch(`/wp-json/customapi/v1/admin/error-log?_=${Date.now()}`, { credentials: 'include' }),
+        fetch(`/api/admin/audit?_=${Date.now()}`, { credentials: 'include' }),
+        fetch(`/api/admin/error-log?_=${Date.now()}`, { credentials: 'include' }),
       ]);
       const auditData = await auditRes.json();
       const errorData = await errorRes.json();
@@ -276,7 +276,7 @@ export async function renderAdmin(container) {
   async function loadDevFlags() {
     if (!devModeToggle) return;
     try {
-      const res = await fetch('/wp-json/customapi/v1/admin/flags?_=' + Date.now(), { credentials: 'include' });
+      const res = await fetch('/api/admin/flags?_=' + Date.now(), { credentials: 'include' });
       const data = await res.json();
       if (res.ok) {
         devModeToggle.checked = !!data.dev_mode;
@@ -334,7 +334,7 @@ export async function renderAdmin(container) {
   devModeToggle?.addEventListener('change', async () => {
     devModeStatus.textContent = 'Saving...';
     try {
-      const res = await fetch('/wp-json/customapi/v1/admin/flags', {
+      const res = await fetch('/api/admin/flags', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -460,7 +460,7 @@ export async function renderAdmin(container) {
 
   async function fetchUsers() {
     usersContainer.innerHTML = '<p class="text-sm text-gray-500">Loading users...</p>';
-    const res = await fetch(`/wp-json/customapi/v1/admin/users?_=${Date.now()}`, { credentials: 'include' });
+    const res = await fetch(`/api/admin/users?_=${Date.now()}`, { credentials: 'include' });
     const data = await res.json();
     if (!res.ok) {
       usersContainer.innerHTML = `<p class="text-sm text-red-600">${data.message || 'Failed to load users.'}</p>`;
@@ -590,7 +590,7 @@ export async function renderAdmin(container) {
 
   async function fetchAudit() {
     auditContainer.innerHTML = '<p class="text-gray-500">Loading audit log...</p>';
-    const res = await fetch(`/wp-json/customapi/v1/admin/audit?_=${Date.now()}`, { credentials: 'include' });
+    const res = await fetch(`/api/admin/audit?_=${Date.now()}`, { credentials: 'include' });
     const data = await res.json();
     if (!res.ok) {
       auditContainer.innerHTML = `<p class="text-red-600">${data.message || 'Failed to load audit log.'}</p>`;
@@ -634,7 +634,7 @@ export async function renderAdmin(container) {
   const fetchTemplates = async () => {
     templatesMsg.textContent = 'Loading templates...';
     templatesMsg.className = 'text-sm text-gray-500';
-    const res = await fetch(`/wp-json/customapi/v1/admin/email-templates?_=${Date.now()}`, { credentials: 'include' });
+    const res = await fetch(`/api/admin/email-templates?_=${Date.now()}`, { credentials: 'include' });
     const data = await res.json();
     if (!res.ok) {
       templatesMsg.textContent = data.message || 'Failed to load templates.';
@@ -694,7 +694,7 @@ export async function renderAdmin(container) {
   const saveTemplates = async () => {
     templatesMsg.textContent = 'Saving...';
     templatesMsg.className = 'text-sm text-gray-500';
-    const res = await fetch('/wp-json/customapi/v1/admin/email-templates', {
+    const res = await fetch('/api/admin/email-templates', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -746,7 +746,7 @@ export async function renderAdmin(container) {
       }
       btn.textContent = 'Hide details';
       detailEl.classList.remove('hidden');
-      const res = await fetch(`/wp-json/customapi/v1/admin/user?userId=${userId}`, { credentials: 'include' });
+      const res = await fetch(`/api/admin/user?userId=${userId}`, { credentials: 'include' });
       const data = await res.json();
       if (!res.ok) {
         detailEl.innerHTML = `<p class="text-sm text-red-600">${data.message || 'Failed to load details.'}</p>`;
@@ -797,7 +797,7 @@ export async function renderAdmin(container) {
     }
     if (action === 'delete') {
       if (!confirm('Delete this user?')) return;
-      const res = await fetch('/wp-json/customapi/v1/admin/user-delete', {
+      const res = await fetch('/api/admin/user-delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -818,7 +818,7 @@ export async function renderAdmin(container) {
       const companySite = container.querySelector(`#company-site-${userId}`);
       const companyKey = container.querySelector(`#company-key-${userId}`);
       const msg = container.querySelector(`#saveMsg-${userId}`);
-      const res = await fetch('/wp-json/customapi/v1/admin/user-update', {
+      const res = await fetch('/api/admin/user-update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -1011,7 +1011,7 @@ export async function renderAdmin(container) {
     createMsg.textContent = '';
     const formData = new FormData(createForm);
     const payload = Object.fromEntries(formData.entries());
-    const res = await fetch('/wp-json/customapi/v1/admin/user-create', {
+    const res = await fetch('/api/admin/user-create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -1050,10 +1050,10 @@ export async function renderAdmin(container) {
   refreshSubscribersBtn?.addEventListener('click', fetchSubscribers);
   sendDigestBtn?.addEventListener('click', sendDigest);
   exportUsersBtn.addEventListener('click', () => {
-    window.location.href = '/wp-json/customapi/v1/admin/export-users';
+    window.location.href = '/api/admin/export-users';
   });
   exportJobsBtn.addEventListener('click', () => {
-    window.location.href = '/wp-json/customapi/v1/admin/export-jobs';
+    window.location.href = '/api/admin/export-jobs';
   });
 
   loadRecentActivity();

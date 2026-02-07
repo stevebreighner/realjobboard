@@ -45,7 +45,7 @@ export async function getSessionCached({ maxAgeMs = 30000, force = false } = {})
     if (cached) return cached;
   }
   try {
-    const res = await fetch((API_BASE ? API_BASE : '') + '/wp-json/customapi/v1/sessions?_=' + Date.now(), {
+    const res = await fetch((API_BASE ? API_BASE : '') + '/api/sessions?_=' + Date.now(), {
       method: 'GET',
       credentials: 'include',
     });
@@ -79,8 +79,8 @@ export async function getUserProfileCached({ maxAgeMs = 30000, force = false, li
   }
   try {
     const url = light
-      ? '/wp-json/customapi/v1/user-profile?light=1&_=' + Date.now()
-      : '/wp-json/customapi/v1/user-profile?_=' + Date.now();
+      ? '/api/user-profile?light=1&_=' + Date.now()
+      : '/api/user-profile?_=' + Date.now();
     const res = await fetch(url, {
       method: 'GET',
       credentials: 'include',

@@ -88,7 +88,7 @@ export function renderRegister(container) {
   const getDevFlags = async () => {
     if (window.__dev_flags) return window.__dev_flags;
     try {
-      const res = await fetch('/wp-json/customapi/v1/dev-flags?_=' + Date.now(), { credentials: 'include' });
+      const res = await fetch('/api/dev-flags?_=' + Date.now(), { credentials: 'include' });
       const data = await res.json();
       if (res.ok) {
         window.__dev_flags = data;
@@ -282,7 +282,7 @@ export function renderRegister(container) {
         credentials: 'include',
       };
 
-      let response = await fetch('/wp-json/customapi/v1/register', requestOpts);
+      let response = await fetch('/api/register', requestOpts);
       let data = await response.json().catch(() => ({}));
 
       const needsFallback = !response.ok || !data || (!data.user && !data.message && !data.error);

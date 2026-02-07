@@ -126,7 +126,7 @@ class ProfileController {
     if (!empty($_FILES['avatar']['tmp_name'])) {
       $tmp = $_FILES['avatar']['tmp_name'];
       $name = basename($_FILES['avatar']['name'] ?? 'avatar.png');
-      $uploadDir = __DIR__ . '/../../wp-content/uploads/avatars';
+      $uploadDir = __DIR__ . '/../../uploads/avatars';
       if (!is_dir($uploadDir)) {
         @mkdir($uploadDir, 0755, true);
       }
@@ -134,7 +134,7 @@ class ProfileController {
       $fileName = 'avatar_' . $user['id'] . '_' . time() . '.' . $ext;
       $dest = $uploadDir . '/' . $fileName;
       if (@move_uploaded_file($tmp, $dest)) {
-        $url = '/wp-content/uploads/avatars/' . $fileName;
+        $url = '/uploads/avatars/' . $fileName;
         $this->profiles->setMeta((int) $user['id'], 'avatar_url', $url);
       }
     }

@@ -4,7 +4,7 @@ export async function renderMyJobPostDetail(container, jobId) {
   container.innerHTML = `<p>Loading job details...</p>`;
 
   try {
-    const response = await fetch(`/wp-json/customapi/v1/user-job-detail?id=${jobId}`, {
+    const response = await fetch(`/api/user-job-detail?id=${jobId}`, {
       credentials: 'include'
     });
     const data = await response.json();
@@ -569,7 +569,7 @@ export async function renderMyJobPostDetail(container, jobId) {
         const userId = Number(removeBtn.dataset.userId || 0);
         if (!userId) return;
         if (!confirm('Remove this applicant? They will receive a rejection email.')) return;
-        fetch('/wp-json/customapi/v1/remove-application', {
+        fetch('/api/remove-application', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -600,7 +600,7 @@ export async function renderMyJobPostDetail(container, jobId) {
         if (status === 'rejected' && !confirm('Reject this applicant? They will receive an email.')) {
           return;
         }
-        fetch('/wp-json/customapi/v1/update-application-status', {
+        fetch('/api/update-application-status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -629,7 +629,7 @@ export async function renderMyJobPostDetail(container, jobId) {
       if (!link) return;
       const userId = Number(link.dataset.userId || 0);
       if (!userId) return;
-      fetch('/wp-json/customapi/v1/employer-click', {
+      fetch('/api/employer-click', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -666,7 +666,7 @@ export async function renderMyJobPostDetail(container, jobId) {
     const loadTemplates = async () => {
       if (!messageTemplate) return;
       try {
-        const res = await fetch('/wp-json/customapi/v1/email-templates', { credentials: 'include' });
+        const res = await fetch('/api/email-templates', { credentials: 'include' });
         const data = await res.json();
         const templates = Array.isArray(data) ? data.filter(t => t.scope === 'employer') : [];
         const list = templates.length ? templates : fallbackTemplates.map(t => ({ ...t, category: 'General' }));
@@ -701,7 +701,7 @@ export async function renderMyJobPostDetail(container, jobId) {
     const getDevFlags = async () => {
       if (window.__dev_flags) return window.__dev_flags;
       try {
-        const res = await fetch('/wp-json/customapi/v1/dev-flags?_=' + Date.now(), { credentials: 'include' });
+        const res = await fetch('/api/dev-flags?_=' + Date.now(), { credentials: 'include' });
         const data = await res.json();
         if (res.ok) {
           window.__dev_flags = data;
@@ -773,7 +773,7 @@ export async function renderMyJobPostDetail(container, jobId) {
       if (window.turnstile && messageTurnstileId !== null) {
         payload.turnstile_token = window.turnstile.getResponse(messageTurnstileId);
       }
-      fetch('/wp-json/customapi/v1/contact-applicant', {
+      fetch('/api/contact-applicant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -808,7 +808,7 @@ export async function renderMyJobPostDetail(container, jobId) {
       if (status === 'rejected' && !confirm('Reject selected applicants? They will receive email.')) return;
 
       for (const userId of userIds) {
-        await fetch('/wp-json/customapi/v1/update-application-status', {
+        await fetch('/api/update-application-status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -828,7 +828,7 @@ export async function renderMyJobPostDetail(container, jobId) {
       if (!userIds.length) return alert('Select at least one applicant.');
       if (!confirm('Remove selected applicants? They will receive a rejection email.')) return;
       for (const userId of userIds) {
-        await fetch('/wp-json/customapi/v1/remove-application', {
+        await fetch('/api/remove-application', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -843,7 +843,7 @@ export async function renderMyJobPostDetail(container, jobId) {
     resetLearningBtn?.addEventListener('click', async () => {
       if (!confirm('Reset learned preferences?')) return;
       try {
-        const res = await fetch('/wp-json/customapi/v1/employer-reset-learning', {
+        const res = await fetch('/api/employer-reset-learning', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -1046,7 +1046,7 @@ export async function renderMyJobPostDetail(container, jobId) {
       };
 
       try {
-        const res = await fetch('/wp-json/customapi/v1/user-job-update', {
+        const res = await fetch('/api/user-job-update', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -1175,7 +1175,7 @@ export async function renderMyJobPostDetail(container, jobId) {
       };
 
       try {
-        const res = await fetch('/wp-json/customapi/v1/create-post', {
+        const res = await fetch('/api/create-post', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -1231,7 +1231,7 @@ export async function renderMyJobPostDetail(container, jobId) {
 
     deleteConfirmBtn.addEventListener('click', async () => {
       try {
-        const res = await fetch('/wp-json/customapi/v1/user-job-delete', {
+        const res = await fetch('/api/user-job-delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',

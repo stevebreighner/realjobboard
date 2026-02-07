@@ -111,7 +111,7 @@ class UserFileController {
     }
 
     $enc = $this->crypto->encrypt($rawFile);
-    $uploadDir = __DIR__ . '/../../wp-content/uploads/secure';
+    $uploadDir = __DIR__ . '/../../uploads/secure';
     if (!is_dir($uploadDir)) {
       @mkdir($uploadDir, 0755, true);
     }

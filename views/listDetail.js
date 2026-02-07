@@ -292,7 +292,7 @@ export async function renderListDetail(container, id) {
       });
     }
     if (saveBtn && isLoggedIn) {
-      fetch('/wp-json/customapi/v1/saved-jobs', { credentials: 'include' })
+      fetch('/api/saved-jobs', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
           const saved = Array.isArray(data) && data.includes(Number(id));
@@ -302,7 +302,7 @@ export async function renderListDetail(container, id) {
         .catch(() => {});
 
       saveBtn.addEventListener('click', async () => {
-        const res = await fetch('/wp-json/customapi/v1/saved-jobs', {
+        const res = await fetch('/api/saved-jobs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -329,7 +329,7 @@ export async function renderListDetail(container, id) {
       const getDevFlags = async () => {
         if (window.__dev_flags) return window.__dev_flags;
         try {
-          const res = await fetch('/wp-json/customapi/v1/dev-flags?_=' + Date.now(), { credentials: 'include' });
+          const res = await fetch('/api/dev-flags?_=' + Date.now(), { credentials: 'include' });
           const data = await res.json();
           if (res.ok) {
             window.__dev_flags = data;
@@ -383,7 +383,7 @@ export async function renderListDetail(container, id) {
           return out;
         };
 
-        fetch('/wp-json/customapi/v1/email-templates', { credentials: 'include' })
+        fetch('/api/email-templates', { credentials: 'include' })
           .then(res => res.json())
           .then(data => {
             const templates = Array.isArray(data) ? data.filter(t => t.scope === 'applicant') : [];
@@ -430,7 +430,7 @@ export async function renderListDetail(container, id) {
           }
         }
         try {
-          const res = await fetch('/wp-json/customapi/v1/contact-employer', {
+          const res = await fetch('/api/contact-employer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',

@@ -1,6 +1,6 @@
 // apiPaths.js
 
-export const API_BASE = '/wp-json/customapi/v1';
+export const API_BASE = '/api';
 
 export const API = {
   REGISTER: '/register',

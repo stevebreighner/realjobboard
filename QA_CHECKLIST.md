@@ -18,3 +18,10 @@
 - Contact applicant OK
 - Update application status OK
 - Withdraw application OK
+
+## Post‑WP Sanity
+- Verify .env DB connection only (no wp-config fallback)
+- /api/ping responds 200
+- /api/jobs returns list
+- Login/register/session OK
+- File uploads: resume + avatar save to /uploads
