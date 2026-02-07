@@ -128,7 +128,10 @@ export function renderLogin(container) {
     if (turnstileContainer && turnstileContainer.textContent.includes('captcha disabled')) {
       turnstileToken = '';
     }
-    if (!turnstileToken && turnstileContainer && !turnstileContainer.textContent.includes('captcha disabled')) {
+    if (!CONFIG.TURNSTILE_SITE_KEY) {
+      turnstileToken = '';
+    }
+    if (!turnstileToken && turnstileContainer && !turnstileContainer.textContent.includes('captcha disabled') && CONFIG.TURNSTILE_SITE_KEY) {
       messageEl.className = 'mt-4 text-sm text-amber-700';
       messageEl.textContent = 'Please complete the captcha.';
       return;

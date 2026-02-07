@@ -2,13 +2,15 @@ import { CONFIG } from "../config.js";
 
 export function renderForgotPassword(container) {
   container.innerHTML = `
-    <h1 class="text-2xl font-bold mb-4">Forgot Password</h1>
-    <form class="space-y-4" onsubmit="handleForgotPassword(event)">
-      <input type="email" id="forgot_email" placeholder="Email" class="w-full p-2 border rounded" required />
-      <div id="turnstile-container" class="mt-2"></div>
-      <button type="submit" class="text-purple px-4 py-2 rounded">Send Reset Link</button>
-    </form>
-    <div id="forgotMsg" class="mt-3 text-sm"></div>
+    <div class="max-w-md mx-auto px-4">
+      <h1 class="text-2xl font-bold mb-4 text-center">Forgot Password</h1>
+      <form class="space-y-4" onsubmit="handleForgotPassword(event)">
+        <input type="email" id="forgot_email" placeholder="Email" class="w-full p-2 border rounded" required />
+        <div id="turnstile-container" class="mt-2"></div>
+        <button type="submit" class="text-purple px-4 py-2 rounded w-full">Send Reset Link</button>
+      </form>
+      <div id="forgotMsg" class="mt-3 text-sm text-center"></div>
+    </div>
   `;
   initTurnstile();
 }
@@ -21,7 +23,10 @@ window.handleForgotPassword = async function(event) {
   if (window.turnstile && turnstileWidgetId !== null) {
     turnstileToken = window.turnstile.getResponse(turnstileWidgetId);
   }
-  if (!turnstileToken && msg && !document.getElementById('turnstile-container')?.textContent?.includes('captcha disabled')) {
+  if (!CONFIG.TURNSTILE_SITE_KEY) {
+    turnstileToken = '';
+  }
+  if (!turnstileToken && msg && !document.getElementById('turnstile-container')?.textContent?.includes('captcha disabled') && CONFIG.TURNSTILE_SITE_KEY) {
     msg.className = 'mt-3 text-sm text-amber-700';
     msg.textContent = 'Please complete the captcha.';
     return;

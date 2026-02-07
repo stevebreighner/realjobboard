@@ -134,6 +134,26 @@ export function renderList(container) {
   let alerts = [];
   let currentPage = 1;
   let pageSize = 12;
+  const storedState = (() => {
+    const raw = sessionStorage.getItem('listState');
+    try {
+      return raw ? JSON.parse(raw) : null;
+    } catch (err) {
+      return null;
+    }
+  })();
+  if (storedState) {
+    if (searchInput) searchInput.value = storedState.search || '';
+    if (filterField) filterField.value = storedState.field || '';
+    if (filterCity) filterCity.value = storedState.city || '';
+    if (filterState) filterState.value = storedState.state || '';
+    if (filterZip) filterZip.value = storedState.zip || '';
+    if (filterRateType) filterRateType.value = storedState.rate_type || '';
+    if (filterRateMin) filterRateMin.value = storedState.rate_min || '';
+    if (filterRateMax) filterRateMax.value = storedState.rate_max || '';
+    if (distanceSelect) distanceSelect.value = storedState.radius || '';
+    if (storedState.page) currentPage = Math.max(1, Number(storedState.page) || 1);
+  }
 
   const normalize = (val) => (val || '').toString().toLowerCase();
   const tokenize = (val) => normalize(val).split(/[^a-z0-9]+/).filter(Boolean);
@@ -335,6 +355,21 @@ export function renderList(container) {
     const maxRateQuery = normalize(filterRateMax.value);
     const radiusMiles = parseFloat(distanceSelect?.value || '');
     const distanceZip = (userZip || zipQuery).trim();
+    const listState = {
+      search: rawQuery || '',
+      field: filterField.value || '',
+      city: filterCity.value || '',
+      state: filterState.value || '',
+      zip: filterZip.value || '',
+      rate_type: filterRateType.value || '',
+      rate_min: filterRateMin.value || '',
+      rate_max: filterRateMax.value || '',
+      radius: distanceSelect?.value || '',
+      page: currentPage || 1,
+    };
+    sessionStorage.setItem('listState', JSON.stringify(listState));
+    const params = new URLSearchParams(listState);
+    sessionStorage.setItem('listHash', `#list?${params.toString()}`);
 
     const filtered = items.filter(item => {
       const searchText = getSearchText(item);
@@ -735,9 +770,7 @@ export function renderList(container) {
                       ${safeField}
                     </span>` : ''}
                     ${(rateType || rateMin || rateMax) ? `<span class="px-3 py-1.5 rounded-full bg-slate-100 inline-flex items-center gap-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 2v20M5 7h14M5 17h14"></path>
-                      </svg>
+                      <span class="inline-flex items-center justify-center h-4 w-4 text-slate-500 font-semibold">$</span>
                       ${safeRate}
                     </span>` : ''}
                     ${location ? `<span class="px-3 py-1.5 rounded-full bg-slate-100 inline-flex items-center gap-2">

@@ -22,13 +22,15 @@ export async function verify2FA(code) {
   // Add this new function to render the 2FA page UI:
   export function render2FA(container) {
     container.innerHTML = `
-      <h1 class="text-2xl font-bold mb-4">Two-Factor Authentication</h1>
-      <form id="twofa-form" class="space-y-4">
-        <label for="code">Enter your 2FA code:</label>
-        <input type="text" id="code" name="code" class="w-full p-2 border rounded" required />
-        <button type="submit" class="text-purple px-4 py-2 rounded">Verify</button>
-      </form>
-      <div id="twofa-message" class="mt-4"></div>
+      <div class="max-w-md mx-auto px-4">
+        <h1 class="text-2xl font-bold mb-4 text-center">Two-Factor Authentication</h1>
+        <form id="twofa-form" class="space-y-4">
+          <label for="code" class="block text-sm text-gray-700">Enter your 2FA code:</label>
+          <input type="text" id="code" name="code" class="w-full p-2 border rounded" required />
+          <button type="submit" class="text-purple px-4 py-2 rounded w-full">Verify</button>
+        </form>
+        <div id="twofa-message" class="mt-4 text-sm text-center"></div>
+      </div>
     `;
   
     const form = container.querySelector('#twofa-form');
@@ -40,20 +42,20 @@ export async function verify2FA(code) {
   
       if (!code) {
         message.textContent = 'Please enter your 2FA code.';
-        message.style.color = 'red';
+        message.className = 'mt-4 text-sm text-center text-red-600';
         return;
       }
   
       const result = await verify2FA(code);
   
       if (result.ok) {
-        message.textContent = '✅ 2FA verification successful!';
-        message.style.color = 'green';
+        message.textContent = '2FA verification successful!';
+        message.className = 'mt-4 text-sm text-center text-green-700';
         // Redirect or do something after success
         window.location.hash = '#profile';
       } else {
-        message.textContent = `❌ Verification failed: ${result.message || 'Unknown error'}`;
-        message.style.color = 'red';
+        message.textContent = `Verification failed: ${result.message || 'Unknown error'}`;
+        message.className = 'mt-4 text-sm text-center text-red-600';
       }
     });
   }

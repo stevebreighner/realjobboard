@@ -174,7 +174,7 @@ export async function renderListDetail(container, id) {
           </div>
           <div class="flex items-center gap-2">
             <button id="saveJobBtn" class="text-xs px-3 py-1.5 rounded border border-indigo-300 text-indigo-700 hover:border-indigo-500 hover:bg-indigo-50 transition">Save</button>
-            ${isFeatured ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">Featured</span>` : ''}
+            ${isFeatured ? `<span class="text-amber-500 text-lg" title="Featured" aria-label="Featured">★</span>` : ''}
           </div>
         </div>
         <div class="flex flex-wrap gap-2 text-xs text-slate-600 mb-4">
@@ -253,7 +253,7 @@ export async function renderListDetail(container, id) {
       </div>
 
       <div class="mt-6 text-xs text-gray-500 flex items-center justify-between">
-        <a href="/#list" class="text-blue-600 hover:underline">← Back to List</a>
+        <a href="${sessionStorage.getItem('listHash') || '/#list'}" class="text-blue-600 hover:underline">← Back to List</a>
         <a class="text-blue-600 hover:underline" href="/#support?subject=Report%20Abuse&context=job:${id}">${CONFIG.JOB_COPY?.REPORT_ABUSE || 'Report abuse'}</a>
       </div>
     `;

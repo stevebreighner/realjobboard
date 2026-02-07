@@ -342,6 +342,11 @@ class AuthController {
       return ['error' => 'Invalid or expired token'];
     }
     $userId = (int) $row['user_id'];
+    $user = $this->auth->getUserById($userId);
+    if ($user && !empty($user['password_hash']) && password_verify($password, $user['password_hash'])) {
+      http_response_code(422);
+      return ['error' => 'New password must be different from your current password'];
+    }
     $hash = password_hash($password, PASSWORD_BCRYPT);
     $stmt = $GLOBALS['DB_PDO']->prepare("UPDATE jb_users SET password_hash = :hash WHERE id = :id");
     $stmt->execute([':hash' => $hash, ':id' => $userId]);

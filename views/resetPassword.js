@@ -9,19 +9,21 @@ export function renderResetPassword(container, params) {
   }
 
   container.innerHTML = `
-    <h1 class="text-2xl font-bold mb-4">Reset Password</h1>
-    <form class="space-y-4" onsubmit="handleResetPassword(event)">
-      <input type="hidden" id="reset_token" value="${token}" />
-      <input type="password" id="new_password" class="w-full p-2 border rounded" placeholder="New Password" required />
-      <input type="password" id="confirm_password" class="w-full p-2 border rounded" placeholder="Confirm Password" required />
-      <div id="turnstile-container" class="mt-2"></div>
-      <div class="flex justify-end">
-        <button type="submit" class="text-purple px-4 py-2 rounded hover:bg-green-700 transition">
-          Set New Password
-        </button>
-      </div>
-    </form>
-    <div id="resetMsg" class="mt-3 text-sm"></div>
+    <div class="max-w-md mx-auto px-4">
+      <h1 class="text-2xl font-bold mb-4 text-center">Reset Password</h1>
+      <form class="space-y-4" onsubmit="handleResetPassword(event)">
+        <input type="hidden" id="reset_token" value="${token}" />
+        <input type="password" id="new_password" class="w-full p-2 border rounded" placeholder="New Password" required />
+        <input type="password" id="confirm_password" class="w-full p-2 border rounded" placeholder="Confirm Password" required />
+        <div id="turnstile-container" class="mt-2"></div>
+        <div class="flex justify-end">
+          <button type="submit" class="text-purple px-4 py-2 rounded w-full hover:bg-green-700 transition">
+            Set New Password
+          </button>
+        </div>
+      </form>
+      <div id="resetMsg" class="mt-3 text-sm text-center"></div>
+    </div>
   `;
   initTurnstile();
 }
@@ -50,7 +52,10 @@ window.handleResetPassword = async function(event) {
     if (window.turnstile && turnstileWidgetId !== null) {
       turnstileToken = window.turnstile.getResponse(turnstileWidgetId);
     }
-    if (!turnstileToken && msg && !document.getElementById('turnstile-container')?.textContent?.includes('captcha disabled')) {
+    if (!CONFIG.TURNSTILE_SITE_KEY) {
+      turnstileToken = '';
+    }
+    if (!turnstileToken && msg && !document.getElementById('turnstile-container')?.textContent?.includes('captcha disabled') && CONFIG.TURNSTILE_SITE_KEY) {
       msg.className = 'mt-3 text-sm text-amber-700';
       msg.textContent = 'Please complete the captcha.';
       return;
