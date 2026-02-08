@@ -193,6 +193,49 @@ export function renderProfile(container) {
     zipInput.addEventListener('change', handleZipLookup);
   }
 
+  const saveCompanyBtn = container.querySelector('#saveCompanyBtn');
+  const companyMsg = container.querySelector('#companyMsg');
+  saveCompanyBtn?.addEventListener('click', async () => {
+    if (!companyMsg) return;
+    companyMsg.textContent = 'Saving...';
+    const payload = {
+      company: (document.getElementById('company')?.value || '').trim(),
+      company_site: (document.getElementById('company_site')?.value || '').trim(),
+      company_email: (document.getElementById('company_email')?.value || '').trim(),
+      logo_url: (document.getElementById('company_logo')?.value || '').trim(),
+      street1: (document.getElementById('company_street1')?.value || '').trim(),
+      street2: (document.getElementById('company_street2')?.value || '').trim(),
+      city: (document.getElementById('company_city')?.value || '').trim(),
+      state: (document.getElementById('company_state')?.value || '').trim(),
+      zip: (document.getElementById('company_zip')?.value || '').trim(),
+      country: (document.getElementById('company_country')?.value || '').trim(),
+    };
+    if (!payload.company) {
+      companyMsg.textContent = 'Company name is required.';
+      companyMsg.className = 'text-sm text-red-600';
+      return;
+    }
+    try {
+      const res = await fetch('/api/company-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        companyMsg.textContent = data.error || 'Failed to save company.';
+        companyMsg.className = 'text-sm text-red-600';
+        return;
+      }
+      companyMsg.textContent = 'Company saved.';
+      companyMsg.className = 'text-sm text-green-700';
+    } catch (err) {
+      companyMsg.textContent = 'Failed to save company.';
+      companyMsg.className = 'text-sm text-red-600';
+    }
+  });
+
   // Fetch profile + role info
   function applyProfileData(data) {
     const setValue = (id, value) => {
@@ -518,46 +561,3 @@ async function handleProfileUpdate(event) {
 }
 
 window.handleProfileUpdate = handleProfileUpdate; // 👈 make it globally callable from form
-
-const saveCompanyBtn = container.querySelector('#saveCompanyBtn');
-const companyMsg = container.querySelector('#companyMsg');
-saveCompanyBtn?.addEventListener('click', async () => {
-  if (!companyMsg) return;
-  companyMsg.textContent = 'Saving...';
-  const payload = {
-    company: (document.getElementById('company')?.value || '').trim(),
-    company_site: (document.getElementById('company_site')?.value || '').trim(),
-    company_email: (document.getElementById('company_email')?.value || '').trim(),
-    logo_url: (document.getElementById('company_logo')?.value || '').trim(),
-    street1: (document.getElementById('company_street1')?.value || '').trim(),
-    street2: (document.getElementById('company_street2')?.value || '').trim(),
-    city: (document.getElementById('company_city')?.value || '').trim(),
-    state: (document.getElementById('company_state')?.value || '').trim(),
-    zip: (document.getElementById('company_zip')?.value || '').trim(),
-    country: (document.getElementById('company_country')?.value || '').trim(),
-  };
-  if (!payload.company) {
-    companyMsg.textContent = 'Company name is required.';
-    companyMsg.className = 'text-sm text-red-600';
-    return;
-  }
-  try {
-    const res = await fetch('/api/company-link', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      companyMsg.textContent = data.error || 'Failed to save company.';
-      companyMsg.className = 'text-sm text-red-600';
-      return;
-    }
-    companyMsg.textContent = 'Company saved.';
-    companyMsg.className = 'text-sm text-green-700';
-  } catch (err) {
-    companyMsg.textContent = 'Failed to save company.';
-    companyMsg.className = 'text-sm text-red-600';
-  }
-});
