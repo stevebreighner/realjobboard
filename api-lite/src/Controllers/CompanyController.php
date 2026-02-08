@@ -134,4 +134,85 @@ class CompanyController {
     $company = $this->companies->findById($companyId);
     return ['company' => $company];
   }
+
+  public function linkCompany(): array {
+    $user = $this->auth->getSessionUser();
+    if (empty($user)) {
+      http_response_code(403);
+      return ['error' => 'Not logged in'];
+    }
+    $role = $user['role'] ?? '';
+    if (!in_array($role, ['employer', 'site_admin', 'administrator'], true)) {
+      http_response_code(403);
+      return ['error' => 'Employer access required'];
+    }
+    $raw = file_get_contents('php://input');
+    $data = json_decode($raw, true);
+    if (!is_array($data)) $data = [];
+    $name = trim((string) ($data['company'] ?? $data['name'] ?? ''));
+    if (!$name) {
+      http_response_code(422);
+      return ['error' => 'Company name required'];
+    }
+    $site = trim((string) ($data['company_site'] ?? $data['site'] ?? ''));
+    $email = trim((string) ($data['company_email'] ?? $data['email'] ?? ''));
+    $logo = trim((string) ($data['logo_url'] ?? ''));
+
+    $domain = '';
+    if ($email && strpos($email, '@') !== false) {
+      $domain = explode('@', $email)[1] ?? '';
+    } elseif ($site) {
+      $host = parse_url($site, PHP_URL_HOST);
+      $domain = $host ? preg_replace('/^www\\./', '', $host) : '';
+    }
+
+    $company = $this->companies->findByName($name);
+    if (!$company) {
+      $company = $this->companies->create([
+        'name' => $name,
+        'slug' => $this->companies->slugify($name),
+        'code' => $this->companies->generateCode(),
+        'domain' => $domain ?: null,
+        'logo_url' => $logo ?: null,
+        'street1' => $data['street1'] ?? null,
+        'street2' => $data['street2'] ?? null,
+        'city' => $data['city'] ?? null,
+        'state' => $data['state'] ?? null,
+        'zip' => $data['zip'] ?? null,
+        'country' => $data['country'] ?? null,
+      ]);
+    } else {
+      $this->companies->update((int) $company['id'], [
+        'logo_url' => $logo ?: ($company['logo_url'] ?? null),
+        'street1' => $data['street1'] ?? $company['street1'] ?? null,
+        'street2' => $data['street2'] ?? $company['street2'] ?? null,
+        'city' => $data['city'] ?? $company['city'] ?? null,
+        'state' => $data['state'] ?? $company['state'] ?? null,
+        'zip' => $data['zip'] ?? $company['zip'] ?? null,
+        'country' => $data['country'] ?? $company['country'] ?? null,
+        'domain' => $domain ?: ($company['domain'] ?? null),
+      ]);
+      $company = $this->companies->findById((int) $company['id']);
+    }
+
+    if ($company) {
+      $this->userMeta->setMeta((int) $user['id'], 'company_id', (string) $company['id']);
+      $this->userMeta->setMeta((int) $user['id'], 'company_code', (string) $company['code']);
+      $this->userMeta->setMeta((int) $user['id'], 'company_name', (string) $company['name']);
+      $this->companies->addMember((int) $company['id'], (int) $user['id'], 'owner');
+    }
+
+    // Update user table with company info for reference
+    $pdo = $GLOBALS['DB_PDO'];
+    $stmt = $pdo->prepare("UPDATE jb_users SET company_name = :name, company_email = :email, company_site = :site, updated_at = :now WHERE id = :id");
+    $stmt->execute([
+      ':name' => $name,
+      ':email' => $email ?: null,
+      ':site' => $site ?: null,
+      ':now' => date('Y-m-d H:i:s'),
+      ':id' => (int) $user['id'],
+    ]);
+
+    return ['company' => $company];
+  }
 }

@@ -55,10 +55,13 @@ export function renderProfile(container) {
     <div id="companySection" class="hidden">
       <h3 class="text-lg font-semibold mt-4">Company Profile</h3>
       <label for="company" class="block font-semibold">Company</label>
-      <input type="text" id="company" name="company" class="w-full p-2 border rounded" readonly /><br />
+      <input type="text" id="company" name="company" class="w-full p-2 border rounded" placeholder="Company name" /><br />
 
       <label for="company_site" class="block font-semibold">Company Website</label>
-      <input type="url" id="company_site" name="company_site" class="w-full p-2 border rounded" placeholder="https://example.com" readonly /><br />
+      <input type="url" id="company_site" name="company_site" class="w-full p-2 border rounded" placeholder="https://example.com" /><br />
+
+      <label for="company_email" class="block font-semibold">Company Email</label>
+      <input type="email" id="company_email" name="company_email" class="w-full p-2 border rounded" placeholder="name@company.com" /><br />
 
       <label for="company_logo" class="block font-semibold">Company Logo URL</label>
       <input type="url" id="company_logo" name="company_logo" class="w-full p-2 border rounded" placeholder="https://..." /><br />
@@ -82,6 +85,7 @@ export function renderProfile(container) {
       <input type="text" id="company_country" name="company_country" class="w-full p-2 border rounded" /><br />
 
       <button type="button" id="saveCompanyBtn" class="text-purple px-4 py-2 rounded">Save Company</button>
+      <p class="text-xs text-gray-500 mt-2">Company pages stay unverified until a site admin approves them.</p>
       <p id="companyMsg" class="text-sm mt-2"></p>
     </div>
 
@@ -156,6 +160,7 @@ export function renderProfile(container) {
   const jobboardLinks = container.querySelector('#jobboard-links');
   const roleLabel     = container.querySelector('#roleLabel');
   const previewImg    = container.querySelector('#avatarPreview');
+  const avatarInput = container.querySelector('#avatar');
   const profileStatus = container.querySelector('#profileStatus');
   const addressSection = container.querySelector('#addressSection');
   const hideEmailToggle = container.querySelector('#hide_email')?.closest('label');
@@ -183,6 +188,7 @@ export function renderProfile(container) {
     setValue('last_name', data.last_name || '');
     setValue('company', data.company || '');
     setValue('company_site', data.company_site || '');
+    setValue('company_email', data.company_email || '');
     setValue('company_key', data.company_key || '');
     setValue('dob', data.dob || '');
     setValue('street1', data.street1 || '');
@@ -411,6 +417,9 @@ async function handleProfileUpdate(event) {
   const form = event.target;
   const errorEl = document.getElementById('profileError');
   const formData = new FormData(form);
+  if (avatarInput && avatarInput.files && avatarInput.files[0]) {
+    formData.append('avatar', avatarInput.files[0]);
+  }
   if (errorEl) errorEl.textContent = '';
 
   const country = (formData.get('country') || '').trim();
@@ -507,3 +516,46 @@ if (zipInput && cityInput && stateInput) {
   zipInput.addEventListener('blur', handleZipLookup);
   zipInput.addEventListener('change', handleZipLookup);
 }
+
+const saveCompanyBtn = container.querySelector('#saveCompanyBtn');
+const companyMsg = container.querySelector('#companyMsg');
+saveCompanyBtn?.addEventListener('click', async () => {
+  if (!companyMsg) return;
+  companyMsg.textContent = 'Saving...';
+  const payload = {
+    company: (document.getElementById('company')?.value || '').trim(),
+    company_site: (document.getElementById('company_site')?.value || '').trim(),
+    company_email: (document.getElementById('company_email')?.value || '').trim(),
+    logo_url: (document.getElementById('company_logo')?.value || '').trim(),
+    street1: (document.getElementById('company_street1')?.value || '').trim(),
+    street2: (document.getElementById('company_street2')?.value || '').trim(),
+    city: (document.getElementById('company_city')?.value || '').trim(),
+    state: (document.getElementById('company_state')?.value || '').trim(),
+    zip: (document.getElementById('company_zip')?.value || '').trim(),
+    country: (document.getElementById('company_country')?.value || '').trim(),
+  };
+  if (!payload.company) {
+    companyMsg.textContent = 'Company name is required.';
+    companyMsg.className = 'text-sm text-red-600';
+    return;
+  }
+  try {
+    const res = await fetch('/api/company-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      companyMsg.textContent = data.error || 'Failed to save company.';
+      companyMsg.className = 'text-sm text-red-600';
+      return;
+    }
+    companyMsg.textContent = 'Company saved.';
+    companyMsg.className = 'text-sm text-green-700';
+  } catch (err) {
+    companyMsg.textContent = 'Failed to save company.';
+    companyMsg.className = 'text-sm text-red-600';
+  }
+});

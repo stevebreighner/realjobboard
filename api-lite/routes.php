@@ -86,6 +86,7 @@ return [
     '/api/stripe-webhook' => [new StripeWebhookController(), 'handle'],
     '/api/stripe-checkout' => [new StripeController(), 'checkout'],
     '/api/company-owner' => [new CompanyController(), 'updateOwner'],
+    '/api/company-link' => [new CompanyController(), 'linkCompany'],
     '/api/admin/promos' => [new AdminController(), 'promoCreate'],
     '/api/admin/job-update' => [new AdminController(), 'jobUpdate'],
     '/api/admin/job-delete' => [new AdminController(), 'jobDelete'],
