@@ -172,6 +172,7 @@ export function renderProfile(container) {
   const zipInput = container.querySelector('#zip');
   const cityInput = container.querySelector('#city');
   const stateInput = container.querySelector('#state');
+  attachFieldHints(profileForm);
 
   // Fetch profile + role info
   function applyProfileData(data) {
@@ -498,7 +499,6 @@ async function handleProfileUpdate(event) {
 }
 
 window.handleProfileUpdate = handleProfileUpdate; // 👈 make it globally callable from form
-attachFieldHints(profileForm);
 
 if (zipInput && cityInput && stateInput) {
   const handleZipLookup = async () => {
