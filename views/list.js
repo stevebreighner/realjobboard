@@ -12,7 +12,7 @@ export function renderList(container) {
           <h1 class="text-3xl font-bold">${CONFIG.JOB_COPY?.LIST_TITLE || 'Open Roles'}</h1>
           <p class="text-sm text-gray-600">${CONFIG.JOB_COPY?.LIST_SUBTITLE || 'Curated listings with privacy-first applications.'}</p>
         </div>
-        <div class="text-[11px] text-gray-400">Sorted by featured + most recent</div>
+        <div class="text-[11px] text-gray-400">Sorted by most recent</div>
       </div>
 
       <div class="flex flex-col md:flex-row gap-3 mb-4">
@@ -23,8 +23,8 @@ export function renderList(container) {
           placeholder="Search (e.g. nurse in Des Moines or react, node, aws)"
         />
         <select id="sortSelect" class="w-full md:w-56 p-2 border rounded">
-          <option value="featured" selected>Featured + Recent</option>
-          <option value="newest">Newest</option>
+          <option value="newest" selected>Newest</option>
+          <option value="featured">Featured + Recent</option>
           <option value="oldest">Oldest</option>
           <option value="payHigh">Highest Pay</option>
           <option value="payLow">Lowest Pay</option>
@@ -239,6 +239,7 @@ export function renderList(container) {
     (item?.meta && item.meta[key] != null ? item.meta[key] : item?.[key]) ?? '';
   const formatRateType = (val) => {
     const t = (val || '').toString().toLowerCase();
+    if (t === 'undisclosed') return 'Undisclosed';
     if (t === 'hourly') return 'per hour';
     if (t === 'salary') return 'per year';
     if (t === 'contract') return 'contract';
@@ -252,7 +253,7 @@ export function renderList(container) {
     return new Intl.NumberFormat('en-US', { maximumFractionDigits: decimals, minimumFractionDigits: decimals }).format(num);
   };
   const formatRate = (min, max, typeLabel) => {
-    if (!min && !max && !typeLabel) return '';
+    if (!min && !max && !typeLabel) return 'Undisclosed';
     const minLabel = min ? `$${formatMoney(min)}` : '';
     const maxLabel = max ? `$${formatMoney(max)}` : '';
     const range = minLabel && maxLabel ? `${minLabel}–${maxLabel}` : (minLabel || maxLabel);
@@ -441,7 +442,7 @@ export function renderList(container) {
       ? filtered.filter(item => typeof item.__distanceMiles === 'number' && item.__distanceMiles <= radiusMiles)
       : filtered;
 
-    const sortMode = sortSelect?.value || 'featured';
+    const sortMode = sortSelect?.value || 'newest';
     const sorted = [...filteredWithRadius].sort((a, b) => {
       if (useMulti) {
         const countDiff = (b.__matchCount || 0) - (a.__matchCount || 0);
@@ -460,7 +461,12 @@ export function renderList(container) {
       const payA = !isNaN(rateMaxA) ? rateMaxA : (!isNaN(rateMinA) ? rateMinA : 0);
       const payB = !isNaN(rateMaxB) ? rateMaxB : (!isNaN(rateMinB) ? rateMinB : 0);
 
-      if (sortMode === 'newest') return dateB - dateA;
+      if (sortMode === 'newest') {
+        if (dateB !== dateA) return dateB - dateA;
+        const featureDiff = (isFeatured(b) ? 1 : 0) - (isFeatured(a) ? 1 : 0);
+        if (featureDiff !== 0) return featureDiff;
+        return titleA.localeCompare(titleB);
+      }
       if (sortMode === 'oldest') return dateA - dateB;
       if (sortMode === 'payHigh') return payB - payA;
       if (sortMode === 'payLow') return payA - payB;

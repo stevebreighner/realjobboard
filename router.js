@@ -57,6 +57,12 @@ export async function router() {
     app.style.transition = 'opacity 120ms ease';
     app.style.visibility = 'hidden';
   }
+  const currentHash = window.location.hash || '#home';
+  const prevHash = sessionStorage.getItem('currentView');
+  if (prevHash && prevHash !== currentHash) {
+    sessionStorage.setItem('lastView', prevHash);
+  }
+  sessionStorage.setItem('currentView', currentHash);
   const { path, params } = parseHash();
   const normalizedPath = (!path || path === '/') ? 'home' : kebabToCamel(path);
   console.log('Hash path:', path);

@@ -4,6 +4,9 @@ import { CONFIG } from '../config.js';
 import { getSessionCached, getUserProfileCached } from './utils/session.js';
 function startApp() {
   renderNavbar(document.getElementById('navbar'));
+  if (CONFIG.SITE_TITLE) {
+    document.title = CONFIG.SITE_TITLE;
+  }
   router();
   preloadData();
   trackPageView();

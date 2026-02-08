@@ -62,6 +62,11 @@ export function renderRegister(container) {
 
       <div id="turnstile-container"></div>
 
+      <label class="flex items-start gap-2 text-sm text-slate-600">
+        <input type="checkbox" name="tos_accept" required class="mt-1" />
+        <span>I agree to the <a href="/#terms" class="underline">Terms & Disclaimer</a>.</span>
+      </label>
+
       <button type="submit" class="text-purple px-4 py-2 rounded">Register</button>
     </form>
       <p class="mt-4 text-center">
@@ -181,6 +186,7 @@ export function renderRegister(container) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = Object.fromEntries(new FormData(form).entries());
+    formData.tos_accept = formData.tos_accept ? 1 : 0;
     const devFlags = await getDevFlags();
     const password = (formData.password || '').toString();
     if (!devFlags.dev_mode) {
@@ -194,6 +200,10 @@ export function renderRegister(container) {
         alert('Password must be at least 10 characters and include uppercase, lowercase, number, and symbol.');
         return;
       }
+    }
+    if (!formData.tos_accept) {
+      alert('Please agree to the Terms & Disclaimer.');
+      return;
     }
     const country = (formData.country || '').trim();
     const state = (formData.state || '').trim();

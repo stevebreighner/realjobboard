@@ -85,10 +85,15 @@ class ApplicationController {
     $resumeUrl = trim((string) ($data['resume'] ?? ''));
     $coverUrl = trim((string) ($data['cover_letter'] ?? ''));
     $compliance = $data['compliance'] ?? [];
+    $tosAccept = !empty($data['tos_accept']);
 
     if ($jobId <= 0) {
       http_response_code(422);
       return ['error' => 'Missing job id'];
+    }
+    if (!$tosAccept) {
+      http_response_code(422);
+      return ['error' => 'Terms not accepted'];
     }
 
     $job = $this->jobs->getById($jobId);

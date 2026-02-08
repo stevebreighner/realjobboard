@@ -134,7 +134,7 @@ export function renderProfile(container) {
     <div class="md:col-span-2">
       <label class="flex items-center space-x-2">
         <input type="checkbox" id="hide_email" name="hide_email" />
-        <span class="text-sm">Hide my email from employers</span>
+        <span class="text-sm">Hide my email</span>
       </label>
     </div>
 
@@ -226,6 +226,8 @@ export function renderProfile(container) {
       jobboardLinks.innerHTML = `
         <p class="mt-2"><a href="/#my-job-posts" class="text-blue-600">${CONFIG.JOB_COPY?.MANAGE_OPENINGS || 'Manage My Openings'}</a></p>
       `;
+      const companySection = container.querySelector('#companySection');
+      if (companySection) companySection.classList.remove('hidden');
     } else {
       roleLabel.textContent = CONFIG.JOB_COPY?.ROLE_EMPLOYEE || "Job Seeker";
       jobboardLinks.innerHTML = `

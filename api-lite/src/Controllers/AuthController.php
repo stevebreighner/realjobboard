@@ -81,6 +81,7 @@ class AuthController {
     $username = trim($data['username'] ?? '');
     $email = trim($data['email'] ?? '');
     $password = (string) ($data['password'] ?? '');
+    $tosAccept = !empty($data['tos_accept']);
     $role = $data['role'] === 'employer' ? 'employer' : 'employee';
     $companyName = trim($data['company'] ?? $data['company_name'] ?? '');
     $companySite = trim($data['company_site'] ?? '');
@@ -89,6 +90,10 @@ class AuthController {
     if (!$username || !$email || !$password) {
       http_response_code(422);
       return ['error' => 'Missing required fields'];
+    }
+    if (!$tosAccept) {
+      http_response_code(422);
+      return ['error' => 'Terms not accepted'];
     }
 
     $devMode = ($_ENV['DEV_MODE'] ?? '') === '1' || ($this->settings->get('dev_mode') === '1');

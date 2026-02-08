@@ -78,6 +78,7 @@ export async function renderListDetail(container, id) {
     const employmentType = data.meta?.employment_type || '';
     const rateType = (() => {
       const t = rawRateType.toString().toLowerCase();
+      if (t === 'undisclosed') return 'Undisclosed';
       if (t === 'hourly') return 'per hour';
       if (t === 'salary') return 'per year';
       if (t === 'contract') return 'contract';
@@ -99,7 +100,7 @@ export async function renderListDetail(container, id) {
       return new Intl.NumberFormat('en-US', { maximumFractionDigits: decimals, minimumFractionDigits: decimals }).format(num);
     };
     const formatRate = () => {
-      if (!rateType && !rateMin && !rateMax) return '';
+      if (!rateType && !rateMin && !rateMax) return 'Undisclosed';
       const min = rateMin ? `$${formatMoney(rateMin)}` : '';
       const max = rateMax ? `$${formatMoney(rateMax)}` : '';
       const range = min && max ? `${min}–${max}` : (min || max);

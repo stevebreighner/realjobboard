@@ -64,11 +64,16 @@ class StripeController {
     $data = $this->jsonInput();
     $tier = trim((string) ($data['tier'] ?? 'standard'));
     $promoCode = trim((string) ($data['promo_code'] ?? ''));
+    $tosAccept = !empty($data['tos_accept']);
 
     $companyId = (int) ($this->userMeta->getMeta((int) $user['id'], 'company_id') ?? 0);
     if (!$companyId) {
       http_response_code(422);
-      return ['error' => 'Company not linked'];
+      return ['error' => 'Please add your company name before posting a job.'];
+    }
+    if (!$tosAccept) {
+      http_response_code(422);
+      return ['error' => 'Terms not accepted'];
     }
 
     $company = $this->companies->findById($companyId);

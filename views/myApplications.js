@@ -43,6 +43,7 @@ export function renderMyApplications(container) {
 
   const formatRateType = (val) => {
     const t = (val || '').toString().toLowerCase();
+    if (t === 'undisclosed') return 'Undisclosed';
     if (t === 'hourly') return 'per hour';
     if (t === 'salary') return 'per year';
     if (t === 'contract') return 'contract';

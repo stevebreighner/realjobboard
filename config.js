@@ -61,6 +61,8 @@ export const US_STATES = [
 ];
 
 export const CONFIG = {
+    SITE_TITLE: 'JobBoard',
+    SITE_DESCRIPTION: 'A job search site with privacy-first applications and smarter matching.',
     COMPANY_NAME: 'JobBoard', // or "PetFinder", etc.
     COMPANY_BUSINESS_THING: 'Job', // or "Pet", etc.
     COMPANY_BUSINESS_THING_PLURAL: 'Jobs', // or "Pets"
@@ -283,7 +285,20 @@ export const CONFIG = {
   
     fields: [
       { name: 'title', label: 'Title', type: 'text', required: true },
-      { name: 'field', label: 'Field (e.g. Tech, Auto)', type: 'text', required: true },
+      { name: 'field', label: 'Industry', type: 'select', required: false, options: [
+        { value: 'tech', label: 'Tech' },
+        { value: 'healthcare', label: 'Healthcare' },
+        { value: 'finance', label: 'Finance' },
+        { value: 'education', label: 'Education' },
+        { value: 'retail', label: 'Retail' },
+        { value: 'hospitality', label: 'Hospitality' },
+        { value: 'construction', label: 'Construction' },
+        { value: 'automotive', label: 'Automotive' },
+        { value: 'creative', label: 'Creative' },
+        { value: 'logistics', label: 'Logistics' },
+        { value: 'public_service', label: 'Public Service' },
+        { value: 'other', label: 'Other' },
+      ] },
       { name: 'employment_type', label: 'Employment Type', type: 'select', required: true, options: [
         { value: 'full_time', label: 'Full-time' },
         { value: 'part_time', label: 'Part-time' },
@@ -298,14 +313,15 @@ export const CONFIG = {
       { name: 'state', label: 'State', type: 'select', required: true, options: US_STATES },
       { name: 'zip', label: 'ZIP Code', type: 'text', required: true },
       { name: 'country', label: 'Country (USA only)', type: 'text', required: true },
-      { name: 'rate_type', label: 'Rate Type', type: 'select', required: true, options: [
+      { name: 'rate_type', label: 'Rate Type', type: 'select', required: false, options: [
+        { value: 'undisclosed', label: 'Undisclosed' },
         { value: 'hourly', label: 'Hourly' },
         { value: 'salary', label: 'Salary' },
         { value: 'contract', label: 'Contract' },
         { value: 'commission', label: 'Commission' },
       ] },
-      { name: 'rate_min', label: 'Rate Min', type: 'text', required: true },
-      { name: 'rate_max', label: 'Rate Max', type: 'text', required: true },
+      { name: 'rate_min', label: 'Rate Min (optional)', type: 'text', required: false },
+      { name: 'rate_max', label: 'Rate Max (optional)', type: 'text', required: false },
       { name: 'description', label: 'Description', type: 'textarea', required: true },
     ],
   

@@ -9,6 +9,7 @@ use App\Models\EmailSubscriberModel;
 use App\Models\JobModel;
 use App\Services\Mailer;
 use App\Models\AuditLogModel;
+use App\Models\SettingsModel;
 
 class AdminController {
   private AuthService $auth;
@@ -16,6 +17,7 @@ class AdminController {
   private EmailSubscriberModel $subscribers;
   private JobModel $jobs;
   private AuditLogModel $audit;
+  private SettingsModel $settings;
 
   public function __construct() {
     $this->auth = new AuthService($GLOBALS['DB_PDO']);
@@ -23,6 +25,7 @@ class AdminController {
     $this->subscribers = new EmailSubscriberModel();
     $this->jobs = new JobModel();
     $this->audit = new AuditLogModel();
+    $this->settings = new SettingsModel();
   }
 
   private function requireAdmin(): array {
@@ -196,6 +199,55 @@ class AdminController {
     $user = $this->requireAdmin();
     if (empty($user)) return ['error' => 'Access denied'];
     return $this->subscribers->list(200);
+  }
+
+  public function bizDevList(): array {
+    $user = $this->requireAdmin();
+    if (empty($user)) return ['error' => 'Access denied'];
+    $raw = $this->settings->get('biz_dev_targets') ?? '[]';
+    $decoded = json_decode($raw, true);
+    return is_array($decoded) ? $decoded : [];
+  }
+
+  public function bizDevCreate(): array {
+    $user = $this->requireAdmin();
+    if (empty($user)) return ['error' => 'Access denied'];
+    $data = $this->jsonInput();
+    $name = trim((string) ($data['name'] ?? ''));
+    $email = trim((string) ($data['email'] ?? ''));
+    $notes = trim((string) ($data['notes'] ?? ''));
+    $freePosts = max(1, (int) ($data['free_posts'] ?? 5));
+    if (!$name && !$email) {
+      http_response_code(422);
+      return ['error' => 'Missing name or email'];
+    }
+
+    $code = $this->generateCode();
+    $promo = $this->promos->create([
+      'code' => $code,
+      'percent_off' => 100,
+      'is_free' => 1,
+      'max_uses' => $freePosts,
+      'expires_at' => null,
+      'created_by' => $user['id'] ?? null,
+    ]);
+
+    $raw = $this->settings->get('biz_dev_targets') ?? '[]';
+    $list = json_decode($raw, true);
+    if (!is_array($list)) $list = [];
+    $entry = [
+      'id' => uniqid('bd_', true),
+      'name' => $name,
+      'email' => $email,
+      'notes' => $notes,
+      'promo_code' => $promo['code'] ?? $code,
+      'free_posts' => $freePosts,
+      'created_at' => date('c'),
+    ];
+    $list[] = $entry;
+    $this->settings->set('biz_dev_targets', json_encode($list));
+
+    return ['entry' => $entry];
   }
 
   public function sendDigest(): array {

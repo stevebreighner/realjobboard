@@ -43,6 +43,30 @@ export async function renderMyJobPostDetail(container, jobId) {
       return `<option value="${s.code}" ${isSelected ? 'selected' : ''}>${s.name}</option>`;
     }).join('');
 
+    const formatRateType = (val) => {
+      const t = (val || '').toString().toLowerCase();
+      if (t === 'undisclosed') return 'Undisclosed';
+      if (t === 'hourly') return 'per hour';
+      if (t === 'salary') return 'per year';
+      if (t === 'contract') return 'contract';
+      if (t === 'commission') return 'commission';
+      return val || '';
+    };
+    const formatMoney = (val) => {
+      const num = parseFloat(val);
+      if (isNaN(num)) return val;
+      const decimals = Number.isInteger(num) ? 0 : 2;
+      return new Intl.NumberFormat('en-US', { maximumFractionDigits: decimals, minimumFractionDigits: decimals }).format(num);
+    };
+    const formatRate = (min, max, typeVal) => {
+      const typeLabel = formatRateType(typeVal);
+      if (!min && !max && !typeLabel) return 'Undisclosed';
+      const minLabel = min ? `$${formatMoney(min)}` : '';
+      const maxLabel = max ? `$${formatMoney(max)}` : '';
+      const range = minLabel && maxLabel ? `${minLabel}–${maxLabel}` : (minLabel || maxLabel);
+      return `${range}${typeLabel ? ` ${typeLabel}` : ''}`.trim();
+    };
+
     container.innerHTML = `
       <div class="max-w-4xl mx-auto px-4">
         <div class="flex items-center justify-between mb-4">
@@ -64,9 +88,9 @@ export async function renderMyJobPostDetail(container, jobId) {
           ` : ''}
           <div class="text-gray-700 mb-4" id="jobContent">${data.content}</div>
           ${(tierLabel || paymentStatus) ? `<p class="text-sm text-gray-600 mb-1">Tier: ${tierLabel || tierId}${isFeatured ? ' • Featured' : ''}</p>` : ''}
-          <p class="text-sm text-gray-600 mb-1 ${jobField ? '' : 'hidden'}" id="jobField">Field: ${jobField || ''}</p>
+          <p class="text-sm text-gray-600 mb-1 ${jobField ? '' : 'hidden'}" id="jobField">Industry: ${jobField || ''}</p>
           <p class="text-sm text-gray-600 mb-1 ${employmentType ? '' : 'hidden'}" id="jobEmployment">Employment: ${employmentType || ''}</p>
-          <p class="text-sm text-gray-600 mb-1 ${rateType || rateMin || rateMax ? '' : 'hidden'}" id="jobRate">Rate: ${rateMin || ''}${rateMax ? `–${rateMax}` : ''} ${rateType || ''}</p>
+          <p class="text-sm text-gray-600 mb-1" id="jobRate">Rate: ${formatRate(rateMin, rateMax, rateType)}</p>
           <p class="text-sm text-gray-600 mb-2 ${locationFull ? '' : 'hidden'}" id="jobLocation">${locationFull || ''}</p>
           <p class="text-sm text-gray-500 mb-4">Posted on: ${new Date(data.date).toLocaleDateString()}</p>
         </div>
@@ -75,7 +99,7 @@ export async function renderMyJobPostDetail(container, jobId) {
           <label class="block text-sm font-semibold mb-1">Title</label>
           <input id="editTitle" class="w-full p-2 border rounded mb-3" value="${data.title}" />
 
-          <label class="block text-sm font-semibold mb-1">Field (e.g. Tech, Auto)</label>
+          <label class="block text-sm font-semibold mb-1">Industry (optional)</label>
           <input id="editField" class="w-full p-2 border rounded mb-3" value="${jobField || ''}" />
 
           <label class="block text-sm font-semibold mb-1">Description</label>
@@ -92,9 +116,9 @@ export async function renderMyJobPostDetail(container, jobId) {
             <option value="seasonal">Seasonal</option>
           </select>
 
-          <label class="block text-sm font-semibold mb-1">Rate Type</label>
+          <label class="block text-sm font-semibold mb-1">Rate Type (optional)</label>
           <select id="editRateType" class="w-full p-2 border rounded mb-3">
-            <option value="" disabled ${rateType ? '' : 'selected'}>Select Rate Type</option>
+            <option value="undisclosed" ${!rateType || rateType === 'undisclosed' ? 'selected' : ''}>Undisclosed</option>
             <option value="hourly">Hourly</option>
             <option value="salary">Salary</option>
             <option value="contract">Contract</option>
@@ -103,11 +127,11 @@ export async function renderMyJobPostDetail(container, jobId) {
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
             <div>
-              <label class="block text-sm font-semibold mb-1">Rate Min</label>
+              <label class="block text-sm font-semibold mb-1">Rate Min (optional)</label>
               <input id="editRateMin" class="w-full p-2 border rounded" value="${rateMin || ''}" />
             </div>
             <div>
-              <label class="block text-sm font-semibold mb-1">Rate Max</label>
+              <label class="block text-sm font-semibold mb-1">Rate Max (optional)</label>
               <input id="editRateMax" class="w-full p-2 border rounded" value="${rateMax || ''}" />
             </div>
           </div>
@@ -1086,8 +1110,27 @@ export async function renderMyJobPostDetail(container, jobId) {
         }
         const rateEl = container.querySelector('#jobRate');
         if (rateEl) {
-          rateEl.textContent = `Rate: ${payload.rate_min}–${payload.rate_max} ${payload.rate_type}`;
-          rateEl.classList.toggle('hidden', !(payload.rate_type || payload.rate_min || payload.rate_max));
+          const formatRateType = (val) => {
+            const t = (val || '').toString().toLowerCase();
+            if (t === 'undisclosed') return 'Undisclosed';
+            if (t === 'hourly') return 'per hour';
+            if (t === 'salary') return 'per year';
+            if (t === 'contract') return 'contract';
+            if (t === 'commission') return 'commission';
+            return val || '';
+          };
+          const formatMoney = (val) => {
+            const num = parseFloat(val);
+            if (isNaN(num)) return val;
+            const decimals = Number.isInteger(num) ? 0 : 2;
+            return new Intl.NumberFormat('en-US', { maximumFractionDigits: decimals, minimumFractionDigits: decimals }).format(num);
+          };
+          const typeLabel = formatRateType(payload.rate_type);
+          const minLabel = payload.rate_min ? `$${formatMoney(payload.rate_min)}` : '';
+          const maxLabel = payload.rate_max ? `$${formatMoney(payload.rate_max)}` : '';
+          const range = minLabel && maxLabel ? `${minLabel}–${maxLabel}` : (minLabel || maxLabel);
+          rateEl.textContent = `Rate: ${(range || typeLabel) ? `${range}${typeLabel ? ` ${typeLabel}` : ''}`.trim() : 'Undisclosed'}`;
+          rateEl.classList.remove('hidden');
         }
         const employmentEl = container.querySelector('#jobEmployment');
         if (employmentEl) {

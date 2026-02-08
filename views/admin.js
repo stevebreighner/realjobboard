@@ -117,6 +117,23 @@ export async function renderAdmin(container) {
 
       <div class="mb-10">
         <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Business Development Targets</h2>
+          <button id="refreshBizDev" class="text-sm text-indigo-600 hover:underline">Refresh</button>
+        </div>
+        <p class="text-xs text-gray-500 mb-2">Track companies to invite. Generates a free‑post promo code for each entry.</p>
+        <form id="bizDevForm" class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+          <input name="name" class="p-2 border rounded" placeholder="Company / Contact" />
+          <input name="email" type="email" class="p-2 border rounded" placeholder="Email" />
+          <input name="free_posts" type="number" min="1" max="50" class="p-2 border rounded" placeholder="Free posts (default 5)" />
+          <input name="notes" class="p-2 border rounded md:col-span-4" placeholder="Notes (optional)" />
+          <button type="submit" class="text-purple px-4 py-2 rounded md:col-span-4">Add Target</button>
+        </form>
+        <div id="bizDevMsg" class="text-sm mb-2"></div>
+        <div id="bizDevList" class="space-y-2 text-sm"></div>
+      </div>
+
+      <div class="mb-10">
+        <div class="flex items-center justify-between mb-2">
           <h2 class="text-xl font-semibold">Promo Codes</h2>
           <button id="refreshPromos" class="text-sm text-indigo-600 hover:underline">Refresh</button>
         </div>
@@ -200,6 +217,10 @@ export async function renderAdmin(container) {
   const promoList = container.querySelector('#promoList');
   const promoMsg = container.querySelector('#promoMsg');
   const refreshPromosBtn = container.querySelector('#refreshPromos');
+  const bizDevForm = container.querySelector('#bizDevForm');
+  const bizDevList = container.querySelector('#bizDevList');
+  const bizDevMsg = container.querySelector('#bizDevMsg');
+  const refreshBizDevBtn = container.querySelector('#refreshBizDev');
   const refreshLogBtn = container.querySelector('#refreshLog');
   const downloadLogBtn = container.querySelector('#downloadLog');
   const logContainer = container.querySelector('#logContainer');
@@ -377,7 +398,43 @@ export async function renderAdmin(container) {
     }
   }
 
+  async function loadBizDevTargets() {
+    if (!bizDevList) return;
+    bizDevList.innerHTML = '<div class="text-gray-500">Loading...</div>';
+    if (bizDevMsg) bizDevMsg.textContent = '';
+    try {
+      const res = await fetch('/api/admin/bizdev', { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data)) {
+        bizDevList.innerHTML = '<div class="text-xs text-red-600">Failed to load targets.</div>';
+        return;
+      }
+      if (!data.length) {
+        bizDevList.innerHTML = '<div class="text-xs text-gray-500">No targets yet.</div>';
+        return;
+      }
+      bizDevList.innerHTML = data.map(item => `
+        <div class="border rounded-lg p-3 bg-white shadow-sm">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="font-medium text-slate-900">${item.name || 'Untitled'}</div>
+              <div class="text-xs text-slate-500">${item.email || ''}</div>
+              ${item.notes ? `<div class="text-xs text-slate-500 mt-1">${item.notes}</div>` : ''}
+            </div>
+            <div class="text-xs text-slate-500 whitespace-nowrap text-right">
+              <div>Promo: <span class="font-semibold text-slate-900">${item.promo_code || ''}</span></div>
+              <div>Free posts: ${item.free_posts || 5}</div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    } catch (err) {
+      bizDevList.innerHTML = '<div class="text-xs text-red-600">Failed to load targets.</div>';
+    }
+  }
+
   refreshPromosBtn?.addEventListener('click', loadPromos);
+  refreshBizDevBtn?.addEventListener('click', loadBizDevTargets);
   promoForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!promoMsg) return;
@@ -406,7 +463,39 @@ export async function renderAdmin(container) {
     }
   });
 
+  bizDevForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!bizDevMsg) return;
+    bizDevMsg.textContent = 'Adding...';
+    const formData = Object.fromEntries(new FormData(bizDevForm).entries());
+    const payload = {
+      name: (formData.name || '').trim(),
+      email: (formData.email || '').trim(),
+      notes: (formData.notes || '').trim(),
+      free_posts: formData.free_posts ? Number(formData.free_posts) : 5,
+    };
+    try {
+      const res = await fetch('/api/admin/bizdev', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        bizDevMsg.textContent = data.error || 'Failed to add target.';
+        return;
+      }
+      bizDevMsg.textContent = `Added. Promo code: ${data.entry?.promo_code || ''}`;
+      bizDevForm.reset();
+      loadBizDevTargets();
+    } catch (err) {
+      bizDevMsg.textContent = 'Failed to add target.';
+    }
+  });
+
   await loadPromos();
+  await loadBizDevTargets();
 
   async function loadLog() {
     if (!logContainer) return;

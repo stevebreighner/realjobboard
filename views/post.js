@@ -18,10 +18,13 @@ export function renderPost(container) {
             </label>
           `).join('')}
         </div>
-        <div class="mt-3">
-          <label class="text-xs text-gray-500 block mb-1">${CONFIG.POST_PAGE_COPY?.PROMO_LABEL || 'Promo code (optional)'}</label>
-          <input type="text" name="promo_code" class="w-full p-2 border rounded" placeholder="${CONFIG.POST_PAGE_COPY?.PROMO_PLACEHOLDER || 'Enter code'}" />
-        </div>
+        <details class="mt-3 text-sm">
+          <summary class="cursor-pointer text-gray-500">Have a promo code?</summary>
+          <div class="mt-2">
+            <label class="text-xs text-gray-500 block mb-1">${CONFIG.POST_PAGE_COPY?.PROMO_LABEL || 'Promo code (optional)'}</label>
+            <input type="text" name="promo_code" class="w-full p-2 border rounded" placeholder="${CONFIG.POST_PAGE_COPY?.PROMO_PLACEHOLDER || 'Enter code'}" />
+          </div>
+        </details>
       </div>
     `
     : '';
@@ -33,6 +36,22 @@ export function renderPost(container) {
       ${CONFIG.fields.map(f => {
         if (f.type === 'textarea') {
           return `<textarea name="${f.name}" class="w-full p-2 border rounded" placeholder="${f.label}" ${f.required ? 'required' : ''}></textarea>`;
+        }
+        if (f.name === 'field' && f.type === 'select') {
+          const options = (f.options || []).map(opt => {
+            const value = typeof opt === 'string' ? opt : (opt.code || opt.value);
+            const label = typeof opt === 'string' ? opt : (opt.name || opt.label);
+            return `<option value="${value}">${label}</option>`;
+          }).join('');
+          return `
+            <div>
+              <select name="${f.name}" class="w-full p-2 border rounded" ${f.required ? 'required' : ''}>
+                <option value="" disabled selected>${f.label}</option>
+                ${options}
+              </select>
+              <input type="text" name="field_other" class="w-full p-2 border rounded mt-2 hidden" placeholder="Describe the industry" />
+            </div>
+          `;
         }
         if (f.type === 'select') {
           const options = (f.options || []).map(opt => {
@@ -100,13 +119,20 @@ export function renderPost(container) {
         <p class="text-xs text-gray-500 mt-2">Applicants can skip these unless you mark them required in your own process.</p>
       </div>
       <p id="postError" class="text-sm text-red-600"></p>
+      <p id="postSuccess" class="text-sm text-emerald-600"></p>
+      <label class="flex items-start gap-2 text-sm text-slate-600">
+        <input type="checkbox" name="tos_accept" value="1" required class="mt-1" />
+        <span>I agree to the <a href="/#terms" class="underline">Terms & Disclaimer</a>.</span>
+      </label>
+      <p class="text-xs text-gray-500">Need a company? Add it in <a href="/#profile" class="underline">Profile → Company page</a>.</p>
       <button type="submit" class="text-purple px-4 py-2 rounded">${CONFIG.POST_PAGE_COPY?.CONTINUE_PAYMENT || 'Continue to Payment'}</button>
     </form>
-    <p class="mt-4"><a href="/#list" class="text-blue-600 hover:underline">${CONFIG.POST_PAGE_COPY?.BACK_TO_LIST || `Back to ${CONFIG.COMPANY_BUSINESS_THING_PLURAL}`}</a></p>
+    <p class="mt-4"><a href="#" id="postBackLink" class="text-blue-600 hover:underline">${CONFIG.POST_PAGE_COPY?.BACK_TO_LIST || `Back to ${CONFIG.COMPANY_BUSINESS_THING_PLURAL}`}</a></p>
   `;
 
   const form = container.querySelector('#postForm');
   const postError = container.querySelector('#postError');
+  const postSuccess = container.querySelector('#postSuccess');
   const complianceEnabled = form.querySelector('#complianceEnabled');
   const complianceOptions = form.querySelector('#complianceOptions');
   complianceEnabled?.addEventListener('change', () => {
@@ -114,10 +140,30 @@ export function renderPost(container) {
       complianceOptions.classList.toggle('hidden', !complianceEnabled.checked);
     }
   });
+  const fieldSelect = form.querySelector('select[name="field"]');
+  const fieldOther = form.querySelector('input[name="field_other"]');
+  fieldSelect?.addEventListener('change', () => {
+    if (!fieldOther) return;
+    const isOther = fieldSelect.value === 'other';
+    fieldOther.classList.toggle('hidden', !isOther);
+    if (!isOther) fieldOther.value = '';
+  });
   const countryInput = form.querySelector('input[name="country"]');
   if (countryInput && !countryInput.value) {
     countryInput.value = 'United States';
   }
+  const backLink = container.querySelector('#postBackLink');
+  backLink?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const lastView = sessionStorage.getItem('lastView');
+    if (lastView) {
+      window.location.hash = lastView.replace(/^#/, '');
+    } else if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.hash = '#list';
+    }
+  });
 
   const zipInput = form.querySelector('input[name="zip"]');
   const cityInput = form.querySelector('input[name="city"]');
@@ -152,6 +198,7 @@ export function renderPost(container) {
     const formData = Object.fromEntries(fd.entries());
 
     postError.textContent = '';
+    postSuccess.textContent = '';
     const country = (formData.country || '').trim();
     const state = (formData.state || '').trim();
     const zip = (formData.zip || '').trim();
@@ -200,32 +247,41 @@ export function renderPost(container) {
 
     const rateMin = (formData.rate_min || '').toString().replace(/[^0-9.]/g, '');
     const rateMax = (formData.rate_max || '').toString().replace(/[^0-9.]/g, '');
-    if (!rateMin || !rateMax || isNaN(rateMin) || isNaN(rateMax)) {
+    if ((rateMin && isNaN(rateMin)) || (rateMax && isNaN(rateMax))) {
       postError.textContent = 'Please enter a valid rate range.';
       return;
     }
-    if (Number(rateMin) > Number(rateMax)) {
+    if (rateMin && rateMax && Number(rateMin) > Number(rateMax)) {
       postError.textContent = 'Rate min must be less than or equal to rate max.';
       return;
+    }
+    if (!rateMin && !rateMax && (!formData.rate_type || formData.rate_type === '')) {
+      formData.rate_type = 'undisclosed';
     }
 
     try {
       const configRes = await fetch('/api/stripe-config');
       const stripeConfig = await configRes.json();
       if (!stripeConfig?.publishableKey) {
-        alert('Stripe is not configured yet. Please contact support.');
+        postError.textContent = 'Stripe is not configured yet. Please contact support.';
         return;
       }
 
       const tier = formData.job_tier || (tiers[0]?.id || 'standard');
       const promoCode = (formData.promo_code || '').trim();
       const complianceBlocks = fd.getAll('compliance_blocks');
+      const tosAccepted = !!formData.tos_accept;
+      const fieldValue = formData.field === 'other'
+        ? (formData.field_other || '').trim()
+        : (formData.field || '');
       const payload = {
         ...formData,
+        field: fieldValue,
         rate_min: rateMin,
         rate_max: rateMax,
         tier,
         promo_code: promoCode,
+        tos_accept: tosAccepted ? 1 : 0,
         compliance_enabled: complianceEnabled?.checked ? '1' : '0',
         compliance_federal: formData.compliance_federal ? '1' : '0',
         compliance_blocks: complianceBlocks.join(','),
@@ -239,28 +295,29 @@ export function renderPost(container) {
       });
       const checkoutData = await checkoutRes.json();
       if (!checkoutRes.ok) {
-        alert('❌ Payment setup failed: ' + (checkoutData.message || checkoutData.error || 'Unknown error'));
+        const msg = checkoutData.message || checkoutData.error || 'Payment setup failed.';
+        postError.textContent = msg;
         return;
       }
 
       if (checkoutData.free && checkoutData.job_id) {
-        alert(`✅ ${CONFIG.JOB_COPY?.DRAFT_CREATED || 'Job draft created. You can publish it from your dashboard.'}`);
+        postSuccess.textContent = CONFIG.JOB_COPY?.DRAFT_CREATED || 'Job draft created. You can publish it from your dashboard.';
         window.location.hash = '#my-job-posts';
         return;
       }
 
       if (!checkoutData.sessionId) {
-        alert('❌ Payment setup failed: Missing Stripe session.');
+        postError.textContent = 'Payment setup failed. Missing Stripe session.';
         return;
       }
 
       const stripe = Stripe(stripeConfig.publishableKey);
       const { error } = await stripe.redirectToCheckout({ sessionId: checkoutData.sessionId });
       if (error) {
-        alert(error.message || 'Stripe checkout failed.');
+        postError.textContent = error.message || 'Stripe checkout failed.';
       }
     } catch (err) {
-      alert('❌ Payment setup failed. Please try again.');
+      postError.textContent = 'Payment setup failed. Please try again.';
     }
   });
 }

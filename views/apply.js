@@ -214,6 +214,10 @@ export async function renderApply(container, jobId) {
             </label>
           </div>
           ` : ''}
+          <label class="flex items-start gap-2 text-xs text-slate-600">
+            <input type="checkbox" name="tos_accept" value="1" required class="mt-1" />
+            <span>I agree to the <a href="/#terms" class="underline">Terms & Disclaimer</a>.</span>
+          </label>
           <button type="submit" class="text-purple px-4 py-2 rounded hover:bg-indigo-700">
             Submit Application
           </button>
@@ -287,7 +291,7 @@ export async function renderApply(container, jobId) {
           const response = await fetch("/api/submit-application", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ jobId, resume: selectedResume, cover_letter: selectedCover, compliance }),
+            body: JSON.stringify({ jobId, resume: selectedResume, cover_letter: selectedCover, compliance, tos_accept: formData.get('tos_accept') ? 1 : 0 }),
             credentials: "include"
           });
 
