@@ -19,10 +19,12 @@ export function attachFieldHints(form) {
     const show = (text) => {
       msg.textContent = text;
       msg.classList.remove('hidden');
+      el.classList.add('ring-1', 'ring-red-500', 'border-red-300', 'bg-red-50');
     };
     const hide = () => {
       msg.textContent = '';
       msg.classList.add('hidden');
+      el.classList.remove('ring-1', 'ring-red-500', 'border-red-300', 'bg-red-50');
     };
 
     el.addEventListener('blur', () => {
@@ -44,4 +46,25 @@ export function attachFieldHints(form) {
       }
     });
   });
+}
+
+export function markInvalidField(el, message) {
+  if (!el) return;
+  const hint = el.nextElementSibling;
+  if (hint && hint.classList.contains('text-xs')) {
+    hint.textContent = message || 'This field is required.';
+    hint.classList.remove('hidden');
+  }
+  el.classList.add('ring-1', 'ring-red-500', 'border-red-300', 'bg-red-50');
+  el.focus?.();
+}
+
+export function clearInvalidField(el) {
+  if (!el) return;
+  const hint = el.nextElementSibling;
+  if (hint && hint.classList.contains('text-xs')) {
+    hint.textContent = '';
+    hint.classList.add('hidden');
+  }
+  el.classList.remove('ring-1', 'ring-red-500', 'border-red-300', 'bg-red-50');
 }

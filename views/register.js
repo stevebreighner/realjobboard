@@ -1,5 +1,5 @@
 import { CONFIG, US_STATES } from '../config.js'; // optional if you want to use config constants
-import { attachFieldHints } from '../utils/formHints.js';
+import { attachFieldHints, markInvalidField, clearInvalidField } from '../utils/formHints.js';
 
 export function renderRegister(container) {
   container.innerHTML = `
@@ -211,28 +211,33 @@ export function renderRegister(container) {
     const country = (formData.country || '').trim();
     const state = (formData.state || '').trim();
     const zip = (formData.zip || '').trim();
+    const countryEl = form.querySelector('input[name="country"]');
+    const stateEl = form.querySelector('select[name="state"]');
+    const zipEl = form.querySelector('input[name="zip"]');
+    const cityEl = form.querySelector('input[name="city"]');
+    const streetEl = form.querySelector('input[name="street1"]');
     const usaValues = ['usa', 'us', 'united states', 'united states of america'];
     if (!usaValues.includes(country.toLowerCase())) {
-      alert('USA only: please enter United States.');
+      markInvalidField(countryEl, 'USA only: please enter United States.');
       return;
     }
     if (!state || !US_STATES.some(s => s.code === state)) {
-      alert('Please select a valid state.');
+      markInvalidField(stateEl, 'Please select a valid state.');
       return;
     }
     if (zip && !/^\d{5}(-\d{4})?$/.test(zip)) {
-      alert('ZIP must be 5 digits (or 5+4).');
+      markInvalidField(zipEl, 'ZIP must be 5 digits (or 5+4).');
       return;
     }
     const street1 = (formData.street1 || '').trim();
     if (!street1 || !/\d+/.test(street1) || !/[a-zA-Z]{2,}/.test(street1)) {
-      alert('Street address must include a number and street name.');
+      markInvalidField(streetEl, 'Street address must include a number and street name.');
       return;
     }
     try {
       const zipRes = await fetch(`https://api.zippopotam.us/us/${zip.substring(0, 5)}`);
       if (!zipRes.ok) {
-        alert('ZIP code not found.');
+        markInvalidField(zipEl, 'ZIP code not found.');
         return;
       }
       const zipData = await zipRes.json();
@@ -244,11 +249,12 @@ export function renderRegister(container) {
         (p['state abbreviation'] || '').toUpperCase() === stateNorm
       );
       if (!match) {
-        alert('City and state do not match the ZIP code.');
+        markInvalidField(cityEl, 'City and state do not match the ZIP code.');
+        markInvalidField(stateEl, 'City and state do not match the ZIP code.');
         return;
       }
     } catch (err) {
-      alert('Unable to verify ZIP code. Please try again.');
+      markInvalidField(zipEl, 'Unable to verify ZIP code. Please try again.');
       return;
     }
     if (!devFlags.dev_mode) {
@@ -256,6 +262,8 @@ export function renderRegister(container) {
         formData.turnstile_token = window.turnstile.getResponse(turnstileWidgetId);
       }
       if (!formData.turnstile_token) {
+        const ts = form.querySelector('#turnstile-container');
+        if (ts) ts.classList.add('ring-1', 'ring-red-500');
         alert('Please complete the captcha.');
         return;
       }
@@ -265,24 +273,26 @@ export function renderRegister(container) {
       const companySite = (formData.company_site || '').trim();
       const companyEmail = (formData.company_email || '').trim().toLowerCase();
       if (!companySite || !companyEmail) {
-        alert('Employer accounts require a company website and company email.');
+        markInvalidField(form.querySelector('input[name="company_site"]'), 'Company website required.');
+        markInvalidField(form.querySelector('input[name="company_email"]'), 'Company email required.');
         return;
       }
       const freeDomains = ['gmail.com','yahoo.com','outlook.com','hotmail.com','icloud.com','aol.com','proton.me','protonmail.com'];
       const emailDomain = companyEmail.split('@')[1] || '';
       if (!emailDomain || freeDomains.includes(emailDomain)) {
-        alert('Please use a company email address (not Gmail/Yahoo/etc).');
+        markInvalidField(form.querySelector('input[name="company_email"]'), 'Please use a company email address.');
         return;
       }
       try {
         const url = new URL(companySite.startsWith('http') ? companySite : `https://${companySite}`);
         const host = url.hostname.replace(/^www\./, '');
         if (!host || !emailDomain.endsWith(host)) {
-          alert('Company email must match your website domain.');
+          markInvalidField(form.querySelector('input[name="company_email"]'), 'Email must match website domain.');
+          markInvalidField(form.querySelector('input[name="company_site"]'), 'Website must match email domain.');
           return;
         }
       } catch (err) {
-        alert('Please enter a valid company website URL.');
+        markInvalidField(form.querySelector('input[name="company_site"]'), 'Please enter a valid company website URL.');
         return;
       }
     }

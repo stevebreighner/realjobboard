@@ -1,6 +1,6 @@
 import { getUserProfileCached, getUserProfileCachedAny } from '../utils/session.js';
 import { CONFIG } from '../config.js';
-import { attachFieldHints } from '../utils/formHints.js';
+import { attachFieldHints, markInvalidField } from '../utils/formHints.js';
 
 export function renderProfile(container) {
   container.innerHTML = `
@@ -491,17 +491,24 @@ async function handleProfileUpdate(event) {
   const country = (formData.get('country') || '').trim();
   const state = (formData.get('state') || '').trim();
   const zip = (formData.get('zip') || '').trim();
+  const countryEl = document.getElementById('country');
+  const stateEl = document.getElementById('state');
+  const zipEl = document.getElementById('zip');
+  const cityEl = document.getElementById('city');
   const usaValues = ['usa', 'us', 'united states', 'united states of america'];
   if (!usaValues.includes(country.toLowerCase())) {
     if (errorEl) errorEl.textContent = 'USA only: please enter United States.';
+    markInvalidField(countryEl, 'USA only: please enter United States.');
     return;
   }
   if (state && !/^[A-Za-z]{2}$/.test(state)) {
     if (errorEl) errorEl.textContent = 'State must be a 2-letter code.';
+    markInvalidField(stateEl, 'State must be a 2-letter code.');
     return;
   }
   if (zip && !/^\d{5}(-\d{4})?$/.test(zip)) {
     if (errorEl) errorEl.textContent = 'ZIP must be 5 digits (or 5+4).';
+    markInvalidField(zipEl, 'ZIP must be 5 digits (or 5+4).');
     return;
   }
   if (zip && zip.length >= 5) {
@@ -509,6 +516,7 @@ async function handleProfileUpdate(event) {
       const zipRes = await fetch(`https://api.zippopotam.us/us/${zip.substring(0, 5)}`);
       if (!zipRes.ok) {
         if (errorEl) errorEl.textContent = 'ZIP code not found.';
+        markInvalidField(zipEl, 'ZIP code not found.');
         return;
       }
       const zipData = await zipRes.json();
@@ -521,10 +529,13 @@ async function handleProfileUpdate(event) {
       );
       if (!match) {
         if (errorEl) errorEl.textContent = 'City and state do not match the ZIP code.';
+        markInvalidField(cityEl, 'City and state do not match the ZIP code.');
+        markInvalidField(stateEl, 'City and state do not match the ZIP code.');
         return;
       }
     } catch (err) {
       if (errorEl) errorEl.textContent = 'Unable to verify ZIP code. Please try again.';
+      markInvalidField(zipEl, 'Unable to verify ZIP code.');
       return;
     }
   }

@@ -1,5 +1,5 @@
 import { CONFIG, US_STATES } from '../config.js';
-import { attachFieldHints } from '../utils/formHints.js';
+import { attachFieldHints, markInvalidField } from '../utils/formHints.js';
 
 export function renderPost(container) {
   const tiers = Array.isArray(CONFIG.JOB_POSTING_TIERS) ? CONFIG.JOB_POSTING_TIERS : [];
@@ -249,12 +249,18 @@ export function renderPost(container) {
 
     const rateMin = (formData.rate_min || '').toString().replace(/[^0-9.]/g, '');
     const rateMax = (formData.rate_max || '').toString().replace(/[^0-9.]/g, '');
+    const rateMinEl = form.querySelector('input[name="rate_min"]');
+    const rateMaxEl = form.querySelector('input[name="rate_max"]');
     if ((rateMin && isNaN(rateMin)) || (rateMax && isNaN(rateMax))) {
       postError.textContent = 'Please enter a valid rate range.';
+      markInvalidField(rateMinEl, 'Enter a valid number.');
+      markInvalidField(rateMaxEl, 'Enter a valid number.');
       return;
     }
     if (rateMin && rateMax && Number(rateMin) > Number(rateMax)) {
       postError.textContent = 'Rate min must be less than or equal to rate max.';
+      markInvalidField(rateMinEl, 'Min must be <= max.');
+      markInvalidField(rateMaxEl, 'Max must be >= min.');
       return;
     }
     if (!rateMin && !rateMax && (!formData.rate_type || formData.rate_type === '')) {

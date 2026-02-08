@@ -1,6 +1,6 @@
 import { escapeHtml } from '../utils/sanitize.js';
 import { CONFIG } from '../config.js';
-import { attachFieldHints } from '../utils/formHints.js';
+import { attachFieldHints, markInvalidField } from '../utils/formHints.js';
 
 export async function renderApply(container, jobId) {
     try {
@@ -287,6 +287,8 @@ export async function renderApply(container, jobId) {
             messageEl.className = "mb-4 text-sm text-amber-700";
             messageEl.textContent = CONFIG.JOB_COPY?.RESUME_REQUIRED_MSG || "Please provide a resume link or select a resume.";
           }
+          const resumeLink = document.getElementById("resume-link");
+          markInvalidField(resumeLink, "Resume is required.");
           return;
         }
   
