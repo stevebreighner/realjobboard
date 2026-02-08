@@ -42,6 +42,7 @@ export function renderProfile(container) {
       <input type="file" id="avatar" name="avatar" class="w-full p-2 border rounded" accept="image/*" />
     </div>
 
+    <div id="profileLayout" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <form id="profileForm" class="grid grid-cols-1 md:grid-cols-2 gap-4" onsubmit="handleProfileUpdate(event)">
     <div>
       <label for="username" class="block font-semibold">Username</label>
@@ -51,43 +52,6 @@ export function renderProfile(container) {
     <div>
       <label for="email" class="block font-semibold">Email</label>
       <input type="email" id="email" name="email" class="w-full p-2 border rounded" readonly data-locked-msg="Email is locked." />
-    </div>
-
-    <div id="companySection" class="hidden">
-      <h3 class="text-lg font-semibold mt-4">Company Profile</h3>
-      <label for="company" class="block font-semibold">Company</label>
-      <input type="text" id="company" name="company" class="w-full p-2 border rounded" placeholder="Company name" /><br />
-
-      <label for="company_site" class="block font-semibold">Company Website</label>
-      <input type="url" id="company_site" name="company_site" class="w-full p-2 border rounded" placeholder="https://example.com" /><br />
-
-      <label for="company_email" class="block font-semibold">Company Email</label>
-      <input type="email" id="company_email" name="company_email" class="w-full p-2 border rounded" placeholder="name@company.com" /><br />
-
-      <label for="company_logo" class="block font-semibold">Company Logo URL</label>
-      <input type="url" id="company_logo" name="company_logo" class="w-full p-2 border rounded" placeholder="https://..." /><br />
-
-      <label for="company_street1" class="block font-semibold">Company Street</label>
-      <input type="text" id="company_street1" name="company_street1" class="w-full p-2 border rounded" /><br />
-
-      <label for="company_street2" class="block font-semibold">Company Suite (optional)</label>
-      <input type="text" id="company_street2" name="company_street2" class="w-full p-2 border rounded" /><br />
-
-      <label for="company_city" class="block font-semibold">Company City</label>
-      <input type="text" id="company_city" name="company_city" class="w-full p-2 border rounded" /><br />
-
-      <label for="company_state" class="block font-semibold">Company State</label>
-      <input type="text" id="company_state" name="company_state" class="w-full p-2 border rounded" maxlength="2" /><br />
-
-      <label for="company_zip" class="block font-semibold">Company ZIP</label>
-      <input type="text" id="company_zip" name="company_zip" class="w-full p-2 border rounded" /><br />
-
-      <label for="company_country" class="block font-semibold">Company Country</label>
-      <input type="text" id="company_country" name="company_country" class="w-full p-2 border rounded" /><br />
-
-      <button type="button" id="saveCompanyBtn" class="text-purple px-4 py-2 rounded">Save Company</button>
-      <p class="text-xs text-gray-500 mt-2">Company pages stay unverified until a site admin approves them.</p>
-      <p id="companyMsg" class="text-sm mt-2"></p>
     </div>
 
     <div>
@@ -148,6 +112,45 @@ export function renderProfile(container) {
       <button type="submit" class="text-purple px-4 py-2 rounded">Save</button>
     </div>
   </form>
+  <div id="companySection" class="hidden">
+    <div class="border rounded-lg p-4 bg-white">
+      <h3 class="text-lg font-semibold mb-2">Company Profile</h3>
+      <label for="company" class="block font-semibold">Company</label>
+      <input type="text" id="company" name="company" class="w-full p-2 border rounded" placeholder="Company name" /><br />
+
+      <label for="company_site" class="block font-semibold">Company Website</label>
+      <input type="url" id="company_site" name="company_site" class="w-full p-2 border rounded" placeholder="https://example.com" /><br />
+
+      <label for="company_email" class="block font-semibold">Company Email</label>
+      <input type="email" id="company_email" name="company_email" class="w-full p-2 border rounded" placeholder="name@company.com" /><br />
+
+      <label for="company_logo" class="block font-semibold">Company Logo URL</label>
+      <input type="url" id="company_logo" name="company_logo" class="w-full p-2 border rounded" placeholder="https://..." /><br />
+
+      <label for="company_street1" class="block font-semibold">Company Street</label>
+      <input type="text" id="company_street1" name="company_street1" class="w-full p-2 border rounded" /><br />
+
+      <label for="company_street2" class="block font-semibold">Company Suite (optional)</label>
+      <input type="text" id="company_street2" name="company_street2" class="w-full p-2 border rounded" /><br />
+
+      <label for="company_city" class="block font-semibold">Company City</label>
+      <input type="text" id="company_city" name="company_city" class="w-full p-2 border rounded" /><br />
+
+      <label for="company_state" class="block font-semibold">Company State</label>
+      <input type="text" id="company_state" name="company_state" class="w-full p-2 border rounded" maxlength="2" /><br />
+
+      <label for="company_zip" class="block font-semibold">Company ZIP</label>
+      <input type="text" id="company_zip" name="company_zip" class="w-full p-2 border rounded" /><br />
+
+      <label for="company_country" class="block font-semibold">Company Country</label>
+      <input type="text" id="company_country" name="company_country" class="w-full p-2 border rounded" /><br />
+
+      <button type="button" id="saveCompanyBtn" class="text-purple px-4 py-2 rounded">Save Company</button>
+      <p class="text-xs text-gray-500 mt-2">Company pages stay unverified until a site admin approves them.</p>
+      <p id="companyMsg" class="text-sm mt-2"></p>
+    </div>
+  </div>
+  </div>
 
     <div id="jobboard-links" class="mt-4"></div>
     <div id="companyOwnerSection" class="mt-8 hidden"></div>
@@ -495,6 +498,8 @@ async function handleProfileUpdate(event) {
   const stateEl = document.getElementById('state');
   const zipEl = document.getElementById('zip');
   const cityEl = document.getElementById('city');
+  const dob = (formData.get('dob') || '').trim();
+  const dobEl = document.getElementById('dob');
   const usaValues = ['usa', 'us', 'united states', 'united states of america'];
   if (!usaValues.includes(country.toLowerCase())) {
     if (errorEl) errorEl.textContent = 'USA only: please enter United States.';
@@ -510,6 +515,22 @@ async function handleProfileUpdate(event) {
     if (errorEl) errorEl.textContent = 'ZIP must be 5 digits (or 5+4).';
     markInvalidField(zipEl, 'ZIP must be 5 digits (or 5+4).');
     return;
+  }
+  if (dob) {
+    const dobDate = new Date(dob);
+    if (!isNaN(dobDate.getTime())) {
+      const now = new Date();
+      let age = now.getFullYear() - dobDate.getFullYear();
+      const m = now.getMonth() - dobDate.getMonth();
+      if (m < 0 || (m === 0 && now.getDate() < dobDate.getDate())) {
+        age--;
+      }
+      if (age < 18) {
+        if (errorEl) errorEl.textContent = 'You must be at least 18 years old.';
+        markInvalidField(dobEl, 'You must be at least 18 years old.');
+        return;
+      }
+    }
   }
   if (zip && zip.length >= 5) {
     try {

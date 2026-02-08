@@ -125,6 +125,20 @@ class ProfileController {
       }
     }
 
+    if (isset($_POST['dob']) && $_POST['dob'] !== '') {
+      $dob = (string) $_POST['dob'];
+      $dobTs = strtotime($dob);
+      if ($dobTs !== false) {
+        $today = new \DateTimeImmutable('now');
+        $dobDate = (new \DateTimeImmutable())->setTimestamp($dobTs);
+        $age = (int) $today->diff($dobDate)->y;
+        if ($age < 18) {
+          http_response_code(422);
+          return ['error' => 'You must be at least 18 years old.'];
+        }
+      }
+    }
+
     // Simple avatar upload handling (optional)
     if (!empty($_FILES['avatar']['tmp_name'])) {
       $tmp = $_FILES['avatar']['tmp_name'];
