@@ -162,6 +162,9 @@ export function renderProfile(container) {
   const savedJobsSection = container.querySelector('#savedJobsSection');
   const jobAlertsSection = container.querySelector('#jobAlertsSection');
   const companyOwnerSection = container.querySelector('#companyOwnerSection');
+  const zipInput = container.querySelector('#zip');
+  const cityInput = container.querySelector('#city');
+  const stateInput = container.querySelector('#state');
 
   // Fetch profile + role info
   function applyProfileData(data) {
@@ -426,6 +429,30 @@ async function handleProfileUpdate(event) {
     if (errorEl) errorEl.textContent = 'ZIP must be 5 digits (or 5+4).';
     return;
   }
+  if (zip && zip.length >= 5) {
+    try {
+      const zipRes = await fetch(`https://api.zippopotam.us/us/${zip.substring(0, 5)}`);
+      if (!zipRes.ok) {
+        if (errorEl) errorEl.textContent = 'ZIP code not found.';
+        return;
+      }
+      const zipData = await zipRes.json();
+      const places = zipData.places || [];
+      const cityNorm = (formData.get('city') || '').trim().toLowerCase();
+      const stateNorm = (formData.get('state') || '').trim().toUpperCase();
+      const match = places.some(p =>
+        (p['place name'] || '').toLowerCase() === cityNorm &&
+        (p['state abbreviation'] || '').toUpperCase() === stateNorm
+      );
+      if (!match) {
+        if (errorEl) errorEl.textContent = 'City and state do not match the ZIP code.';
+        return;
+      }
+    } catch (err) {
+      if (errorEl) errorEl.textContent = 'Unable to verify ZIP code. Please try again.';
+      return;
+    }
+  }
 
   try {
     const response = await fetch('/api/user-profile-update', {
@@ -460,3 +487,23 @@ async function handleProfileUpdate(event) {
 }
 
 window.handleProfileUpdate = handleProfileUpdate; // 👈 make it globally callable from form
+
+if (zipInput && cityInput && stateInput) {
+  const handleZipLookup = async () => {
+    const zip = (zipInput.value || '').trim();
+    if (!/^\d{5}$/.test(zip)) return;
+    try {
+      const res = await fetch(`https://api.zippopotam.us/us/${zip}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const place = data.places && data.places[0];
+      if (!place) return;
+      const city = place['place name'] || '';
+      const state = place['state abbreviation'] || '';
+      if (city && !cityInput.value) cityInput.value = city;
+      if (state && !stateInput.value) stateInput.value = state;
+    } catch (err) {}
+  };
+  zipInput.addEventListener('blur', handleZipLookup);
+  zipInput.addEventListener('change', handleZipLookup);
+}

@@ -237,6 +237,11 @@ export function renderList(container) {
   };
   const getMetaValue = (item, key) =>
     (item?.meta && item.meta[key] != null ? item.meta[key] : item?.[key]) ?? '';
+  const safeCompanyName = (raw) => {
+    if (!raw) return '';
+    const val = String(raw);
+    return val.includes('@') ? '' : val;
+  };
   const formatRateType = (val) => {
     const t = (val || '').toString().toLowerCase();
     if (t === 'undisclosed') return 'Undisclosed';
@@ -280,7 +285,7 @@ export function renderList(container) {
     const summary = item.summary || item.description || '';
     const field = getMetaValue(item, 'field');
     const employmentType = getMetaValue(item, 'employment_type');
-    const company = getMetaValue(item, 'company');
+    const company = safeCompanyName(getMetaValue(item, 'company'));
     const location = buildLocation(item);
     return normalize([title, summary, field, employmentType, company, location].join(' '));
   };
@@ -450,8 +455,8 @@ export function renderList(container) {
       }
       const dateA = new Date(a.date || 0).getTime();
       const dateB = new Date(b.date || 0).getTime();
-      const companyA = normalize(getMetaValue(a, 'company'));
-      const companyB = normalize(getMetaValue(b, 'company'));
+      const companyA = normalize(safeCompanyName(getMetaValue(a, 'company')));
+      const companyB = normalize(safeCompanyName(getMetaValue(b, 'company')));
       const titleA = normalize(a.title || a.name || '');
       const titleB = normalize(b.title || b.name || '');
       const rateMinA = parseFloat(getMetaValue(a, 'rate_min') || '');
@@ -747,7 +752,7 @@ export function renderList(container) {
               const id = item.id || item._id || item.slug;
               const field = getMetaValue(item, 'field');
               const rawCompany = getMetaValue(item, 'company');
-              const company = rawCompany && rawCompany.includes('@') ? '' : rawCompany;
+              const company = safeCompanyName(rawCompany);
               const companySlug = getMetaValue(item, 'company_slug');
               const employmentType = getMetaValue(item, 'employment_type');
               const rateType = formatRateType(getMetaValue(item, 'rate_type'));

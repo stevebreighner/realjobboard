@@ -202,7 +202,7 @@ export async function renderMyJobPostDetail(container, jobId) {
 
           <label class="block text-sm font-semibold mb-1">Rate Type</label>
           <select id="createRateType" class="w-full p-2 border rounded mb-3">
-            <option value="" disabled selected>Select Rate Type</option>
+            <option value="undisclosed" selected>Undisclosed</option>
             <option value="hourly">Hourly</option>
             <option value="salary">Salary</option>
             <option value="contract">Contract</option>
@@ -364,6 +364,42 @@ export async function renderMyJobPostDetail(container, jobId) {
     const createState = container.querySelector('#createState');
     const createZip = container.querySelector('#createZip');
     const createCountry = container.querySelector('#createCountry');
+
+    const seedCreateForm = async () => {
+      const devFlags = await getDevFlags();
+      if (!devFlags.dev_mode) return;
+      if (createTitle?.value) return;
+      const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+      const titles = ['Marketing Coordinator', 'Senior Nurse', 'Front Desk Associate', 'Full Stack Developer', 'Warehouse Lead'];
+      const fields = ['Marketing', 'Healthcare', 'Hospitality', 'Tech', 'Logistics'];
+      const cities = [
+        { city: 'Des Moines', state: 'IA', zip: '50309' },
+        { city: 'Austin', state: 'TX', zip: '73301' },
+        { city: 'Denver', state: 'CO', zip: '80202' },
+        { city: 'Seattle', state: 'WA', zip: '98101' },
+      ];
+      const cityPick = pick(cities);
+      const empTypes = ['full_time', 'part_time', 'contract'];
+      const rates = [
+        { type: 'salary', min: '60000', max: '85000' },
+        { type: 'hourly', min: '20', max: '32' },
+        { type: 'undisclosed', min: '', max: '' },
+      ];
+      const ratePick = pick(rates);
+      if (createTitle) createTitle.value = pick(titles);
+      if (createField) createField.value = pick(fields);
+      if (createContent) createContent.value = 'We are looking for a reliable teammate who can take ownership and communicate clearly.';
+      if (createEmploymentType) createEmploymentType.value = pick(empTypes);
+      if (createRateType) createRateType.value = ratePick.type;
+      if (createRateMin) createRateMin.value = ratePick.min;
+      if (createRateMax) createRateMax.value = ratePick.max;
+      if (createStreet1) createStreet1.value = '111 Main St';
+      if (createCity) createCity.value = cityPick.city;
+      if (createState) createState.value = cityPick.state;
+      if (createZip) createZip.value = cityPick.zip;
+      if (createCountry) createCountry.value = 'United States';
+    };
+    seedCreateForm();
     const createStatus = container.querySelector('#createStatus');
     const createPreviewBtn = container.querySelector('#createPreviewBtn');
     const createPreview = container.querySelector('#createPreview');
@@ -1167,11 +1203,6 @@ export async function renderMyJobPostDetail(container, jobId) {
       createMessage.textContent = 'Creating...';
 
       const createFieldValue = createField.value.trim();
-      if (!createFieldValue) {
-        createMessage.className = 'text-sm text-red-600';
-        createMessage.textContent = 'Field is required.';
-        return;
-      }
       if (!createEmploymentType?.value) {
         createMessage.className = 'text-sm text-red-600';
         createMessage.textContent = 'Employment type is required.';
@@ -1180,12 +1211,12 @@ export async function renderMyJobPostDetail(container, jobId) {
 
       const createRateMinVal = (createRateMin?.value || '').toString().replace(/[^0-9.]/g, '');
       const createRateMaxVal = (createRateMax?.value || '').toString().replace(/[^0-9.]/g, '');
-      if (!createRateType?.value || !createRateMinVal || !createRateMaxVal || isNaN(createRateMinVal) || isNaN(createRateMaxVal)) {
+      if ((createRateMinVal && isNaN(createRateMinVal)) || (createRateMaxVal && isNaN(createRateMaxVal))) {
         createMessage.className = 'text-sm text-red-600';
-        createMessage.textContent = 'Please enter a valid rate type and range.';
+        createMessage.textContent = 'Please enter a valid rate range.';
         return;
       }
-      if (Number(createRateMinVal) > Number(createRateMaxVal)) {
+      if (createRateMinVal && createRateMaxVal && Number(createRateMinVal) > Number(createRateMaxVal)) {
         createMessage.className = 'text-sm text-red-600';
         createMessage.textContent = 'Rate min must be less than or equal to rate max.';
         return;
@@ -1209,7 +1240,7 @@ export async function renderMyJobPostDetail(container, jobId) {
         status: createStatus.value,
         field: createFieldValue,
         employment_type: createEmploymentType.value.trim(),
-        rate_type: createRateType.value.trim(),
+        rate_type: createRateType.value.trim() || 'undisclosed',
         rate_min: createRateMinVal,
         rate_max: createRateMaxVal,
         street1: createStreet1.value.trim(),
