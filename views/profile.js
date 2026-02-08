@@ -173,6 +173,25 @@ export function renderProfile(container) {
   const cityInput = container.querySelector('#city');
   const stateInput = container.querySelector('#state');
   attachFieldHints(profileForm);
+  if (zipInput && cityInput && stateInput) {
+    const handleZipLookup = async () => {
+      const zip = (zipInput.value || '').trim();
+      if (!/^\d{5}$/.test(zip)) return;
+      try {
+        const res = await fetch(`https://api.zippopotam.us/us/${zip}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const place = data.places && data.places[0];
+        if (!place) return;
+        const city = place['place name'] || '';
+        const state = place['state abbreviation'] || '';
+        if (city && !cityInput.value) cityInput.value = city;
+        if (state && !stateInput.value) stateInput.value = state;
+      } catch (err) {}
+    };
+    zipInput.addEventListener('blur', handleZipLookup);
+    zipInput.addEventListener('change', handleZipLookup);
+  }
 
   // Fetch profile + role info
   function applyProfileData(data) {
@@ -499,26 +518,6 @@ async function handleProfileUpdate(event) {
 }
 
 window.handleProfileUpdate = handleProfileUpdate; // 👈 make it globally callable from form
-
-if (zipInput && cityInput && stateInput) {
-  const handleZipLookup = async () => {
-    const zip = (zipInput.value || '').trim();
-    if (!/^\d{5}$/.test(zip)) return;
-    try {
-      const res = await fetch(`https://api.zippopotam.us/us/${zip}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      const place = data.places && data.places[0];
-      if (!place) return;
-      const city = place['place name'] || '';
-      const state = place['state abbreviation'] || '';
-      if (city && !cityInput.value) cityInput.value = city;
-      if (state && !stateInput.value) stateInput.value = state;
-    } catch (err) {}
-  };
-  zipInput.addEventListener('blur', handleZipLookup);
-  zipInput.addEventListener('change', handleZipLookup);
-}
 
 const saveCompanyBtn = container.querySelector('#saveCompanyBtn');
 const companyMsg = container.querySelector('#companyMsg');
