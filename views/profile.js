@@ -1,5 +1,6 @@
 import { getUserProfileCached, getUserProfileCachedAny } from '../utils/session.js';
 import { CONFIG } from '../config.js';
+import { attachFieldHints } from '../utils/formHints.js';
 
 export function renderProfile(container) {
   container.innerHTML = `
@@ -41,15 +42,15 @@ export function renderProfile(container) {
       <input type="file" id="avatar" name="avatar" class="w-full p-2 border rounded" accept="image/*" />
     </div>
 
-    <form class="grid grid-cols-1 md:grid-cols-2 gap-4" onsubmit="handleProfileUpdate(event)">
+    <form id="profileForm" class="grid grid-cols-1 md:grid-cols-2 gap-4" onsubmit="handleProfileUpdate(event)">
     <div>
       <label for="username" class="block font-semibold">Username</label>
-      <input type="text" id="username" name="username" class="w-full p-2 border rounded" readonly />
+      <input type="text" id="username" name="username" class="w-full p-2 border rounded" readonly data-locked-msg="Username is locked." />
     </div>
 
     <div>
       <label for="email" class="block font-semibold">Email</label>
-      <input type="email" id="email" name="email" class="w-full p-2 border rounded" readonly />
+      <input type="email" id="email" name="email" class="w-full p-2 border rounded" readonly data-locked-msg="Email is locked." />
     </div>
 
     <div id="companySection" class="hidden">
@@ -161,6 +162,7 @@ export function renderProfile(container) {
   const roleLabel     = container.querySelector('#roleLabel');
   const previewImg    = container.querySelector('#avatarPreview');
   const avatarInput = container.querySelector('#avatar');
+  const profileForm = container.querySelector('#profileForm');
   const profileStatus = container.querySelector('#profileStatus');
   const addressSection = container.querySelector('#addressSection');
   const hideEmailToggle = container.querySelector('#hide_email')?.closest('label');
@@ -496,6 +498,7 @@ async function handleProfileUpdate(event) {
 }
 
 window.handleProfileUpdate = handleProfileUpdate; // 👈 make it globally callable from form
+attachFieldHints(profileForm);
 
 if (zipInput && cityInput && stateInput) {
   const handleZipLookup = async () => {

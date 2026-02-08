@@ -1,4 +1,5 @@
 import { CONFIG, US_STATES } from '../config.js';
+import { attachFieldHints } from '../utils/formHints.js';
 
 export function renderPost(container) {
   const tiers = Array.isArray(CONFIG.JOB_POSTING_TIERS) ? CONFIG.JOB_POSTING_TIERS : [];
@@ -140,6 +141,7 @@ export function renderPost(container) {
       complianceOptions.classList.toggle('hidden', !complianceEnabled.checked);
     }
   });
+  attachFieldHints(form);
   const fieldSelect = form.querySelector('select[name="field"]');
   const fieldOther = form.querySelector('input[name="field_other"]');
   fieldSelect?.addEventListener('change', () => {

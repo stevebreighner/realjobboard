@@ -1,5 +1,6 @@
 import { escapeHtml } from '../utils/sanitize.js';
 import { CONFIG } from '../config.js';
+import { attachFieldHints } from '../utils/formHints.js';
 
 export async function renderApply(container, jobId) {
     try {
@@ -245,7 +246,9 @@ export async function renderApply(container, jobId) {
       enforceSingleSelection("cover_letter");
   
       // --- Handle submission ---
-      document.getElementById("applyForm")?.addEventListener("submit", async (e) => {
+      const applyForm = document.getElementById("applyForm");
+      attachFieldHints(applyForm);
+      applyForm?.addEventListener("submit", async (e) => {
         e.preventDefault();
 
         const messageEl = document.getElementById("applyMessage");

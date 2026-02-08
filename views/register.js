@@ -1,4 +1,5 @@
 import { CONFIG, US_STATES } from '../config.js'; // optional if you want to use config constants
+import { attachFieldHints } from '../utils/formHints.js';
 
 export function renderRegister(container) {
   container.innerHTML = `
@@ -103,6 +104,8 @@ export function renderRegister(container) {
     window.__dev_flags = { dev_mode: 0 };
     return window.__dev_flags;
   };
+
+  attachFieldHints(form);
 
   (async () => {
     const devFlags = await getDevFlags();
