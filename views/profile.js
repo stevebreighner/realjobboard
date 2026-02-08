@@ -482,8 +482,9 @@ async function handleProfileUpdate(event) {
   const form = event.target;
   const errorEl = document.getElementById('profileError');
   const formData = new FormData(form);
-  if (avatarInput && avatarInput.files && avatarInput.files[0]) {
-    formData.append('avatar', avatarInput.files[0]);
+  const avatarFileInput = document.getElementById('avatar');
+  if (avatarFileInput && avatarFileInput.files && avatarFileInput.files[0]) {
+    formData.append('avatar', avatarFileInput.files[0]);
   }
   if (errorEl) errorEl.textContent = '';
 

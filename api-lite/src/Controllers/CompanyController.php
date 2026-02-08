@@ -72,13 +72,11 @@ class CompanyController {
     }
     $companyId = (int) ($this->userMeta->getMeta((int) $user['id'], 'company_id') ?? 0);
     if (!$companyId) {
-      http_response_code(404);
-      return ['error' => 'Company not found'];
+      return ['company' => null];
     }
     $company = $this->companies->findById($companyId);
     if (!$company) {
-      http_response_code(404);
-      return ['error' => 'Company not found'];
+      return ['company' => null];
     }
     return ['company' => $company];
   }
