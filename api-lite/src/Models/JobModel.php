@@ -105,6 +105,54 @@ class JobModel {
     return $this->hydrateMeta($jobs);
   }
 
+  public function listByCompanyId(int $companyId): array {
+    $pdo = $GLOBALS['DB_PDO'];
+    if (!$this->tableExists('jb_jobs')) return [];
+    $stmt = $pdo->prepare("
+      SELECT j.id, j.title, j.created_at
+      FROM jb_jobs j
+      JOIN jb_job_meta m ON m.job_id = j.id AND m.meta_key = 'company_id' AND m.meta_value = :cid
+      ORDER BY j.created_at DESC
+    ");
+    $stmt->execute([':cid' => (string) $companyId]);
+    $rows = $stmt->fetchAll() ?: [];
+    $jobs = array_map(function (array $row): array {
+      return [
+        'id' => (int) $row['id'],
+        'title' => $row['title'] ?? '',
+        'description' => '',
+        'date' => $row['created_at'] ?? '',
+        'meta' => [],
+        '_source' => 'jb',
+      ];
+    }, $rows);
+    return $this->hydrateMeta($jobs);
+  }
+
+  public function listByCompanyName(string $name): array {
+    $pdo = $GLOBALS['DB_PDO'];
+    if (!$this->tableExists('jb_jobs')) return [];
+    $stmt = $pdo->prepare("
+      SELECT j.id, j.title, j.created_at
+      FROM jb_jobs j
+      JOIN jb_job_meta m ON m.job_id = j.id AND m.meta_key = 'company' AND m.meta_value = :name
+      ORDER BY j.created_at DESC
+    ");
+    $stmt->execute([':name' => $name]);
+    $rows = $stmt->fetchAll() ?: [];
+    $jobs = array_map(function (array $row): array {
+      return [
+        'id' => (int) $row['id'],
+        'title' => $row['title'] ?? '',
+        'description' => '',
+        'date' => $row['created_at'] ?? '',
+        'meta' => [],
+        '_source' => 'jb',
+      ];
+    }, $rows);
+    return $this->hydrateMeta($jobs);
+  }
+
   public function updateJob(int $jobId, string $title, string $status): void {
     $pdo = $GLOBALS['DB_PDO'];
     $stmt = $pdo->prepare("UPDATE jb_jobs SET title = :title, status = :status, updated_at = :now WHERE id = :id");

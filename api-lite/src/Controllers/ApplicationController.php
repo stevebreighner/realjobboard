@@ -9,6 +9,7 @@ use App\Models\JobModel;
 use App\Services\RateLimiter;
 use App\Services\EncryptionService;
 use App\Models\AuditLogModel;
+use App\Services\Mailer;
 
 class ApplicationController {
   private AuthService $auth;
@@ -38,6 +39,29 @@ class ApplicationController {
     if (!$limiter->check($key, $limit, $windowSeconds)) {
       http_response_code(429);
       return ['error' => 'Too many requests. Please try again later.'];
+    }
+    return null;
+  }
+
+  private function getCountryCode(): string {
+    $candidates = [
+      $_SERVER['HTTP_CF_IPCOUNTRY'] ?? '',
+      $_SERVER['GEOIP_COUNTRY_CODE'] ?? '',
+      $_SERVER['HTTP_X_COUNTRY_CODE'] ?? '',
+      $_SERVER['HTTP_X_FORWARDED_COUNTRY'] ?? '',
+    ];
+    foreach ($candidates as $code) {
+      $code = strtoupper(trim((string) $code));
+      if ($code !== '') return $code;
+    }
+    return '';
+  }
+
+  private function enforceUsOnly(): ?array {
+    $code = $this->getCountryCode();
+    if ($code && $code !== 'US') {
+      http_response_code(403);
+      return ['error' => 'This service is currently available in the United States only.'];
     }
     return null;
   }
@@ -72,6 +96,9 @@ class ApplicationController {
 
   public function submit(): array {
     if ($blocked = $this->rateLimit('submit-application', 10, 300)) {
+      return $blocked;
+    }
+    if ($blocked = $this->enforceUsOnly()) {
       return $blocked;
     }
     $user = $this->auth->getSessionUser();
@@ -116,13 +143,28 @@ class ApplicationController {
     $appId = $this->applications->createApplication($jobId, (int) $user['id'], $resumeUrl ?: null, $coverUrl ?: null);
     if (!empty($compliance)) {
       $enc = $this->crypto->encrypt(json_encode($compliance));
-      $ciphertext = base64_encode($enc['ciphertext']);
+      $ciphertext = 'b64:' . base64_encode($enc['ciphertext']);
       $this->applications->setMeta($appId, 'compliance', $ciphertext, $enc['iv'], $enc['tag']);
     }
     $this->audit->log((int) $user['id'], 'application_submitted', 'Applied to job', [
       'job_id' => $jobId,
       'application_id' => $appId,
     ]);
+
+    $userEmail = $user['email'] ?? '';
+    if ($userEmail) {
+      $mailer = new Mailer();
+      $subject = 'Application received';
+      $body = "Thanks for applying. We received your application and will notify you with updates.\n\nJob ID: {$jobId}";
+      $sent = $mailer->send($userEmail, $subject, nl2br(htmlspecialchars($body, ENT_QUOTES)), $body);
+      if (!$sent) {
+        $this->audit->log((int) $user['id'], 'application_email_failed', 'Email send failed', [
+          'job_id' => $jobId,
+          'application_id' => $appId,
+          'email' => $userEmail,
+        ]);
+      }
+    }
 
     return [
       'message' => 'Application submitted',

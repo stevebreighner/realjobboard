@@ -52,6 +52,29 @@ class UserApplicationController {
     return null;
   }
 
+  private function getCountryCode(): string {
+    $candidates = [
+      $_SERVER['HTTP_CF_IPCOUNTRY'] ?? '',
+      $_SERVER['GEOIP_COUNTRY_CODE'] ?? '',
+      $_SERVER['HTTP_X_COUNTRY_CODE'] ?? '',
+      $_SERVER['HTTP_X_FORWARDED_COUNTRY'] ?? '',
+    ];
+    foreach ($candidates as $code) {
+      $code = strtoupper(trim((string) $code));
+      if ($code !== '') return $code;
+    }
+    return '';
+  }
+
+  private function enforceUsOnly(): ?array {
+    $code = $this->getCountryCode();
+    if ($code && $code !== 'US') {
+      http_response_code(403);
+      return ['error' => 'This service is currently available in the United States only.'];
+    }
+    return null;
+  }
+
   private function passesTurnstile(array $data): bool {
     $devMode = ($_ENV['DEV_MODE'] ?? '') === '1' || ($this->settings->get('dev_mode') === '1');
     if ($devMode) return true;
@@ -123,6 +146,9 @@ class UserApplicationController {
 
   public function contactEmployer(): array {
     if ($blocked = $this->rateLimit('contact_employer', 6, 300)) {
+      return $blocked;
+    }
+    if ($blocked = $this->enforceUsOnly()) {
       return $blocked;
     }
     $user = $this->requireUser();

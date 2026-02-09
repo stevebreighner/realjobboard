@@ -1,7 +1,8 @@
 import { CONFIG } from '../config.js';
 
 export function renderMyApplications(container) {
-  container.innerHTML = `
+  try {
+    container.innerHTML = `
     <div class="max-w-4xl mx-auto px-4">
       <h1 class="text-2xl font-bold mb-4">${CONFIG.JOB_COPY?.MY_APPLICATIONS_TITLE || 'My Applications'}</h1>
 
@@ -14,9 +15,10 @@ export function renderMyApplications(container) {
         />
         <select id="statusFilter" class="w-full p-2 border rounded">
           <option value="all" selected>${CONFIG.JOB_COPY?.STATUS_ALL || 'All statuses'}</option>
+          <option value="submitted">${CONFIG.JOB_COPY?.STATUS_SUBMITTED || 'Submitted'}</option>
           <option value="new">${CONFIG.JOB_COPY?.STATUS_NEW || 'New'}</option>
-          <option value="reviewing">${CONFIG.JOB_COPY?.STATUS_REVIEWING || 'Reviewing'}</option>
-          <option value="shortlisted">${CONFIG.JOB_COPY?.STATUS_SHORTLISTED || 'Shortlisted'}</option>
+          <option value="reviewing">${CONFIG.JOB_COPY?.STATUS_REVIEWING || 'Received'}</option>
+          <option value="shortlisted">${CONFIG.JOB_COPY?.STATUS_SHORTLISTED || 'Reviewing'}</option>
           <option value="rejected">${CONFIG.JOB_COPY?.STATUS_REJECTED || 'Rejected'}</option>
           <option value="withdrawn">${CONFIG.JOB_COPY?.STATUS_WITHDRAWN || 'Withdrawn'}</option>
         </select>
@@ -51,9 +53,19 @@ export function renderMyApplications(container) {
     return val || '';
   };
 
-  const statusSteps = ['new', 'reviewing', 'shortlisted', 'rejected'];
+  const statusSteps = ['submitted', 'new', 'reviewing', 'shortlisted', 'rejected'];
+  const statusLabelMap = {
+    submitted: 'Submitted',
+    new: 'New',
+    reviewing: 'Received',
+    shortlisted: 'Reviewing',
+    rejected: 'Rejected',
+    withdrawn: 'Withdrawn',
+  };
   const getStatusIndex = (status) => {
-    const idx = statusSteps.indexOf(status);
+    const norm = normalize(status);
+    const mapped = norm === 'submitted' ? 'submitted' : norm;
+    const idx = statusSteps.indexOf(mapped);
     return idx === -1 ? 0 : idx;
   };
 
@@ -64,7 +76,7 @@ export function renderMyApplications(container) {
         ${statusSteps.map((step, i) => `
           <div class="flex items-center gap-2">
             <span class="h-2.5 w-2.5 rounded-full ${i <= current ? 'bg-emerald-500' : 'bg-slate-300'}"></span>
-            <span class="${i <= current ? 'text-slate-700' : 'text-slate-400'}">${step}</span>
+            <span class="${i <= current ? 'text-slate-700' : 'text-slate-400'}">${statusLabelMap[step] || step}</span>
             ${i < statusSteps.length - 1 ? `<span class="h-px w-6 ${i < current ? 'bg-emerald-400' : 'bg-slate-300'}"></span>` : ''}
           </div>
         `).join('')}
@@ -77,7 +89,9 @@ export function renderMyApplications(container) {
       ? list.map(app => {
           const appliedDate = app.applied_time ? new Date(app.applied_time * 1000) : null;
           const appliedLabel = appliedDate && !isNaN(appliedDate) ? appliedDate.toLocaleDateString() : 'Unknown date';
-          const statusLabel = (app.status || 'new').toString();
+          const statusRaw = (app.status || 'submitted').toString();
+          const statusNormalized = normalize(statusRaw) || 'submitted';
+          const statusLabel = statusLabelMap[statusNormalized] || statusRaw;
           const rateTypeLabel = formatRateType(app.rate_type || '');
           const rate = app.rate_min || app.rate_max || rateTypeLabel
             ? `${app.rate_min || ''}${app.rate_max ? `–${app.rate_max}` : ''} ${rateTypeLabel}`.trim()
@@ -93,18 +107,31 @@ export function renderMyApplications(container) {
                 </div>
                 <span class="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-700">${statusLabel}</span>
               </div>
-              ${renderTimeline(statusLabel)}
+              ${renderTimeline(statusNormalized)}
               <div class="mt-3 flex flex-wrap items-center gap-3 text-sm">
                 <a href="/#list-detail?id=${app.job_id}" class="text-indigo-600 hover:underline">${CONFIG.JOB_COPY?.VIEW_JOB || 'View job'}</a>
                 ${app.resume ? `<a href="${app.resume}" target="_blank" rel="noopener" class="text-indigo-600 hover:underline">Resume</a>` : ''}
                 ${app.cover_letter ? `<a href="${app.cover_letter}" target="_blank" rel="noopener" class="text-indigo-600 hover:underline">Cover</a>` : ''}
-                ${statusLabel !== 'withdrawn' && statusLabel !== 'rejected' ? `
-                  <button data-action="withdraw" data-job-id="${app.job_id}" class="text-red-600 hover:underline">${CONFIG.JOB_COPY?.WITHDRAW_ACTION || 'Withdraw'}</button>
+                ${statusNormalized !== 'withdrawn' && statusNormalized !== 'rejected' ? `
+                  <button data-action="withdraw" data-job-id="${app.job_id}" class="text-xs px-3 py-1.5 rounded-full border border-red-200 text-red-600 hover:border-red-400 transition">${CONFIG.JOB_COPY?.WITHDRAW_ACTION || 'Withdraw'}</button>
                 ` : ''}
               </div>
             </div>
           `;
         }).join('')
+      : `<p class="text-gray-500">${CONFIG.JOB_COPY?.APPLICATIONS_EMPTY || 'No applications found.'}</p>`;
+  };
+
+  const renderBasic = (list) => {
+    appsContainer.innerHTML = list.length
+      ? list.map(app => `
+          <div class="border rounded-xl p-4 bg-white shadow-sm">
+            <div class="font-semibold text-slate-900">${app.job_title || 'Job'}</div>
+            <div class="text-xs text-slate-600">${[app.company, app.location].filter(Boolean).join(' • ')}</div>
+            <div class="text-xs text-slate-500 mt-1">Status: ${statusLabelMap[normalize(app.status) || 'submitted'] || app.status || 'submitted'}</div>
+            <a href="/#list-detail?id=${app.job_id}" class="text-sm text-indigo-600 hover:underline mt-2 inline-block">View job</a>
+          </div>
+        `).join('')
       : `<p class="text-gray-500">${CONFIG.JOB_COPY?.APPLICATIONS_EMPTY || 'No applications found.'}</p>`;
   };
 
@@ -116,7 +143,8 @@ export function renderMyApplications(container) {
     const filtered = applications.filter(app => {
       const haystack = normalize(`${app.job_title} ${app.company} ${app.location}`);
       const matchesQuery = !query || haystack.includes(query);
-      const matchesStatus = status === 'all' || normalize(app.status) === status;
+      const appStatus = normalize(app.status) || 'submitted';
+      const matchesStatus = status === 'all' || appStatus === status;
       return matchesQuery && matchesStatus;
     });
 
@@ -163,14 +191,41 @@ export function renderMyApplications(container) {
     }
   });
 
+  appsContainer.innerHTML = '<p class="text-sm text-gray-500">Loading applications...</p>';
   fetch('/api/user-applications', { credentials: 'include' })
-    .then(res => res.json())
+    .then(async res => {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = data?.error || data?.message || 'Please log in to view your applications.';
+        appsContainer.innerHTML = `
+          <div class="text-sm text-rose-600">${msg}</div>
+          <a href="/#login" class="text-sm text-indigo-600 hover:underline">Go to login</a>
+        `;
+        return null;
+      }
+      return data;
+    })
     .then(data => {
-      applications = Array.isArray(data) ? data : [];
-      applyFilters();
+      if (!data) return;
+      if (!Array.isArray(data)) {
+        appsContainer.innerHTML = `<p class="text-sm text-rose-600">Unexpected response from server.</p>`;
+        console.warn('Unexpected applications payload', data);
+        return;
+      }
+      applications = data;
+      try {
+        applyFilters();
+      } catch (err) {
+        console.error('Render applications failed', err);
+        renderBasic(applications);
+      }
     })
     .catch(err => {
       appsContainer.innerHTML = `<p class="text-red-600">Failed to load applications.</p>`;
       console.error(err);
     });
+  } catch (err) {
+    console.error('renderMyApplications failed', err);
+    container.innerHTML = `<div class="max-w-3xl mx-auto px-4 py-8 text-sm text-rose-600">Unable to render applications.</div>`;
+  }
 }

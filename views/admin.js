@@ -8,17 +8,11 @@ export async function renderAdmin(container) {
       <div id="adminNotice" class="mb-4 text-sm text-gray-600"></div>
 
       <div class="mb-8">
-        <div class="flex items-center justify-between mb-2">
-          <h2 class="text-xl font-semibold">Recent Activity</h2>
-          <button id="refreshRecent" class="text-sm text-indigo-600 hover:underline">Refresh</button>
-        </div>
-        <div id="recentActivity" class="space-y-2 text-sm"></div>
-        <div id="recentErrors" class="mt-3 text-xs text-rose-700 space-y-1"></div>
-      </div>
-
-      <div class="mb-8">
         <h2 class="text-xl font-semibold mb-2">Dev Mode</h2>
-        <p class="text-sm text-gray-600 mb-3">Use this for local/dev environments to bypass human verification.</p>
+        <p class="text-sm text-gray-600 mb-3">
+          For development only: bypasses Turnstile/Captcha, enables verbose error details, and makes test flows faster.
+          Do not enable on production unless you are actively testing.
+        </p>
         <div class="flex items-center gap-3">
           <label class="inline-flex items-center gap-2 text-sm">
             <input type="checkbox" id="devModeToggle" class="h-4 w-4" />
@@ -26,6 +20,22 @@ export async function renderAdmin(container) {
           </label>
           <span id="devModeStatus" class="text-xs text-gray-500"></span>
         </div>
+        <div class="mt-3 flex items-center gap-3">
+          <label class="inline-flex items-center gap-2 text-sm">
+            <input type="checkbox" id="paymentPhaseToggle" class="h-4 w-4" />
+            <span>Phase 2: Require payment to publish jobs</span>
+          </label>
+          <span id="paymentPhaseStatus" class="text-xs text-gray-500"></span>
+        </div>
+      </div>
+
+      <div class="mb-8">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Recent Activity</h2>
+          <button id="refreshRecent" class="text-sm text-indigo-600 hover:underline">Refresh</button>
+        </div>
+        <div id="recentActivity" class="space-y-2 text-sm"></div>
+        <div id="recentErrors" class="mt-3 text-xs text-rose-700 space-y-1"></div>
       </div>
 
       <div class="mb-8">
@@ -213,6 +223,8 @@ export async function renderAdmin(container) {
   const restoreHistoryBtn = container.querySelector('#restoreHistory');
   const devModeToggle = container.querySelector('#devModeToggle');
   const devModeStatus = container.querySelector('#devModeStatus');
+  const paymentPhaseToggle = container.querySelector('#paymentPhaseToggle');
+  const paymentPhaseStatus = container.querySelector('#paymentPhaseStatus');
   const promoForm = container.querySelector('#promoForm');
   const promoList = container.querySelector('#promoList');
   const promoMsg = container.querySelector('#promoMsg');
@@ -255,31 +267,67 @@ export async function renderAdmin(container) {
     recentActivity.innerHTML = '<div class="text-gray-500">Loading...</div>';
     if (recentErrors) recentErrors.innerHTML = '';
     try {
-      const [auditRes, errorRes] = await Promise.all([
+      const [auditRes, errorRes, recentRes] = await Promise.all([
         fetch(`/api/admin/audit?_=${Date.now()}`, { credentials: 'include' }),
         fetch(`/api/admin/error-log?_=${Date.now()}`, { credentials: 'include' }),
+        fetch(`/api/admin/recent?_=${Date.now()}`, { credentials: 'include' }),
       ]);
       const auditData = await auditRes.json();
       const errorData = await errorRes.json();
-      const rows = Array.isArray(auditData) ? auditData.slice(0, 12) : [];
-      if (!rows.length) {
+      const recentData = await recentRes.json();
+
+      const auditRows = Array.isArray(auditData) ? auditData.slice(0, 8) : [];
+      const recentUsers = Array.isArray(recentData?.users) ? recentData.users : [];
+      const recentJobs = Array.isArray(recentData?.jobs) ? recentData.jobs : [];
+      const recentApps = Array.isArray(recentData?.applications) ? recentData.applications : [];
+
+      if (!auditRows.length && !recentUsers.length && !recentJobs.length && !recentApps.length) {
         recentActivity.innerHTML = '<div class="text-gray-500">No recent activity.</div>';
       } else {
-        recentActivity.innerHTML = rows.map(row => {
-          const label = row.label ? ` — ${row.label}` : '';
-          const meta = row.meta ? row.meta : {};
-          const login = meta.login ? ` (${meta.login})` : '';
-          return `
-            <div class="flex items-start justify-between gap-3 border-b border-slate-100 pb-2">
-              <div>
-                <div class="font-medium text-slate-900">${row.event_type}${login}</div>
-                <div class="text-xs text-slate-500">${label}</div>
-              </div>
-              <div class="text-xs text-slate-500 whitespace-nowrap">${row.created_at || ''}</div>
+        recentActivity.innerHTML = `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="border rounded-lg p-3 bg-white">
+              <div class="font-semibold mb-2">Recent Users</div>
+              ${recentUsers.length ? recentUsers.map(u => `
+                <div class="text-xs text-slate-700 border-b border-slate-100 py-1">
+                  ${u.username || u.email} • ${u.role || '—'} • ${u.created_at || ''}
+                </div>
+              `).join('') : '<div class="text-xs text-slate-500">No recent users.</div>'}
             </div>
-          `;
-        }).join('');
+            <div class="border rounded-lg p-3 bg-white">
+              <div class="font-semibold mb-2">Recent Jobs</div>
+              ${recentJobs.length ? recentJobs.map(j => `
+                <div class="text-xs text-slate-700 border-b border-slate-100 py-1">
+                  ${j.title || 'Job'} • ${j.status || '—'} • ${j.created_at || ''}
+                </div>
+              `).join('') : '<div class="text-xs text-slate-500">No recent jobs.</div>'}
+            </div>
+          </div>
+          <div class="mt-4 border rounded-lg p-3 bg-white">
+            <div class="font-semibold mb-2">Recent Applications</div>
+            ${recentApps.length ? recentApps.map(a => `
+              <div class="text-xs text-slate-700 border-b border-slate-100 py-1">
+                Application #${a.id} • Job ${a.job_id} • User ${a.user_id} • ${a.status || '—'} • ${a.created_at || ''}
+              </div>
+            `).join('') : '<div class="text-xs text-slate-500">No recent applications.</div>'}
+          </div>
+          <div class="mt-4 border rounded-lg p-3 bg-white">
+            <div class="font-semibold mb-2">Audit Events</div>
+            ${auditRows.length ? auditRows.map(row => {
+              const label = row.label ? ` — ${row.label}` : '';
+              const meta = row.meta ? row.meta : {};
+              const who = meta.username || meta.login || '';
+              const whoLabel = who ? ` (${who})` : '';
+              return `
+                <div class="text-xs text-slate-700 border-b border-slate-100 py-1">
+                  ${row.event_type}${whoLabel}${label} • ${row.created_at || ''}
+                </div>
+              `;
+            }).join('') : '<div class="text-xs text-slate-500">No audit events.</div>'}
+          </div>
+        `;
       }
+
       const errorLines = Array.isArray(errorData?.lines) ? errorData.lines.slice(-5) : [];
       if (recentErrors && errorLines.length) {
         recentErrors.innerHTML = `
@@ -297,11 +345,15 @@ export async function renderAdmin(container) {
   async function loadDevFlags() {
     if (!devModeToggle) return;
     try {
-      const res = await fetch('/api/admin/flags?_=' + Date.now(), { credentials: 'include' });
+      const res = await fetch('/api/dev-flags?_=' + Date.now(), { credentials: 'include' });
       const data = await res.json();
       if (res.ok) {
         devModeToggle.checked = !!data.dev_mode;
         devModeStatus.textContent = data.dev_mode ? 'Dev mode ON' : 'Dev mode OFF';
+        if (paymentPhaseToggle) {
+          paymentPhaseToggle.checked = !!data.jobs_require_payment;
+          paymentPhaseStatus.textContent = data.jobs_require_payment ? 'Phase 2 ON' : 'Phase 1 (free)';
+        }
       }
     } catch (err) {
       devModeStatus.textContent = 'Unable to load dev mode';
@@ -359,7 +411,7 @@ export async function renderAdmin(container) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ dev_mode: devModeToggle.checked ? 1 : 0 }),
+        body: JSON.stringify({ dev_mode: devModeToggle.checked ? 1 : 0, jobs_require_payment: paymentPhaseToggle?.checked ? 1 : 0 }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -370,7 +422,27 @@ export async function renderAdmin(container) {
     } catch (err) {
       devModeStatus.textContent = 'Failed to save';
     }
+  })
+  paymentPhaseToggle?.addEventListener('change', async () => {
+    paymentPhaseStatus.textContent = 'Saving...';
+    try {
+      const res = await fetch('/api/admin/flags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ dev_mode: devModeToggle?.checked ? 1 : 0, jobs_require_payment: paymentPhaseToggle.checked ? 1 : 0 }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        paymentPhaseStatus.textContent = data.message || 'Failed to save';
+        return;
+      }
+      paymentPhaseStatus.textContent = data.jobs_require_payment ? 'Phase 2 ON' : 'Phase 1 (free)';
+    } catch (err) {
+      paymentPhaseStatus.textContent = 'Failed to save';
+    }
   });
+;
 
   await loadDevFlags();
 
@@ -583,12 +655,14 @@ export async function renderAdmin(container) {
         <div class="flex items-center justify-between">
           <div>
             <div class="font-semibold">${u.username}</div>
-            <div class="text-xs text-gray-500">Role: ${u.roles?.join(', ') || ''}</div>
+            <div class="text-xs text-gray-500">
+              <span class="role-button">Role: ${u.roles?.join(', ') || ''}</span>
+            </div>
             ${u.roles?.includes('employer') ? `<div class="text-xs ${u.employer_verified ? 'text-green-700' : 'text-amber-700'}">Employer ${u.employer_verified ? 'Verified' : 'Pending'}</div>` : ''}
           </div>
           <div class="flex items-center space-x-2">
             <button class="text-sm text-indigo-600 hover:underline" data-action="toggle" data-id="${u.id}">Show details</button>
-            <button class="text-sm text-red-600 hover:underline" data-action="delete" data-id="${u.id}">Delete</button>
+            <button class="text-sm text-red-600 hover:underline px-2 py-1" data-action="delete" data-id="${u.id}">Delete</button>
           </div>
         </div>
         <div class="hidden mt-3 border-t pt-3" id="details-${u.id}">
@@ -652,10 +726,13 @@ export async function renderAdmin(container) {
           <div>
             <div class="font-semibold">${j.title}</div>
             <div class="text-xs text-gray-500">Status: ${j.status} • ID: ${j.id}</div>
+            ${j.company ? `<div class="text-xs text-gray-500">Company: ${j.company}</div>` : ''}
+            ${j.payment_status ? `<div class="text-xs text-gray-500">Payment: ${j.payment_status}${j.tier ? ` • Tier: ${j.tier}` : ''}</div>` : ''}
           </div>
           <div class="flex items-center space-x-2">
-            <button class="text-sm text-indigo-600 hover:underline" data-action="edit-job" data-id="${j.id}" data-title="${encodeURIComponent(j.title)}" data-status="${j.status}">Edit</button>
-            <button class="text-sm text-red-600 hover:underline" data-action="delete-job" data-id="${j.id}">Delete</button>
+            ${j.status !== 'publish' ? `<button class="text-sm text-emerald-700 hover:underline px-2 py-1" data-action="approve-job" data-id="${j.id}">Approve</button>` : ''}
+            <button class="text-sm text-indigo-600 hover:underline px-2 py-1" data-action="edit-job" data-id="${j.id}" data-title="${encodeURIComponent(j.title)}" data-status="${j.status}">Edit</button>
+            <button class="text-sm text-red-600 hover:underline px-2 py-1" data-action="delete-job" data-id="${j.id}">Delete</button>
           </div>
         </div>
         <div class="hidden mt-3 border-t pt-3" id="job-edit-${j.id}">
@@ -712,7 +789,7 @@ export async function renderAdmin(container) {
               <option value="applicant" ${tpl.scope === 'applicant' ? 'selected' : ''}>Applicant</option>
             </select>
             <input class="p-2 border rounded text-sm" data-role="tpl-category" data-idx="${idx}" placeholder="Category" value="${tpl.category || ''}" />
-            <button class="text-sm text-red-600 hover:underline justify-self-start md:justify-self-end" data-action="delete-template" data-idx="${idx}">Delete</button>
+            <button class="text-sm text-red-600 hover:underline px-2 py-1 justify-self-start md:justify-self-end" data-action="delete-template" data-idx="${idx}">Delete</button>
           </div>
             <textarea class="mt-2 w-full p-2 border rounded text-sm" rows="3" data-role="tpl-body" data-idx="${idx}" placeholder="Template body">${tpl.body || ''}</textarea>
           </div>
@@ -987,6 +1064,21 @@ export async function renderAdmin(container) {
       const data = await res.json();
       if (!res.ok) {
         alert(data.message || 'Delete failed');
+        return;
+      }
+      fetchJobs();
+      fetchAudit();
+    }
+    if (action === 'approve-job') {
+      const res = await fetch('/api/admin/job-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id: Number(jobId), status: 'publish' }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.message || 'Approve failed');
         return;
       }
       fetchJobs();

@@ -254,6 +254,205 @@ class UserFileController {
     exit;
   }
 
+  public function preview(): void {
+    $token = (string) ($_GET['token'] ?? '');
+    $id = (int) ($_GET['id'] ?? 0);
+    $row = null;
+    if ($token) {
+      $row = $this->files->findByToken($token);
+    } elseif ($id) {
+      $user = $this->requireUser();
+      if (empty($user)) {
+        echo json_encode(['error' => 'Not logged in']);
+        return;
+      }
+      $row = $this->files->findById($id);
+      if ($row && (int) $row['user_id'] !== (int) $user['id']) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Access denied']);
+        return;
+      }
+    }
+    if (!$row) {
+      http_response_code(404);
+      echo 'File not found';
+      return;
+    }
+    $path = $row['storage_path'] ?? '';
+    if (!$path || !file_exists($path)) {
+      http_response_code(404);
+      echo 'File missing';
+      return;
+    }
+    $ciphertext = @file_get_contents($path);
+    if ($ciphertext === false) {
+      http_response_code(500);
+      echo 'Read failed';
+      return;
+    }
+    $plaintext = $this->crypto->decrypt($ciphertext, (string) $row['iv'], (string) $row['tag']);
+    $name = (string) ($row['file_name'] ?? 'file');
+    $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+    if ($ext === 'pdf') {
+      header('Content-Type: application/pdf');
+      header('Content-Disposition: inline; filename="' . addslashes($name) . '"');
+      header('Content-Length: ' . strlen($plaintext));
+      echo $plaintext;
+      exit;
+    }
+
+    if (!in_array($ext, ['doc', 'docx'], true)) {
+      http_response_code(415);
+      echo '<p>Preview not supported</p>';
+      return;
+    }
+
+    $soffice = trim((string) @shell_exec('command -v soffice'));
+    if (!$soffice) {
+      http_response_code(501);
+      echo '<p>Preview unavailable</p>';
+      return;
+    }
+
+    $tmpDir = sys_get_temp_dir() . '/preview_' . bin2hex(random_bytes(6));
+    @mkdir($tmpDir, 0700, true);
+    $inputPath = $tmpDir . '/input.' . $ext;
+    @file_put_contents($inputPath, $plaintext);
+    $cmd = sprintf('%s --headless --convert-to pdf --outdir %s %s 2>/dev/null',
+      escapeshellcmd($soffice),
+      escapeshellarg($tmpDir),
+      escapeshellarg($inputPath)
+    );
+    @shell_exec($cmd);
+    $outputPath = $tmpDir . '/input.pdf';
+    if (!file_exists($outputPath)) {
+      http_response_code(500);
+      echo 'Preview conversion failed';
+      return;
+    }
+    $pdf = @file_get_contents($outputPath);
+    @unlink($inputPath);
+    @unlink($outputPath);
+    @rmdir($tmpDir);
+    if ($pdf === false) {
+      http_response_code(500);
+      echo 'Preview failed';
+      return;
+    }
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: inline; filename="preview.pdf"');
+    header('Content-Length: ' . strlen($pdf));
+    echo $pdf;
+    exit;
+  }
+
+  public function textPreview(): void {
+    $token = (string) ($_GET['token'] ?? '');
+    $id = (int) ($_GET['id'] ?? 0);
+    $row = null;
+    if ($token) {
+      $row = $this->files->findByToken($token);
+    } elseif ($id) {
+      $user = $this->requireUser();
+      if (empty($user)) {
+        echo json_encode(['error' => 'Not logged in']);
+        return;
+      }
+      $row = $this->files->findById($id);
+      if ($row && (int) $row['user_id'] !== (int) $user['id']) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Access denied']);
+        return;
+      }
+    }
+    if (!$row) {
+      http_response_code(404);
+      echo json_encode(['error' => 'File not found']);
+      return;
+    }
+    $path = $row['storage_path'] ?? '';
+    if (!$path || !file_exists($path)) {
+      http_response_code(404);
+      echo json_encode(['error' => 'File missing']);
+      return;
+    }
+    $ciphertext = @file_get_contents($path);
+    if ($ciphertext === false) {
+      http_response_code(500);
+      echo json_encode(['error' => 'Read failed']);
+      return;
+    }
+    $plaintext = $this->crypto->decrypt($ciphertext, (string) $row['iv'], (string) $row['tag']);
+    $name = (string) ($row['file_name'] ?? 'file');
+    $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+    $tmpDir = sys_get_temp_dir() . '/text_' . bin2hex(random_bytes(6));
+    @mkdir($tmpDir, 0700, true);
+    $tmpPath = $tmpDir . '/input.' . ($ext ?: 'txt');
+    @file_put_contents($tmpPath, $plaintext);
+    $text = $this->extractTextFromFile($tmpPath, $ext ?: 'txt');
+    @unlink($tmpPath);
+    @rmdir($tmpDir);
+    header('Content-Type: application/json');
+    echo json_encode(['text' => $text]);
+    exit;
+  }
+
+  public function uploadText(): array {
+    $user = $this->requireUser();
+    if (empty($user)) return ['error' => 'Not logged in'];
+    $raw = file_get_contents('php://input');
+    $data = json_decode($raw, true);
+    if (!is_array($data)) $data = [];
+    $kind = $this->normalizeKind((string) ($data['kind'] ?? ''));
+    if (!$kind) {
+      http_response_code(422);
+      return ['error' => 'Invalid kind'];
+    }
+    $text = (string) ($data['text'] ?? '');
+    $name = (string) ($data['name'] ?? ($kind === 'resume' ? 'resume_text.txt' : 'cover_text.txt'));
+    $text = trim($text);
+    if ($text === '') {
+      http_response_code(422);
+      return ['error' => 'Missing text'];
+    }
+    if (strlen($text) > 200000) {
+      http_response_code(413);
+      return ['error' => 'Text too large'];
+    }
+    $enc = $this->crypto->encrypt($text);
+    $uploadDir = __DIR__ . '/../../uploads/secure';
+    if (!is_dir($uploadDir)) {
+      @mkdir($uploadDir, 0755, true);
+    }
+    $fileName = sprintf('%s_%d_%s.bin', $kind, (int) $user['id'], bin2hex(random_bytes(10)));
+    $dest = $uploadDir . '/' . $fileName;
+    if (@file_put_contents($dest, $enc['ciphertext']) === false) {
+      http_response_code(500);
+      return ['error' => 'Failed to store file'];
+    }
+    $token = rtrim(strtr(base64_encode(random_bytes(24)), '+/', '-_'), '=');
+    $id = $this->files->create([
+      'user_id' => (int) $user['id'],
+      'kind' => $kind,
+      'file_name' => $name,
+      'mime_type' => 'text/plain',
+      'file_size' => strlen($text),
+      'storage_path' => $dest,
+      'iv' => $enc['iv'],
+      'tag' => $enc['tag'],
+      'access_token' => $token,
+      'created_at' => date('Y-m-d H:i:s'),
+    ]);
+    if ($kind === 'resume') {
+      $excerpt = mb_substr($text, 0, 4000);
+      $this->profiles->setMeta((int) $user['id'], 'resume_text', $excerpt);
+    }
+    return [
+      'id' => $id,
+      'url' => "/api/user-file?token={$token}",
+    ];
+  }
+
   private function extractTextFromFile(string $path, string $ext): string {
     $ext = strtolower($ext);
     if ($ext === 'pdf') {

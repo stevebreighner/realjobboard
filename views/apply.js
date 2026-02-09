@@ -115,8 +115,6 @@ export async function renderApply(container, jobId) {
                   `).join("")
                 : `
                   <p class="text-gray-500 text-sm mb-2">No cover letters uploaded.</p>
-                  <label class="text-sm block mb-1" for="cover-link">Cover letter link (optional)</label>
-                  <input id="cover-link" name="cover_letter_link" type="url" class="w-full p-2 border rounded" placeholder="https://..." />
                 `
             }
           </div>
@@ -254,7 +252,7 @@ export async function renderApply(container, jobId) {
         const messageEl = document.getElementById("applyMessage");
         const formData = new FormData(e.target);
         const selectedResume = formData.get("resume") || formData.get("resume_link");
-        const selectedCover = formData.get("cover_letter") || formData.get("cover_letter_link") || "";
+        const selectedCover = formData.get("cover_letter") || "";
         const compliance = {
           gender: formData.get('compliance_gender') || '',
           race: formData.get('compliance_race') || '',

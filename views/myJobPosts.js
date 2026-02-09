@@ -1,8 +1,15 @@
 import { CONFIG } from '../config.js';
 
 export function renderMyJobPosts(container) {
+  const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
+  const paid = params.get('paid');
+  const status = params.get('status');
+  const phase1Free = CONFIG.JOBS_REQUIRE_PAYMENT === false;
+
   container.innerHTML = `
     <div class="max-w-4xl mx-auto px-4">
+      ${paid ? `<div class="mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">Payment successful. Your job is ready to review or publish.</div>` : ''}
+      ${status === 'free' ? `<div class="mb-4 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded px-3 py-2">Free post created as a draft. You can publish it from your dashboard.</div>` : ''}
       <div class="flex items-center justify-between mb-4">
         <h1 class="text-2xl font-bold">${CONFIG.JOB_COPY?.MY_POSTS_TITLE || 'My Job Posts'}</h1>
         <a href="/#post" class="text-purple px-4 py-2 rounded">Add Job</a>
@@ -47,9 +54,21 @@ export function renderMyJobPosts(container) {
   const statusFilter = container.querySelector('#statusFilter');
   const sortSelect = container.querySelector('#sortSelect');
 
-  fetch('/api/user-jobs')
-    .then(res => res.json())
+  fetch('/api/user-jobs', { credentials: 'include' })
+    .then(async res => {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = data?.error || data?.message || 'Please log in to view your job posts.';
+        jobsContainer.innerHTML = `
+          <div class="text-sm text-rose-600">${msg}</div>
+          <a href="/#login" class="text-sm text-indigo-600 hover:underline">Go to login</a>
+        `;
+        return null;
+      }
+      return data;
+    })
     .then(data => {
+      if (!data) return;
       let jobs = data;
 
       const applyFilters = () => {
@@ -119,8 +138,9 @@ export function renderMyJobPosts(container) {
                 <div class="flex items-center justify-between">
                   <h2 class="text-lg font-semibold">${job.title || job.name}</h2>
                   <div class="flex items-center space-x-2">
+                    ${job.status && job.status !== 'publish' ? `<span class="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded">Draft</span>` : `<span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded">Live</span>`}
                     ${featured ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">Featured</span>` : ''}
-                    ${!paid ? `<span class="text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded">Unpaid</span>` : ''}
+                    ${(!phase1Free && !paid) ? `<span class="text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded">Unpaid</span>` : ''}
                   </div>
                 </div>
                 <p class="text-sm text-gray-600">${job.summary || ''}</p>

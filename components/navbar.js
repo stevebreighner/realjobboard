@@ -64,6 +64,11 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     font-size: 1.5rem;
     color: #4f46e5;
     cursor: pointer;
+    box-shadow: none;
+  }
+  .menu-toggle:hover {
+    background: none;
+    border: none;
   }
   .menu-toggle:focus,
   .menu-toggle:focus-visible {
@@ -118,8 +123,11 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
       <div id="menu" class="menu">
         <a href="/#list" class="nav-link">${CONFIG.COMPANY_BUSINESS_THING_PLURAL}</a>
         ${isEmployer ? `<a href="/#post" class="nav-link">Post a ${CONFIG.COMPANY_BUSINESS_THING}</a>` : ''}
+        ${isEmployer ? `<a href="/#my-job-posts" class="nav-link">${CONFIG.JOB_COPY?.MY_POSTS_TITLE || 'My Job Posts'}</a>` : ''}
         ${isSiteAdmin ? `<a href="/#admin" class="nav-link">Admin</a>` : ''}
         ${isLoggedIn ? '<a href="/#profile" class="nav-link">Profile</a>' : ''}
+        ${isLoggedIn && !isEmployer ? `<a href="/#saved-searches" class="nav-link">${CONFIG.JOB_COPY?.SAVED_SEARCHES_TITLE || 'Saved Searches'}</a>` : ''}
+        ${isLoggedIn && !isEmployer ? `<a href="/#myApplications" class="nav-link">${CONFIG.JOB_COPY?.MY_APPLICATIONS_TITLE || 'My Applications'}</a>` : ''}
         ${isLoggedIn
           ? '<a href="#" class="nav-link" id="logoutLink">Logout</a>'
           : '<a href="/#login" class="nav-link">Login</a>'
@@ -136,6 +144,15 @@ function bindNavbar(container, isLoggedIn) {
   toggle?.addEventListener('click', () => {
     menu.classList.toggle('show');
   });
+
+  const closeMenu = (evt) => {
+    if (!menu || !menu.classList.contains('show')) return;
+    const target = evt.target;
+    if (menu.contains(target) || toggle?.contains(target)) return;
+    menu.classList.remove('show');
+  };
+  document.addEventListener('click', closeMenu);
+  document.addEventListener('touchstart', closeMenu);
 
   // Logout handler
   if (isLoggedIn) {

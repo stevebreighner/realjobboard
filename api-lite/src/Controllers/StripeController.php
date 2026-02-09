@@ -121,9 +121,13 @@ class StripeController {
 
     $isFreeEligible = !$company['free_post_used'];
     $isFreePromo = $promo && ((int) $promo['is_free'] === 1 || (int) $promo['percent_off'] >= 100);
+    $settings = new \App\Models\SettingsModel();
+    $requirePayment = ($settings->get('jobs_require_payment') ?? '0') === '1';
 
-    if ($isFreeEligible || $isFreePromo) {
-      $jobId = $this->jobs->createDraft($payload['title'], $this->buildJobMeta($payload, $company, $user), 'draft');
+    if (!$requirePayment || $isFreeEligible || $isFreePromo) {
+      $meta = $this->buildJobMeta($payload, $company, $user);
+      $meta['job_payment_status'] = $requirePayment ? 'free' : 'phase1_free';
+      $jobId = $this->jobs->createDraft($payload['title'], $meta, 'draft');
       if ($isFreeEligible) {
         $this->companies->markFreeUsed($companyId);
       }
@@ -255,6 +259,7 @@ class StripeController {
       'owner_id' => (string) ($user['id'] ?? ''),
       'owner_email' => (string) ($user['email'] ?? ''),
       'company_slug' => $company['slug'] ?? '',
+      'company_id' => (string) ($company['id'] ?? ''),
     ];
   }
 }

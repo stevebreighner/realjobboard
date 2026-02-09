@@ -52,6 +52,10 @@ class JobPostController {
       http_response_code(403);
       return [];
     }
+    if (($user['email_verified'] ?? 0) != 1 && $role === 'employer') {
+      http_response_code(403);
+      return ['error' => 'Email verification required.'];
+    }
     return $user;
   }
 
@@ -103,7 +107,22 @@ class JobPostController {
     $user = $this->requireEmployer();
     if (empty($user)) return ['error' => 'Not logged in'];
     $jobs = $this->jobs->listByOwner((int) $user['id']);
-    return $jobs;
+    $companyId = (int) ($this->userMeta->getMeta((int) $user['id'], 'company_id') ?? 0);
+    if ($companyId) {
+      $jobs = array_merge($jobs, $this->jobs->listByCompanyId($companyId));
+    }
+    $companyName = trim((string) ($user['company_name'] ?? ''));
+    if ($companyName) {
+      $jobs = array_merge($jobs, $this->jobs->listByCompanyName($companyName));
+    }
+    // De-duplicate by id
+    $unique = [];
+    foreach ($jobs as $job) {
+      $id = $job['id'] ?? null;
+      if ($id === null) continue;
+      $unique[$id] = $job;
+    }
+    return array_values($unique);
   }
 
   public function detail(): array {
@@ -125,6 +144,9 @@ class JobPostController {
       return ['error' => 'Access denied'];
     }
 
+    // Auto-advance submitted applications to reviewing when employer opens applicants
+    $this->applications->markReviewingByJob($jobId);
+
     $apps = $this->applications->listByJob($jobId);
     $appIds = array_map(fn($a) => (int) $a['id'], $apps);
     $complianceMap = $this->applications->getMetaByApplications($appIds, 'compliance');
@@ -138,7 +160,11 @@ class JobPostController {
       $complianceAnswers = null;
       $metaRow = $complianceMap[(int) $app['id']] ?? null;
       if ($metaRow && !empty($metaRow['value'])) {
-        $ciphertext = base64_decode((string) $metaRow['value'], true);
+        $rawValue = (string) $metaRow['value'];
+        if ((function_exists('str_starts_with') ? \str_starts_with($rawValue, 'b64:') : (substr($rawValue, 0, 4) === 'b64:'))) {
+          $rawValue = substr($rawValue, 4);
+        }
+        $ciphertext = base64_decode($rawValue, true);
         if ($ciphertext !== false) {
           $decrypted = $this->crypto->decrypt($ciphertext, (string) $metaRow['iv'], (string) $metaRow['tag']);
         } else {
@@ -223,6 +249,7 @@ class JobPostController {
       if ($company) {
         $meta['company'] = $meta['company'] ?? $company['name'];
         $meta['company_slug'] = $meta['company_slug'] ?? $company['slug'];
+        $meta['company_id'] = $meta['company_id'] ?? (string) $company['id'];
       }
     }
     $meta['owner_id'] = (string) $user['id'];

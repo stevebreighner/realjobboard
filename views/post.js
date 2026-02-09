@@ -1,4 +1,5 @@
 import { CONFIG, US_STATES } from '../config.js';
+import { getUserProfileCached } from '../utils/session.js';
 import { attachFieldHints, markInvalidField } from '../utils/formHints.js';
 
 export function renderPost(container) {
@@ -125,15 +126,31 @@ export function renderPost(container) {
         <input type="checkbox" name="tos_accept" value="1" required class="mt-1" />
         <span>I agree to the <a href="/#terms" class="underline">Terms & Disclaimer</a>.</span>
       </label>
-      <p class="text-xs text-gray-500">Need a company? Add it in <a href="/#profile" class="underline">Profile → Company page</a>.</p>
+      <p class="text-xs text-gray-500">Please add your company name before posting a job. Update it on the <a href="/#profile" id="profileCompanyLink" class="underline">Profile → Company page</a>.</p>
       <button type="submit" class="text-purple px-4 py-2 rounded">${CONFIG.POST_PAGE_COPY?.CONTINUE_PAYMENT || 'Continue to Payment'}</button>
     </form>
     <p class="mt-4"><a href="#" id="postBackLink" class="text-blue-600 hover:underline">${CONFIG.POST_PAGE_COPY?.BACK_TO_LIST || `Back to ${CONFIG.COMPANY_BUSINESS_THING_PLURAL}`}</a></p>
   `;
 
   const form = container.querySelector('#postForm');
+
+  const formatCurrencyInput = (el) => {
+    if (!el) return;
+    el.addEventListener('blur', () => {
+      const raw = (el.value || '').toString().replace(/[^0-9.]/g, '');
+      if (!raw) {
+        el.value = '';
+        return;
+      }
+      const num = parseFloat(raw);
+      if (isNaN(num)) return;
+      const decimals = Number.isInteger(num) ? 0 : 2;
+      el.value = new Intl.NumberFormat('en-US', { maximumFractionDigits: decimals, minimumFractionDigits: decimals }).format(num);
+    });
+  };
   const postError = container.querySelector('#postError');
   const postSuccess = container.querySelector('#postSuccess');
+  const profileCompanyLink = container.querySelector('#profileCompanyLink');
   const complianceEnabled = form.querySelector('#complianceEnabled');
   const complianceOptions = form.querySelector('#complianceOptions');
   complianceEnabled?.addEventListener('change', () => {
@@ -181,7 +198,7 @@ export function renderPost(container) {
         const data = await res.json();
         const place = data.places && data.places[0];
         if (!place) return;
-        if (!cityInput.value) cityInput.value = place['place name'] || '';
+        if (place['place name']) cityInput.value = place['place name'];
         const stateCode = place['state abbreviation'];
         if (stateCode) {
           stateSelect.value = stateCode;
@@ -194,6 +211,44 @@ export function renderPost(container) {
     zipInput.addEventListener('change', lookup);
   };
   setupZipLookup();
+
+  // Restore draft if present
+  const savedDraftRaw = sessionStorage.getItem('postDraft');
+  if (savedDraftRaw) {
+    try {
+      const draft = JSON.parse(savedDraftRaw);
+      if (draft && typeof draft === 'object') {
+        Object.entries(draft).forEach(([key, val]) => {
+          const input = form.querySelector(`[name="${key}"]`);
+          if (!input) return;
+          if (input.type === 'checkbox') {
+            input.checked = val === true || val === '1' || val === 1;
+          } else if (input.type === 'radio') {
+            const radios = form.querySelectorAll(`[name="${key}"]`);
+            radios.forEach(r => { if (r.value === val) r.checked = true; });
+          } else {
+            input.value = val;
+          }
+        });
+      }
+    } catch (err) {
+      // ignore
+    }
+  }
+
+  const saveDraft = () => {
+    const fd = new FormData(form);
+    const draft = {};
+    fd.forEach((value, key) => {
+      if (draft[key]) return;
+      draft[key] = value;
+    });
+    sessionStorage.setItem('postDraft', JSON.stringify(draft));
+  };
+
+  profileCompanyLink?.addEventListener('click', () => {
+    saveDraft();
+  });
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(form);
@@ -201,6 +256,17 @@ export function renderPost(container) {
 
     postError.textContent = '';
     postSuccess.textContent = '';
+    let profile = null;
+    try {
+      profile = await getUserProfileCached({ maxAgeMs: 15000, light: false });
+    } catch (err) {}
+    const companyName = (profile?.company || profile?.company_name || '').trim();
+    if (!companyName) {
+      postError.textContent = 'Please add your company name before posting a job. Update it on your Profile → Company page.';
+      saveDraft();
+      window.location.hash = '#profile';
+      return;
+    }
     const country = (formData.country || '').trim();
     const state = (formData.state || '').trim();
     const zip = (formData.zip || '').trim();
@@ -251,6 +317,8 @@ export function renderPost(container) {
     const rateMax = (formData.rate_max || '').toString().replace(/[^0-9.]/g, '');
     const rateMinEl = form.querySelector('input[name="rate_min"]');
     const rateMaxEl = form.querySelector('input[name="rate_max"]');
+    formatCurrencyInput(rateMinEl);
+    formatCurrencyInput(rateMaxEl);
     if ((rateMin && isNaN(rateMin)) || (rateMax && isNaN(rateMax))) {
       postError.textContent = 'Please enter a valid rate range.';
       markInvalidField(rateMinEl, 'Enter a valid number.');
@@ -268,11 +336,22 @@ export function renderPost(container) {
     }
 
     try {
-      const configRes = await fetch('/api/stripe-config');
-      const stripeConfig = await configRes.json();
-      if (!stripeConfig?.publishableKey) {
-        postError.textContent = 'Stripe is not configured yet. Please contact support.';
-        return;
+      let requirePayment = CONFIG.JOBS_REQUIRE_PAYMENT !== false;
+      try {
+        const flagRes = await fetch('/api/dev-flags?_=' + Date.now(), { credentials: 'include' });
+        const flagData = await flagRes.json();
+        if (flagRes.ok && typeof flagData.jobs_require_payment === 'boolean') {
+          requirePayment = flagData.jobs_require_payment;
+        }
+      } catch (err) {}
+      let stripeConfig = null;
+      if (requirePayment) {
+        const configRes = await fetch('/api/stripe-config');
+        stripeConfig = await configRes.json();
+        if (!stripeConfig?.publishableKey) {
+          postError.textContent = 'Stripe is not configured yet. Please contact support.';
+          return;
+        }
       }
 
       const tier = formData.job_tier || (tiers[0]?.id || 'standard');
@@ -310,7 +389,15 @@ export function renderPost(container) {
 
       if (checkoutData.free && checkoutData.job_id) {
         postSuccess.textContent = CONFIG.JOB_COPY?.DRAFT_CREATED || 'Job draft created. You can publish it from your dashboard.';
-        window.location.hash = '#my-job-posts';
+        sessionStorage.removeItem('postDraft');
+        window.location.hash = '#my-job-posts?status=free';
+        return;
+      }
+
+      if (!requirePayment) {
+        postSuccess.textContent = CONFIG.JOB_COPY?.DRAFT_CREATED || 'Job draft created. You can publish it from your dashboard.';
+        sessionStorage.removeItem('postDraft');
+        window.location.hash = '#my-job-posts?status=free';
         return;
       }
 
@@ -320,6 +407,7 @@ export function renderPost(container) {
       }
 
       const stripe = Stripe(stripeConfig.publishableKey);
+      sessionStorage.removeItem('postDraft');
       const { error } = await stripe.redirectToCheckout({ sessionId: checkoutData.sessionId });
       if (error) {
         postError.textContent = error.message || 'Stripe checkout failed.';

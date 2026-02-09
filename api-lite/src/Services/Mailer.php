@@ -19,7 +19,16 @@ class Mailer {
       $body = $html . "\n\n" . nl2br(htmlspecialchars($text, ENT_QUOTES));
     }
 
-    return @mail($to, $subject, $body, implode("\r\n", $headers));
+    $ok = @mail($to, $subject, $body, implode("\r\n", $headers));
+    if (!$ok) {
+      $logDir = __DIR__ . '/../../logs';
+      if (!is_dir($logDir)) {
+        @mkdir($logDir, 0755, true);
+      }
+      $line = sprintf("[%s] Mail failed to %s subject=%s\n", date('c'), $to, $subject);
+      @file_put_contents($logDir . '/mail.log', $line, FILE_APPEND);
+    }
+    return $ok;
   }
 
   private function formatFrom(string $name, string $address): string {

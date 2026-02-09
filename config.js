@@ -94,6 +94,7 @@ export const CONFIG = {
         blurb: 'Featured placement + verified badge.',
       },
     ],
+    JOBS_REQUIRE_PAYMENT: false,
     JOB_COPY: {
       SINGULAR: 'Job',
       PLURAL: 'Jobs',

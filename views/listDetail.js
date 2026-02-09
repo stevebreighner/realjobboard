@@ -64,6 +64,7 @@ export async function renderListDetail(container, id) {
     const company = rawCompany && rawCompany.includes('@') ? '' : rawCompany;
     const companySite = data.meta?.company_site || '';
     const companySlug = data.meta?.company_slug || '';
+    const companyId = data.meta?.company_id || '';
     const companyLink = companySlug ? `/#company/${encodeURIComponent(companySlug)}` : '';
     const safeCompanySite = safeUrl(companySite);
     const safeTitle = escapeHtml(data.title || data.name || '');
@@ -175,7 +176,7 @@ export async function renderListDetail(container, id) {
             <h1 class="text-2xl font-semibold text-slate-900 mt-2">${safeTitle}</h1>
           </div>
           <div class="flex items-center gap-2">
-            <button id="saveJobBtn" class="text-xs px-3 py-1.5 rounded border border-indigo-300 text-indigo-700 hover:border-indigo-500 hover:bg-indigo-50 transition">Save</button>
+            <button id="saveJobBtn" class="text-xs px-3 py-1.5 rounded border border-indigo-300 text-indigo-700 hover:border-indigo-500 transition">Save</button>
             ${isFeatured ? `<span class="text-amber-500 text-lg" title="Featured" aria-label="Featured">★</span>` : ''}
           </div>
         </div>
@@ -183,6 +184,7 @@ export async function renderListDetail(container, id) {
           ${formatRate() ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>Rate:</strong> ${formatRate()}</span>` : ''}
           ${employmentType ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>Employment:</strong> ${escapeHtml(employmentType)}</span>` : ''}
           ${company ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>${CONFIG.JOB_COPY?.COMPANY_LABEL || 'Company'}</strong> ${safeCompanySlug ? `<a class="text-indigo-600 hover:underline" href="/#company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany}</span>` : ''}
+          ${companyId ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>Company ID:</strong> ${escapeHtml(companyId)}</span>` : ''}
           ${locationLine.trim() ? `<span class="px-3 py-1.5 rounded-full bg-slate-100" id="jobLocationLine"><strong>Location:</strong> ${escapeHtml(locationLine)}</span>` : ''}
         </div>
         <div class="prose mb-4">${safeDesc}</div>
@@ -194,6 +196,7 @@ export async function renderListDetail(container, id) {
           ${data.meta ? `
             <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               ${Object.entries(data.meta)
+                .filter(([key]) => !['owner_email', 'owner_id', 'company_email'].includes(key))
                 .map(([key, val]) => {
                   const labelMap = {
                     job_type: 'Job Type',
@@ -219,7 +222,7 @@ export async function renderListDetail(container, id) {
           ` : ''}
         </details>
         <div class="mt-4 flex flex-wrap gap-3">
-          <button id="submitAction" class="text-indigo-700 border border-indigo-300 px-4 py-2 rounded hover:border-indigo-500 hover:bg-indigo-50 transition">
+          <button id="submitAction" class="text-indigo-700 border border-indigo-300 px-4 py-2 rounded hover:border-indigo-500 transition">
             ${CONFIG.SUBMIT_LABEL}
           </button>
         </div>
@@ -230,12 +233,12 @@ export async function renderListDetail(container, id) {
           <h2 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.MESSAGE_EMPLOYER_TITLE || 'Message the Employer'}</h2>
           <p class="text-xs text-gray-500 mb-3">This sends an email to the employer. Your email will be included as the reply-to.</p>
           ${isLoggedIn ? `
-            <button id="openMessageModal" class="text-sm border border-indigo-300 text-indigo-700 px-3 py-1.5 rounded hover:border-indigo-500 hover:bg-indigo-50 transition">${CONFIG.JOB_COPY?.OPEN_CONTACT_FORM || 'Open contact form'}</button>
+            <button id="openMessageModal" class="text-sm border border-indigo-300 text-indigo-700 px-3 py-1.5 rounded hover:border-indigo-500 transition">${CONFIG.JOB_COPY?.OPEN_CONTACT_FORM || 'Open contact form'}</button>
             <div id="messageModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
               <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-4">
                 <div class="flex items-center justify-between mb-3">
                   <h3 class="text-lg font-semibold">${CONFIG.JOB_COPY?.CONTACT_EMPLOYER_TITLE || 'Contact Employer'}</h3>
-                  <button id="closeMessageModal" class="text-sm border border-gray-300 text-gray-600 px-2 py-1 rounded hover:bg-gray-50">${CONFIG.JOB_COPY?.CLOSE_LABEL || 'Close'}</button>
+                  <button id="closeMessageModal" class="btn-close text-slate-600 hover:text-slate-900 text-xl leading-none" aria-label="Close">×</button>
                 </div>
                 <form id="employerMessageForm" class="space-y-3">
                   <input type="text" name="name" class="w-full p-2 border rounded" placeholder="Your name" required />
@@ -245,7 +248,7 @@ export async function renderListDetail(container, id) {
                   </select>
                   <textarea name="message" class="w-full p-2 border rounded" rows="4" placeholder="Your message" required></textarea>
                   <div id="turnstile-container" class="mt-2"></div>
-                  <button type="submit" class="text-indigo-700 border border-indigo-300 px-4 py-2 rounded hover:border-indigo-500 hover:bg-indigo-50 transition">${CONFIG.JOB_COPY?.SEND_MESSAGE || 'Send Message'}</button>
+                  <button type="submit" class="text-indigo-700 border border-indigo-300 px-4 py-2 rounded hover:border-indigo-500 transition">${CONFIG.JOB_COPY?.SEND_MESSAGE || 'Send Message'}</button>
                   <p id="employerMessageStatus" class="text-sm"></p>
                 </form>
               </div>

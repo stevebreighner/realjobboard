@@ -1,8 +1,24 @@
-import { US_STATES } from '../config.js';
+const getDevFlags = async () => {
+  if (window.__dev_flags) return window.__dev_flags;
+  try {
+    const res = await fetch('/api/dev-flags?_=' + Date.now(), { credentials: 'include' });
+    const data = await res.json();
+    if (res.ok) {
+      window.__dev_flags = data;
+      return data;
+    }
+  } catch (err) {}
+  window.__dev_flags = { dev_mode: 0 };
+  return window.__dev_flags;
+};
+
+import { CONFIG, US_STATES } from '../config.js';
 
 export async function renderMyJobPostDetail(container, jobId) {
   container.innerHTML = `<p>Loading job details...</p>`;
-
+  const renderError = (msg) => {
+    container.innerHTML = `<div class=\"max-w-3xl mx-auto px-4 py-6 text-rose-600\">${msg}</div>`;
+  };
   try {
     const response = await fetch(`/api/user-job-detail?id=${jobId}`, {
       credentials: 'include'
@@ -10,7 +26,8 @@ export async function renderMyJobPostDetail(container, jobId) {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || 'Failed to load job details');
+      renderError(data.message || 'Failed to load job details');
+      return;
     }
 
     const applicants = Array.isArray(data.applicants) ? data.applicants : [];
@@ -37,7 +54,27 @@ export async function renderMyJobPostDetail(container, jobId) {
     const cityState = [city, state].filter(Boolean).join(', ');
     const locationLine = [cityState, zip].filter(Boolean).join(' ');
     const locationFull = [addressLine, locationLine, country].filter(Boolean).join(' • ');
+    const setStatusBadge = (statusVal) => {
+      if (!jobStatusBadge) return;
+      const isLive = statusVal === 'publish';
+      jobStatusBadge.textContent = isLive ? 'Live (Published)' : 'Draft (Pending approval)';
+      jobStatusBadge.className = `inline-flex items-center px-2 py-1 rounded-full text-xs ${isLive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}`;
+    };
 
+
+    const industryOptions = (() => {
+      const fieldDef = (CONFIG.fields || []).find(f => f.name === 'field' && f.type === 'select');
+      return Array.isArray(fieldDef?.options) ? fieldDef.options : [];
+    })();
+    const renderIndustryOptions = (selected) => {
+      const opts = industryOptions.map(opt => {
+        const value = typeof opt === 'string' ? opt : (opt.value || opt.code);
+        const label = typeof opt === 'string' ? opt : (opt.label || opt.name || opt.value);
+        const isSel = (selected || '') === value;
+        return `<option value="${value}" ${isSel ? 'selected' : ''}>${label}</option>`;
+      }).join('');
+      return `<option value="" ${!selected ? 'selected' : ''}>Select industry</option>` + opts + `<option value="other" ${selected && !industryOptions.map(o => (o.value || o.code || o)).includes(selected) ? 'selected' : ''}>Other</option>`;
+    };
     const renderStateOptions = (selected) => US_STATES.map(s => {
       const isSelected = (selected || '').toUpperCase() === s.code;
       return `<option value="${s.code}" ${isSelected ? 'selected' : ''}>${s.name}</option>`;
@@ -67,265 +104,304 @@ export async function renderMyJobPostDetail(container, jobId) {
       return `${range}${typeLabel ? ` ${typeLabel}` : ''}`.trim();
     };
 
+    const fallbackTemplates = [
+      { title: 'Application received', body: 'Thanks for applying. We are reviewing your application and will be in touch soon.' },
+      { title: 'Interview request', body: 'We’d like to schedule a quick interview. Please reply with a few times that work for you this week.' },
+      { title: 'Request more info', body: 'Could you share a few more details about your recent experience with this role?' },
+      { title: 'Not selected', body: 'We appreciate your time. We are moving forward with other candidates at this stage.' },
+    ];
+
+
+
     container.innerHTML = `
-      <div class="max-w-4xl mx-auto px-4">
-        <div class="flex items-center justify-between mb-4">
-          <h1 class="text-2xl font-bold" id="jobTitle">${data.title}</h1>
-          <div class="space-x-2">
-            <button id="createJobBtn" class="text-sm text-indigo-600 hover:underline">Create New</button>
-            <button id="editJobBtn" class="text-sm text-blue-600 hover:underline">Edit</button>
-            <button id="deleteJobBtn" class="text-sm text-red-600 hover:underline">Delete</button>
+      <div class="max-w-5xl mx-auto px-4 py-6 space-y-6">
+        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div>
+            <h1 class="text-2xl font-semibold text-slate-900">${data.title || 'Job'}</h1>
+            <div class="text-sm text-slate-600 mt-1">
+              <span class="font-medium">${companyName || 'Company'}</span>
+              ${locationFull ? ` • ${locationFull}` : ''}
+            </div>
+            <div class="text-xs text-slate-500 mt-2 flex flex-wrap items-center gap-2">
+              <span id="jobStatusBadge" class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-700"></span>
+              ${isFeatured ? '<span class="text-amber-600">★ Featured</span>' : ''}
+              ${tierLabel ? `<span class="text-slate-500">Tier: ${tierLabel}</span>` : ''}
+              ${paymentStatus ? `<span class="text-slate-500">Payment: ${paymentStatus}</span>` : ''}
+              ${getMeta('company_id') ? `<span class="text-slate-500">Company ID: ${getMeta('company_id')}</span>` : ''}
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="editJobBtn" class="px-3 py-1.5 border rounded text-sm">Edit</button>
+            <button id="createJobBtn" class="px-3 py-1.5 border rounded text-sm">Add Job</button>
+            <button id="deleteJobBtn" class="px-3 py-1.5 border rounded text-sm text-rose-600 border-rose-200">Delete</button>
           </div>
         </div>
 
-        <div id="jobView">
-          ${paymentStatus && paymentStatus !== 'paid' ? `
-            <div class="mb-4 border border-amber-200 bg-amber-50 text-amber-900 rounded p-3">
-              <div class="font-semibold">Payment required</div>
-              <div class="text-sm">This job is saved as a draft until payment is completed.</div>
-              <button id="payNowBtn" class="mt-2 text-sm text-purple px-3 py-1 rounded">Pay now</button>
+        <div id="jobView" class="border rounded-xl p-5 bg-white shadow-sm">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-700">
+            <div>
+              <div class="text-xs uppercase tracking-wide text-slate-500">Industry</div>
+              <div class="font-medium">${jobField || '—'}</div>
+            </div>
+            <div>
+              <div class="text-xs uppercase tracking-wide text-slate-500">Employment Type</div>
+              <div class="font-medium">${employmentType || '—'}</div>
+            </div>
+            <div>
+              <div class="text-xs uppercase tracking-wide text-slate-500">Rate</div>
+              <div class="font-medium">${formatRate(rateMin, rateMax, rateType)}</div>
+            </div>
+            <div>
+              <div class="text-xs uppercase tracking-wide text-slate-500">Status</div>
+              <div class="font-medium">${data.status || 'draft'}</div>
+            </div>
+          </div>
+          <div class="mt-4 text-sm text-slate-700 whitespace-pre-wrap">${rawContent || getMeta('description') || ''}</div>
+          ${paymentStatus === 'unpaid' ? `
+            <div class="mt-4">
+              <button id="payNowBtn" class="px-3 py-1.5 border rounded text-sm">Continue to payment</button>
             </div>
           ` : ''}
-          <div class="text-gray-700 mb-4" id="jobContent">${data.content}</div>
-          ${(tierLabel || paymentStatus) ? `<p class="text-sm text-gray-600 mb-1">Tier: ${tierLabel || tierId}${isFeatured ? ' • Featured' : ''}</p>` : ''}
-          <p class="text-sm text-gray-600 mb-1 ${jobField ? '' : 'hidden'}" id="jobField">Industry: ${jobField || ''}</p>
-          <p class="text-sm text-gray-600 mb-1 ${employmentType ? '' : 'hidden'}" id="jobEmployment">Employment: ${employmentType || ''}</p>
-          <p class="text-sm text-gray-600 mb-1" id="jobRate">Rate: ${formatRate(rateMin, rateMax, rateType)}</p>
-          <p class="text-sm text-gray-600 mb-2 ${locationFull ? '' : 'hidden'}" id="jobLocation">${locationFull || ''}</p>
-          <p class="text-sm text-gray-500 mb-4">Posted on: ${new Date(data.date).toLocaleDateString()}</p>
         </div>
 
-        <div id="jobEdit" class="hidden">
-          <label class="block text-sm font-semibold mb-1">Title</label>
-          <input id="editTitle" class="w-full p-2 border rounded mb-3" value="${data.title}" />
-
-          <label class="block text-sm font-semibold mb-1">Industry (optional)</label>
-          <input id="editField" class="w-full p-2 border rounded mb-3" value="${jobField || ''}" />
-
-          <label class="block text-sm font-semibold mb-1">Description</label>
-          <textarea id="editContent" class="w-full p-2 border rounded mb-3" rows="8">${rawContent}</textarea>
-
-          <label class="block text-sm font-semibold mb-1">Employment Type</label>
-          <select id="editEmploymentType" class="w-full p-2 border rounded mb-3">
-            <option value="" disabled ${employmentType ? '' : 'selected'}>Select Employment Type</option>
-            <option value="full_time">Full-time</option>
-            <option value="part_time">Part-time</option>
-            <option value="temp">Temp</option>
-            <option value="contract">Contract</option>
-            <option value="internship">Internship</option>
-            <option value="seasonal">Seasonal</option>
-          </select>
-
-          <label class="block text-sm font-semibold mb-1">Rate Type (optional)</label>
-          <select id="editRateType" class="w-full p-2 border rounded mb-3">
-            <option value="undisclosed" ${!rateType || rateType === 'undisclosed' ? 'selected' : ''}>Undisclosed</option>
-            <option value="hourly">Hourly</option>
-            <option value="salary">Salary</option>
-            <option value="contract">Contract</option>
-            <option value="commission">Commission</option>
-          </select>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+        <div id="jobEdit" class="hidden border rounded-xl p-5 bg-white shadow-sm">
+          <h2 class="text-lg font-semibold mb-4">Edit job</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-semibold mb-1">Rate Min (optional)</label>
+              <label class="text-sm text-slate-600">Title</label>
+              <input id="editTitle" class="w-full p-2 border rounded" value="${data.title || ''}" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">Industry</label>
+              <select id="editField" class="w-full p-2 border rounded">${renderIndustryOptions(jobField)}</select>
+              <input id="editFieldOther" class="w-full p-2 border rounded mt-2 ${jobField && !industryOptions.includes(jobField) ? '' : 'hidden'}" placeholder="Other industry" value="${jobField && !industryOptions.includes(jobField) ? jobField : ''}" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">Employment type</label>
+              <select id="editEmploymentType" class="w-full p-2 border rounded">
+                <option value="">Select</option>
+                <option value="full_time" ${employmentType === 'full_time' ? 'selected' : ''}>Full-time</option>
+                <option value="part_time" ${employmentType === 'part_time' ? 'selected' : ''}>Part-time</option>
+                <option value="contract" ${employmentType === 'contract' ? 'selected' : ''}>Contract</option>
+                <option value="temporary" ${employmentType === 'temporary' ? 'selected' : ''}>Temporary</option>
+                <option value="internship" ${employmentType === 'internship' ? 'selected' : ''}>Internship</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">Rate type</label>
+              <select id="editRateType" class="w-full p-2 border rounded">
+                <option value="undisclosed" ${rateType === 'undisclosed' ? 'selected' : ''}>Undisclosed</option>
+                <option value="hourly" ${rateType === 'hourly' ? 'selected' : ''}>Hourly</option>
+                <option value="salary" ${rateType === 'salary' ? 'selected' : ''}>Salary</option>
+                <option value="contract" ${rateType === 'contract' ? 'selected' : ''}>Contract</option>
+                <option value="commission" ${rateType === 'commission' ? 'selected' : ''}>Commission</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">Rate min</label>
               <input id="editRateMin" class="w-full p-2 border rounded" value="${rateMin || ''}" />
             </div>
             <div>
-              <label class="block text-sm font-semibold mb-1">Rate Max (optional)</label>
+              <label class="text-sm text-slate-600">Rate max</label>
               <input id="editRateMax" class="w-full p-2 border rounded" value="${rateMax || ''}" />
             </div>
-          </div>
-
-          <h3 class="text-sm font-semibold mb-1">Location (USA Only)</h3>
-          <label class="block text-sm font-semibold mb-1">Street Address (optional)</label>
-          <input id="editStreet1" class="w-full p-2 border rounded" value="${street1 || ''}" />
-          <p class="text-xs text-gray-500 mb-3">Include a street number and name (e.g., 111 N Main St).</p>
-
-          <label class="block text-sm font-semibold mb-1">Unit/Suite (optional)</label>
-          <input id="editStreet2" class="w-full p-2 border rounded mb-3" value="${street2 || ''}" />
-
-          <label class="block text-sm font-semibold mb-1">City</label>
-          <input id="editCity" class="w-full p-2 border rounded mb-3" value="${city || ''}" />
-
-          <label class="block text-sm font-semibold mb-1">State</label>
-          <select id="editState" class="w-full p-2 border rounded mb-3">
-            <option value="" disabled ${state ? '' : 'selected'}>Select State</option>
-            ${renderStateOptions(state)}
-          </select>
-
-          <label class="block text-sm font-semibold mb-1">ZIP Code</label>
-          <input id="editZip" class="w-full p-2 border rounded mb-3" value="${zip || ''}" />
-
-          <label class="block text-sm font-semibold mb-1">Country</label>
-          <input id="editCountry" class="w-full p-2 border rounded mb-3" value="${country || 'United States'}" />
-
-          <div class="flex items-center space-x-3 mb-3">
-            <button id="editPreviewBtn" class="text-sm text-indigo-600 hover:underline">Preview</button>
-            <span class="text-xs text-gray-500">Preview shows rendered HTML</span>
-          </div>
-          <div id="editPreview" class="hidden border rounded p-3 mb-3 bg-gray-50"></div>
-
-          <label class="block text-sm font-semibold mb-1">Status</label>
-          <select id="editStatus" class="w-full p-2 border rounded mb-3">
-            <option value="publish" selected>Publish</option>
-            <option value="draft">Draft</option>
-          </select>
-
-          <div class="flex items-center space-x-3">
-            <button id="saveJobBtn" class="text-purple px-4 py-2 rounded">Save</button>
-            <button id="cancelEditBtn" class="text-gray-600 hover:underline">Cancel</button>
-            <span id="jobEditMessage" class="text-sm"></span>
-          </div>
-        </div>
-
-        <div id="createJob" class="hidden mt-6">
-          <h2 class="text-xl font-semibold mb-2">Create New Job</h2>
-          <label class="block text-sm font-semibold mb-1">Title</label>
-          <input id="createTitle" class="w-full p-2 border rounded mb-3" placeholder="Job title" />
-
-          <label class="block text-sm font-semibold mb-1">Field (e.g. Tech, Auto)</label>
-          <input id="createField" class="w-full p-2 border rounded mb-3" placeholder="Industry or field" />
-
-          <label class="block text-sm font-semibold mb-1">Description</label>
-          <textarea id="createContent" class="w-full p-2 border rounded mb-3" rows="8" placeholder="Job description"></textarea>
-
-          <label class="block text-sm font-semibold mb-1">Employment Type</label>
-          <select id="createEmploymentType" class="w-full p-2 border rounded mb-3">
-            <option value="" disabled selected>Select Employment Type</option>
-            <option value="full_time">Full-time</option>
-            <option value="part_time">Part-time</option>
-            <option value="temp">Temp</option>
-            <option value="contract">Contract</option>
-            <option value="internship">Internship</option>
-            <option value="seasonal">Seasonal</option>
-          </select>
-
-          <label class="block text-sm font-semibold mb-1">Rate Type</label>
-          <select id="createRateType" class="w-full p-2 border rounded mb-3">
-            <option value="undisclosed" selected>Undisclosed</option>
-            <option value="hourly">Hourly</option>
-            <option value="salary">Salary</option>
-            <option value="contract">Contract</option>
-            <option value="commission">Commission</option>
-          </select>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
             <div>
-              <label class="block text-sm font-semibold mb-1">Rate Min</label>
-              <input id="createRateMin" class="w-full p-2 border rounded" placeholder="Min rate" />
+              <label class="text-sm text-slate-600">Street</label>
+              <input id="editStreet1" class="w-full p-2 border rounded" value="${street1 || ''}" />
             </div>
             <div>
-              <label class="block text-sm font-semibold mb-1">Rate Max</label>
-              <input id="createRateMax" class="w-full p-2 border rounded" placeholder="Max rate" />
+              <label class="text-sm text-slate-600">Street 2</label>
+              <input id="editStreet2" class="w-full p-2 border rounded" value="${street2 || ''}" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">City</label>
+              <input id="editCity" class="w-full p-2 border rounded" value="${city || ''}" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">State</label>
+              <select id="editState" class="w-full p-2 border rounded">${renderStateOptions(state)}</select>
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">ZIP</label>
+              <input id="editZip" class="w-full p-2 border rounded" value="${zip || ''}" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">Country</label>
+              <input id="editCountry" class="w-full p-2 border rounded" value="${country || 'United States'}" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">Status</label>
+              <select id="editStatus" class="w-full p-2 border rounded">
+                <option value="draft" ${data.status === 'draft' ? 'selected' : ''}>Draft</option>
+                <option value="publish" ${data.status === 'publish' ? 'selected' : ''}>Publish</option>
+              </select>
             </div>
           </div>
-
-          <h3 class="text-sm font-semibold mb-1">Location (USA Only)</h3>
-          <label class="block text-sm font-semibold mb-1">Street Address (optional)</label>
-          <input id="createStreet1" class="w-full p-2 border rounded" placeholder="Street address (optional)" />
-          <p class="text-xs text-gray-500 mb-3">Include a street number and name (e.g., 111 N Main St).</p>
-
-          <label class="block text-sm font-semibold mb-1">Unit/Suite (optional)</label>
-          <input id="createStreet2" class="w-full p-2 border rounded mb-3" placeholder="Unit / Suite (optional)" />
-
-          <label class="block text-sm font-semibold mb-1">City</label>
-          <input id="createCity" class="w-full p-2 border rounded mb-3" placeholder="City" />
-
-          <label class="block text-sm font-semibold mb-1">State</label>
-          <select id="createState" class="w-full p-2 border rounded mb-3">
-            <option value="" disabled selected>Select State</option>
-            ${renderStateOptions('')}
-          </select>
-
-          <label class="block text-sm font-semibold mb-1">ZIP Code</label>
-          <input id="createZip" class="w-full p-2 border rounded mb-3" placeholder="ZIP" />
-
-          <label class="block text-sm font-semibold mb-1">Country</label>
-          <input id="createCountry" class="w-full p-2 border rounded mb-3" value="United States" />
-
-          <div class="flex items-center space-x-3 mb-3">
-            <button id="createPreviewBtn" class="text-sm text-indigo-600 hover:underline">Preview</button>
-            <span class="text-xs text-gray-500">Preview shows rendered HTML</span>
-          </div>
-          <div id="createPreview" class="hidden border rounded p-3 mb-3 bg-gray-50"></div>
-
-          <label class="block text-sm font-semibold mb-1">Status</label>
-          <select id="createStatus" class="w-full p-2 border rounded mb-3">
-            <option value="publish" selected>Publish</option>
-            <option value="draft">Draft</option>
-          </select>
-
-          <div class="flex items-center space-x-3">
-            <button id="createSubmitBtn" class="text-purple px-4 py-2 rounded">Create</button>
-            <button id="createCancelBtn" class="text-gray-600 hover:underline">Cancel</button>
-            <span id="createMessage" class="text-sm"></span>
+          <div class="mt-4">
+            <label class="text-sm text-slate-600">Description</label>
+            <textarea id="editContent" class="w-full p-2 border rounded min-h-[140px]">${rawContent || ''}</textarea>
+            <div class="mt-2 flex items-center gap-2">
+              <button id="editPreviewBtn" class="px-3 py-1.5 border rounded text-sm">Preview</button>
+              <button id="saveJobBtn" class="px-3 py-1.5 border rounded text-sm">Save</button>
+              <button id="cancelEditBtn" class="px-3 py-1.5 border rounded text-sm">Cancel</button>
+            </div>
+            <div id="editPreview" class="mt-2 text-sm text-slate-600"></div>
+            <div id="jobEditMessage" class="mt-2 text-sm text-emerald-600"></div>
           </div>
         </div>
 
-        <div class="flex items-center justify-between mt-6 mb-2">
-          <h2 class="text-xl font-semibold">Applicants (${applicants.length})</h2>
-          <button id="resetLearningBtn" class="text-xs text-indigo-600 hover:underline">Reset learning</button>
+        <div id="createJob" class="hidden border rounded-xl p-5 bg-white shadow-sm">
+          <h2 class="text-lg font-semibold mb-4">Create job</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="text-sm text-slate-600">Title</label>
+              <input id="createTitle" class="w-full p-2 border rounded" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">Industry</label>
+              <select id="createField" class="w-full p-2 border rounded">${renderIndustryOptions('')}</select>
+              <input id="createFieldOther" class="w-full p-2 border rounded mt-2 hidden" placeholder="Other industry" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">Employment type</label>
+              <select id="createEmploymentType" class="w-full p-2 border rounded">
+                <option value="">Select</option>
+                <option value="full_time">Full-time</option>
+                <option value="part_time">Part-time</option>
+                <option value="contract">Contract</option>
+                <option value="temporary">Temporary</option>
+                <option value="internship">Internship</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">Rate type</label>
+              <select id="createRateType" class="w-full p-2 border rounded">
+                <option value="undisclosed">Undisclosed</option>
+                <option value="hourly">Hourly</option>
+                <option value="salary">Salary</option>
+                <option value="contract">Contract</option>
+                <option value="commission">Commission</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">Rate min</label>
+              <input id="createRateMin" class="w-full p-2 border rounded" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">Rate max</label>
+              <input id="createRateMax" class="w-full p-2 border rounded" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">Street</label>
+              <input id="createStreet1" class="w-full p-2 border rounded" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">Street 2</label>
+              <input id="createStreet2" class="w-full p-2 border rounded" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">City</label>
+              <input id="createCity" class="w-full p-2 border rounded" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">State</label>
+              <select id="createState" class="w-full p-2 border rounded">${renderStateOptions('')}</select>
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">ZIP</label>
+              <input id="createZip" class="w-full p-2 border rounded" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">Country</label>
+              <input id="createCountry" class="w-full p-2 border rounded" value="United States" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">Status</label>
+              <select id="createStatus" class="w-full p-2 border rounded">
+                <option value="draft" selected>Draft</option>
+                <option value="publish">Publish</option>
+              </select>
+            </div>
+          </div>
+          <div class="mt-4">
+            <label class="text-sm text-slate-600">Description</label>
+            <textarea id="createContent" class="w-full p-2 border rounded min-h-[140px]"></textarea>
+            <div class="mt-2 flex items-center gap-2">
+              <button id="createPreviewBtn" class="px-3 py-1.5 border rounded text-sm">Preview</button>
+              <button id="createSubmitBtn" class="px-3 py-1.5 border rounded text-sm">Create</button>
+              <button id="createCancelBtn" class="px-3 py-1.5 border rounded text-sm">Cancel</button>
+            </div>
+            <div id="createPreview" class="mt-2 text-sm text-slate-600"></div>
+            <div id="createMessage" class="mt-2 text-sm text-emerald-600"></div>
+          </div>
         </div>
-        <div class="flex flex-col md:flex-row md:items-center gap-3 mb-3">
-          <div class="text-sm text-gray-600">Bulk actions for selected applicants:</div>
-          <select id="bulkStatus" class="border rounded p-2 text-sm">
-            <option value="" selected>Set status...</option>
-            <option value="reviewing">Reviewing</option>
-            <option value="shortlisted">Shortlisted</option>
-            <option value="rejected">Rejected</option>
-          </select>
-          <select id="bulkRank" class="border rounded p-2 text-sm">
-            <option value="" selected>Set rank...</option>
-            <option value="1">Rank 1</option>
-            <option value="2">Rank 2</option>
-            <option value="3">Rank 3</option>
-            <option value="4">Rank 4</option>
-            <option value="5">Rank 5</option>
-          </select>
-          <button id="bulkApply" class="text-sm text-indigo-600 hover:underline">Apply to selected</button>
-          <button id="bulkRemove" class="text-sm text-red-600 hover:underline">Remove selected</button>
+
+        <div class="border rounded-xl p-5 bg-white shadow-sm">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <h2 class="text-lg font-semibold">Applicants</h2>
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+              <input id="applicantSearch" class="p-2 border rounded" placeholder="Search applicants..." />
+              <select id="bulkStatus" class="p-2 border rounded">
+                <option value="">Set status</option>
+                <option value="new">New</option>
+                <option value="reviewing">Received</option>
+                <option value="shortlisted">Reviewing</option>
+                <option value="rejected">Rejected</option>
+              </select>
+              <select id="bulkRank" class="p-2 border rounded">
+                <option value="">Rank</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
+              <button id="bulkApply" class="px-3 py-1.5 border rounded">Apply</button>
+              <button id="bulkRemove" class="px-3 py-1.5 border rounded text-rose-600 border-rose-200">Remove</button>
+            </div>
+          </div>
+          <div id="learningPanel" class="hidden mt-3 text-xs text-slate-600"></div>
+          <div id="applicantsContainer" class="mt-4 space-y-3"></div>
+          <button id="resetLearningBtn" class="mt-3 text-xs text-slate-500 hover:underline">Reset learning</button>
         </div>
-        <div id="learningPanel" class="mb-3 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded p-2 hidden"></div>
-        <input id="applicantSearch" class="w-full p-2 border rounded mb-3" placeholder="Filter applicants by name, location, or resume filename" />
-        <div id="applicantsContainer" class="space-y-2"></div>
+      </div>
 
-        <p class="mt-4">
-          <a href="/#my-job-posts" class="text-blue-600 hover:underline">← Back to My Jobs</a>
-        </p>
+      <div id="deleteModal" class="fixed inset-0 hidden items-center justify-center bg-black/40 z-50">
+        <div class="bg-white rounded-lg p-5 w-full max-w-sm">
+          <h3 class="text-lg font-semibold mb-2">Delete job</h3>
+          <p class="text-sm text-slate-600 mb-4">Are you sure you want to delete this job?</p>
+          <div class="flex justify-end gap-2">
+            <button id="deleteCancelBtn" class="px-3 py-1.5 border rounded text-sm">Cancel</button>
+            <button id="deleteConfirmBtn" class="px-3 py-1.5 border rounded text-sm text-rose-600 border-rose-200">Delete</button>
+          </div>
+        </div>
+      </div>
 
-        <div id="messageModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-lg border border-gray-200">
-            <h3 class="text-lg font-semibold mb-2">Message Applicant</h3>
-            <p class="text-sm text-gray-600 mb-4">This sends an email to the applicant without revealing their email address.</p>
-            <label class="block text-xs text-gray-600 mb-1">Quick template</label>
-            <select id="messageTemplate" class="w-full p-2 border rounded mb-3">
-              <option value="" selected>Choose a template...</option>
+      <div id="messageModal" class="fixed inset-0 hidden items-center justify-center bg-black/40 z-50">
+        <div class="bg-white rounded-lg p-5 w-full max-w-lg">
+          <h3 class="text-lg font-semibold mb-2">Message applicant</h3>
+          <textarea id="messageBody" class="w-full p-2 border rounded min-h-[120px]" placeholder="Write a message..."></textarea>
+          <div class="mt-2 flex items-center gap-2">
+            <select id="messageTemplate" class="p-2 border rounded text-sm">
+              <option value="">Template</option>
+              ${fallbackTemplates.map((t, idx) => `<option value="${idx}">${t.title}</option>`).join('')}
             </select>
-            <textarea id="messageBody" class="w-full p-2 border rounded mb-3" rows="5" placeholder="Write your message"></textarea>
-            <div id="messagePreview" class="border rounded p-3 bg-slate-50 text-sm text-slate-700 mb-3 hidden"></div>
-            <div id="messageTurnstile" class="mb-3"></div>
-            <div class="flex items-center justify-end space-x-3">
-              <button id="messagePreviewBtn" class="px-3 py-2 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Preview</button>
-              <button id="messageCancelBtn" class="px-3 py-2 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
-              <button id="messageSendBtn" class="px-3 py-2 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700">Send</button>
-            </div>
+            <button id="messagePreviewBtn" class="px-3 py-1.5 border rounded text-sm">Preview</button>
           </div>
-        </div>
-
-        <div id="deleteModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div class="bg-white rounded-lg p-6 w-full max-w-sm shadow-lg border border-gray-200">
-            <h3 class="text-lg font-semibold mb-2">Delete Job</h3>
-            <p class="text-sm text-gray-700 mb-4">Delete this job post? This cannot be undone.</p>
-            <div class="flex items-center justify-end space-x-3">
-              <button id="deleteCancelBtn" class="px-3 py-2 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
-              <button id="deleteConfirmBtn" class="px-3 py-2 text-sm rounded bg-red-600 text-white hover:bg-red-700">Delete</button>
-            </div>
+          <div id="messagePreview" class="mt-2 text-sm text-slate-600"></div>
+          <div id="messageTurnstile" class="mt-3"></div>
+          <div class="mt-4 flex justify-end gap-2">
+            <button id="messageCancelBtn" class="px-3 py-1.5 border rounded text-sm">Cancel</button>
+            <button id="messageSendBtn" class="px-3 py-1.5 border rounded text-sm">Send</button>
           </div>
         </div>
       </div>
     `;
 
     const jobView = container.querySelector('#jobView');
+    const jobStatusBadge = container.querySelector('#jobStatusBadge');
+    setStatusBadge(data.status);
+
     const jobEdit = container.querySelector('#jobEdit');
     const createSection = container.querySelector('#createJob');
     const editBtn = container.querySelector('#editJobBtn');
@@ -335,6 +411,7 @@ export async function renderMyJobPostDetail(container, jobId) {
     const cancelBtn = container.querySelector('#cancelEditBtn');
     const titleInput = container.querySelector('#editTitle');
     const fieldInput = container.querySelector('#editField');
+    const fieldOtherInput = container.querySelector('#editFieldOther');
     const contentInput = container.querySelector('#editContent');
     const editEmploymentType = container.querySelector('#editEmploymentType');
     const editRateType = container.querySelector('#editRateType');
@@ -353,6 +430,20 @@ export async function renderMyJobPostDetail(container, jobId) {
     const payNowBtn = container.querySelector('#payNowBtn');
     const createTitle = container.querySelector('#createTitle');
     const createField = container.querySelector('#createField');
+    const createFieldOther = container.querySelector('#createFieldOther');
+
+    fieldInput?.addEventListener('change', () => {
+      if (!fieldOtherInput) return;
+      const isOther = fieldInput.value === 'other';
+      fieldOtherInput.classList.toggle('hidden', !isOther);
+      if (!isOther) fieldOtherInput.value = '';
+    });
+    createField?.addEventListener('change', () => {
+      if (!createFieldOther) return;
+      const isOther = createField.value === 'other';
+      createFieldOther.classList.toggle('hidden', !isOther);
+      if (!isOther) createFieldOther.value = '';
+    });
     const createContent = container.querySelector('#createContent');
     const createEmploymentType = container.querySelector('#createEmploymentType');
     const createRateType = container.querySelector('#createRateType');
@@ -371,7 +462,7 @@ export async function renderMyJobPostDetail(container, jobId) {
       if (createTitle?.value) return;
       const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
       const titles = ['Marketing Coordinator', 'Senior Nurse', 'Front Desk Associate', 'Full Stack Developer', 'Warehouse Lead'];
-      const fields = ['Marketing', 'Healthcare', 'Hospitality', 'Tech', 'Logistics'];
+      const fields = industryOptions.length ? industryOptions.map(opt => (typeof opt === 'string' ? opt : (opt.value || opt.code))) : ['tech','healthcare','finance','education'];
       const cities = [
         { city: 'Des Moines', state: 'IA', zip: '50309' },
         { city: 'Austin', state: 'TX', zip: '73301' },
@@ -430,7 +521,7 @@ export async function renderMyJobPostDetail(container, jobId) {
     const bulkRemove = container.querySelector('#bulkRemove');
 
     if (payNowBtn) {
-      payNowBtn.addEventListener('click', async () => {
+      payNowBtn?.addEventListener('click', async () => {
         try {
           const configRes = await fetch('/api/stripe-config');
           const stripeConfig = await configRes.json();
@@ -471,7 +562,7 @@ export async function renderMyJobPostDetail(container, jobId) {
           const data = await res.json();
           const place = data.places && data.places[0];
           if (!place) return;
-          if (!cityInput.value) cityInput.value = place['place name'] || '';
+          if (place['place name']) cityInput.value = place['place name'];
           const stateCode = place['state abbreviation'];
           if (stateCode) {
             stateSelect.value = stateCode;
@@ -480,14 +571,20 @@ export async function renderMyJobPostDetail(container, jobId) {
           // silent fail
         }
       };
-      zipInput.addEventListener('blur', lookup);
-      zipInput.addEventListener('change', lookup);
+      zipInput?.addEventListener('blur', lookup);
+      zipInput?.addEventListener('change', lookup);
     };
 
     setupZipLookup(editZip, editCity, editState);
     setupZipLookup(createZip, createCity, createState);
 
-    const getStatusLabel = (status) => (status || 'new').toString();
+    const getStatusLabel = (status) => {
+      const val = (status || 'new').toString();
+      if (val === 'reviewing') return 'Received';
+      if (val === 'shortlisted') return 'Reviewing';
+      if (val === 'submitted') return 'Submitted';
+      return val.charAt(0).toUpperCase() + val.slice(1);
+    };
     const getStatusClass = (status) => {
       const val = (status || 'new').toString();
       if (val === 'shortlisted') return 'bg-emerald-100 text-emerald-800';
@@ -529,6 +626,7 @@ export async function renderMyJobPostDetail(container, jobId) {
     };
 
     const renderApplicants = (list) => {
+      if (!applicantsContainer) return;
       applicantsContainer.innerHTML = list.length
         ? list.map(app => `
             <div class="border rounded p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -557,8 +655,8 @@ export async function renderMyJobPostDetail(container, jobId) {
                 <div class="flex items-center gap-2">
                   <select class="border rounded p-1 text-xs" data-role="status" data-user-id="${app.id}">
                     <option value="new" ${getStatusLabel(app.status) === 'new' ? 'selected' : ''}>New</option>
-                    <option value="reviewing" ${getStatusLabel(app.status) === 'reviewing' ? 'selected' : ''}>Reviewing</option>
-                    <option value="shortlisted" ${getStatusLabel(app.status) === 'shortlisted' ? 'selected' : ''}>Shortlisted</option>
+                    <option value="reviewing" ${String(app.status) === 'reviewing' ? 'selected' : ''}>Received</option>
+                    <option value="shortlisted" ${String(app.status) === 'shortlisted' ? 'selected' : ''}>Reviewing</option>
                     <option value="rejected" ${getStatusLabel(app.status) === 'rejected' ? 'selected' : ''}>Rejected</option>
                   </select>
                   <select class="border rounded p-1 text-xs" data-role="rank" data-user-id="${app.id}">
@@ -610,7 +708,7 @@ export async function renderMyJobPostDetail(container, jobId) {
         learningPanel.classList.add('hidden');
       }
     }
-    applicantsContainer.addEventListener('click', (e) => {
+    if (applicantsContainer) applicantsContainer?.addEventListener('click', (e) => {
       const messageBtn = e.target.closest('button[data-action="message-app"]');
       if (messageBtn) {
         const userId = Number(messageBtn.dataset.userId || 0);
@@ -689,6 +787,22 @@ export async function renderMyJobPostDetail(container, jobId) {
       if (!link) return;
       const userId = Number(link.dataset.userId || 0);
       if (!userId) return;
+      // Auto-advance to shortlisted when resume is opened
+      const found = applicants.find(a => Number(a.id) === userId);
+      if (found && !['withdrawn', 'rejected'].includes((found.status || '').toLowerCase())) {
+        fetch('/api/update-application-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ job_id: Number(jobId), user_id: userId, status: 'shortlisted', rank: Number(found.rank || 0) }),
+          keepalive: true,
+        }).then(res => res.json()).then(data => {
+          if (data && data.ok) {
+            found.status = 'shortlisted';
+            renderApplicants(applicants);
+          }
+        }).catch(() => {});
+      }
       fetch('/api/employer-click', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -697,13 +811,6 @@ export async function renderMyJobPostDetail(container, jobId) {
         keepalive: true,
       }).catch(() => {});
     });
-
-    const fallbackTemplates = [
-      { title: 'Application received', body: 'Thanks for applying. We are reviewing your application and will be in touch soon.' },
-      { title: 'Interview request', body: 'We’d like to schedule a quick interview. Please reply with a few times that work for you this week.' },
-      { title: 'Request more info', body: 'Could you share a few more details about your recent experience with this role?' },
-      { title: 'Not selected', body: 'We appreciate your time. We are moving forward with other candidates at this stage.' },
-    ];
 
     const buildVars = () => ({
       job_title: data.title || '',
@@ -757,20 +864,6 @@ export async function renderMyJobPostDetail(container, jobId) {
       }
       updatePreview();
     });
-
-    const getDevFlags = async () => {
-      if (window.__dev_flags) return window.__dev_flags;
-      try {
-        const res = await fetch('/api/dev-flags?_=' + Date.now(), { credentials: 'include' });
-        const data = await res.json();
-        if (res.ok) {
-          window.__dev_flags = data;
-          return data;
-        }
-      } catch (err) {}
-      window.__dev_flags = { dev_mode: 0 };
-      return window.__dev_flags;
-    };
 
     const initMessageTurnstile = async () => {
       const devFlags = await getDevFlags();
@@ -987,7 +1080,7 @@ export async function renderMyJobPostDetail(container, jobId) {
       return true;
     };
 
-    editBtn.addEventListener('click', () => {
+    editBtn?.addEventListener('click', () => {
       jobView.classList.add('hidden');
       jobEdit.classList.remove('hidden');
       createSection.classList.add('hidden');
@@ -996,7 +1089,7 @@ export async function renderMyJobPostDetail(container, jobId) {
       editMessage.textContent = '';
     });
 
-    createBtn.addEventListener('click', () => {
+    createBtn?.addEventListener('click', () => {
       jobView.classList.add('hidden');
       jobEdit.classList.add('hidden');
       createSection.classList.remove('hidden');
@@ -1005,11 +1098,26 @@ export async function renderMyJobPostDetail(container, jobId) {
       createMessage.textContent = '';
     });
 
-    cancelBtn.addEventListener('click', () => {
+    cancelBtn?.addEventListener('click', () => {
       jobEdit.classList.add('hidden');
       jobView.classList.remove('hidden');
       titleInput.value = data.title || '';
-      fieldInput.value = jobField || '';
+      if (fieldInput) {
+      const optionValues = industryOptions.map(o => (typeof o === 'string' ? o : (o.value || o.code)));
+      if (jobField && optionValues.includes(jobField)) {
+        fieldInput.value = jobField;
+        if (fieldOtherInput) fieldOtherInput.classList.add('hidden');
+      } else if (jobField) {
+        fieldInput.value = 'other';
+        if (fieldOtherInput) {
+          fieldOtherInput.classList.remove('hidden');
+          fieldOtherInput.value = jobField;
+        }
+      } else {
+        fieldInput.value = '';
+        if (fieldOtherInput) fieldOtherInput.classList.add('hidden');
+      }
+    }
       contentInput.value = rawContent || '';
       if (editEmploymentType && employmentType) editEmploymentType.value = employmentType;
       if (editRateType && rateType) editRateType.value = rateType;
@@ -1021,17 +1129,20 @@ export async function renderMyJobPostDetail(container, jobId) {
       editState.value = state || '';
       editZip.value = zip || '';
       editCountry.value = country || 'United States';
-      statusInput.value = 'publish';
+      statusInput.value = data.status || 'draft';
       editPreview.classList.add('hidden');
       editPreviewBtn.textContent = 'Preview';
       editMessage.textContent = '';
     });
 
-    createCancelBtn.addEventListener('click', () => {
+    createCancelBtn?.addEventListener('click', () => {
       createSection.classList.add('hidden');
       jobView.classList.remove('hidden');
       createTitle.value = '';
+      if (createField) {
       createField.value = '';
+      if (createFieldOther) createFieldOther.classList.add('hidden');
+    }
       createContent.value = '';
       if (createEmploymentType) createEmploymentType.value = '';
       if (createRateType) createRateType.value = '';
@@ -1049,16 +1160,13 @@ export async function renderMyJobPostDetail(container, jobId) {
       createMessage.textContent = '';
     });
 
-    saveBtn.addEventListener('click', async () => {
+    saveBtn?.addEventListener('click', async () => {
       editMessage.className = 'text-sm text-gray-600';
       editMessage.textContent = 'Saving...';
 
-      const editFieldValue = fieldInput.value.trim();
-      if (!editFieldValue) {
-        editMessage.className = 'text-sm text-red-600';
-        editMessage.textContent = 'Field is required.';
-        return;
-      }
+      const editFieldValue = fieldInput?.value === 'other'
+        ? (fieldOtherInput?.value || '').trim()
+        : (fieldInput?.value || '').trim();
       if (!editEmploymentType?.value) {
         editMessage.className = 'text-sm text-red-600';
         editMessage.textContent = 'Employment type is required.';
@@ -1132,6 +1240,7 @@ export async function renderMyJobPostDetail(container, jobId) {
             fieldEl.classList.add('hidden');
           }
         }
+        setStatusBadge(payload.status);
         if (locationEl) {
           const updatedAddress = [payload.street1, payload.street2].filter(Boolean).join(' ');
           const updatedCityState = [payload.city, payload.state].filter(Boolean).join(', ');
@@ -1198,11 +1307,13 @@ export async function renderMyJobPostDetail(container, jobId) {
       }
     });
 
-    createSubmitBtn.addEventListener('click', async () => {
+    createSubmitBtn?.addEventListener('click', async () => {
       createMessage.className = 'text-sm text-gray-600';
       createMessage.textContent = 'Creating...';
 
-      const createFieldValue = createField.value.trim();
+      const createFieldValue = createField?.value === 'other'
+        ? (createFieldOther?.value || '').trim()
+        : (createField?.value || '').trim();
       if (!createEmploymentType?.value) {
         createMessage.className = 'text-sm text-red-600';
         createMessage.textContent = 'Employment type is required.';
@@ -1271,7 +1382,7 @@ export async function renderMyJobPostDetail(container, jobId) {
       }
     });
 
-    editPreviewBtn.addEventListener('click', () => {
+    editPreviewBtn?.addEventListener('click', () => {
       const isHidden = editPreview.classList.contains('hidden');
       if (isHidden) {
         editPreview.innerHTML = contentInput.value;
@@ -1283,7 +1394,7 @@ export async function renderMyJobPostDetail(container, jobId) {
       }
     });
 
-    createPreviewBtn.addEventListener('click', () => {
+    createPreviewBtn?.addEventListener('click', () => {
       const isHidden = createPreview.classList.contains('hidden');
       if (isHidden) {
         createPreview.innerHTML = createContent.value;
@@ -1295,15 +1406,15 @@ export async function renderMyJobPostDetail(container, jobId) {
       }
     });
 
-    deleteBtn.addEventListener('click', () => {
+    deleteBtn?.addEventListener('click', () => {
       deleteModal.classList.remove('hidden');
     });
 
-    deleteCancelBtn.addEventListener('click', () => {
+    deleteCancelBtn?.addEventListener('click', () => {
       deleteModal.classList.add('hidden');
     });
 
-    deleteConfirmBtn.addEventListener('click', async () => {
+    deleteConfirmBtn?.addEventListener('click', async () => {
       try {
         const res = await fetch('/api/user-job-delete', {
           method: 'POST',

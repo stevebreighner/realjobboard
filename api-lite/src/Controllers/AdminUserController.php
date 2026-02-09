@@ -35,6 +35,13 @@ class AdminUserController {
     return is_array($data) ? $data : [];
   }
 
+  private function tableExists(string $table): bool {
+    $pdo = $GLOBALS['DB_PDO'];
+    $stmt = $pdo->prepare('SHOW TABLES LIKE :t');
+    $stmt->execute([':t' => $table]);
+    return (bool) $stmt->fetchColumn();
+  }
+
   public function list(): array {
     $admin = $this->requireAdmin();
     if (empty($admin)) return ['error' => 'Access denied'];
@@ -150,8 +157,70 @@ class AdminUserController {
       return ['error' => 'Missing id'];
     }
     $pdo = $GLOBALS['DB_PDO'];
-    $stmt = $pdo->prepare("DELETE FROM jb_users WHERE id = :id");
-    $stmt->execute([':id' => $userId]);
+    $pdo->beginTransaction();
+    try {
+      if ($this->tableExists('jb_user_meta')) {
+        $stmt = $pdo->prepare("DELETE FROM jb_user_meta WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+      }
+      if ($this->tableExists('jb_sessions')) {
+        $stmt = $pdo->prepare("DELETE FROM jb_sessions WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+      }
+      if ($this->tableExists('jb_auth_tokens')) {
+        $stmt = $pdo->prepare("DELETE FROM jb_auth_tokens WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+      }
+      if ($this->tableExists('jb_user_files')) {
+        $stmt = $pdo->prepare("DELETE FROM jb_user_files WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+      }
+      $appIds = [];
+      if ($this->tableExists('jb_job_applications')) {
+        $stmt = $pdo->prepare("SELECT id FROM jb_job_applications WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+        $appIds = array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
+      }
+      if ($appIds && $this->tableExists('jb_job_application_meta')) {
+        $in = implode(',', array_fill(0, count($appIds), '?'));
+        $stmt = $pdo->prepare("DELETE FROM jb_job_application_meta WHERE application_id IN ({$in})");
+        $stmt->execute($appIds);
+      }
+      if ($this->tableExists('jb_job_applications')) {
+        $stmt = $pdo->prepare("DELETE FROM jb_job_applications WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+      }
+      if ($this->tableExists('jb_saved_jobs')) {
+        $stmt = $pdo->prepare("DELETE FROM jb_saved_jobs WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+      }
+      if ($this->tableExists('jb_job_alerts')) {
+        $stmt = $pdo->prepare("DELETE FROM jb_job_alerts WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+      }
+      $ownedJobIds = [];
+      if ($this->tableExists('jb_job_meta')) {
+        $stmt = $pdo->prepare("SELECT job_id FROM jb_job_meta WHERE meta_key = 'owner_id' AND meta_value = :id");
+        $stmt->execute([':id' => (string) $userId]);
+        $ownedJobIds = array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
+      }
+      if ($ownedJobIds && $this->tableExists('jb_jobs')) {
+        $in = implode(',', array_fill(0, count($ownedJobIds), '?'));
+        $stmt = $pdo->prepare("DELETE FROM jb_jobs WHERE id IN ({$in})");
+        $stmt->execute($ownedJobIds);
+      }
+      if ($this->tableExists('jb_job_meta')) {
+        $stmt = $pdo->prepare("DELETE FROM jb_job_meta WHERE meta_key = 'owner_id' AND meta_value = :id");
+        $stmt->execute([':id' => (string) $userId]);
+      }
+      $stmt = $pdo->prepare("DELETE FROM jb_users WHERE id = :id");
+      $stmt->execute([':id' => $userId]);
+      $pdo->commit();
+    } catch (\Throwable $e) {
+      $pdo->rollBack();
+      http_response_code(500);
+      return ['error' => 'Delete failed'];
+    }
     return ['ok' => true];
   }
 

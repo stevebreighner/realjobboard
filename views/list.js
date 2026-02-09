@@ -1,4 +1,4 @@
-import { getUserProfileCached, getUserProfileCachedAny } from '../utils/session.js';
+import { getUserProfileCached, getUserProfileCachedAny, getSessionCached } from '../utils/session.js';
 import { CONFIG } from '../config.js';
 import { escapeHtml, safeUrl } from '../utils/sanitize.js';
 
@@ -113,7 +113,7 @@ export function renderList(container) {
             <h2 class="text-lg font-semibold">${CONFIG.JOB_COPY?.ALERTS_TITLE || 'Job Alerts'}</h2>
             <p class="text-xs text-gray-500">Save this search to get notified about new matches.</p>
           </div>
-          <button id="saveAlertBtn" class="text-sm text-indigo-600 hover:underline">Save this search</button>
+          <button id="saveAlertBtn" class="text-xs px-3 py-1.5 rounded-full border border-indigo-300 text-indigo-700 hover:border-indigo-500 transition">Save this search</button>
         </div>
         <div id="alertsContainer" class="space-y-2"></div>
       </div>
@@ -779,7 +779,7 @@ export function renderList(container) {
                   <div class="absolute inset-y-0 left-0 w-1 rounded-l-2xl bg-gradient-to-b from-indigo-500 via-pink-500 to-amber-400 opacity-70"></div>
                   <div class="flex items-start justify-between gap-3">
                     <div>
-                      <h2 class="text-lg font-medium text-slate-900 font-serif">${title}</h2>
+                      <a href="/#list-detail?id=${id}" data-detail-id="${id}" class="js-view-detail text-2xl font-semibold text-slate-900 hover:text-slate-900 hover:no-underline">${title}</a>
                       ${company ? `<div class="text-sm text-slate-600 mt-1">${safeCompanySlug ? `<a class="hover:underline" href="/#company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany}</div>` : ''}
                     </div>
                     <div class="flex items-center gap-2">
@@ -822,10 +822,10 @@ export function renderList(container) {
                   </div>
                   <div class="mt-5 flex items-center justify-end text-sm">
                     <div class="flex items-center gap-3">
-                      <button data-save-id="${id}" class="text-sm ${isSaved ? 'text-amber-700' : 'text-indigo-600'} hover:underline">
+                      <button data-save-id="${id}" class="text-xs px-3 py-1.5 rounded-full border border-indigo-300 text-indigo-700 hover:border-indigo-500 transition ${isSaved ? 'bg-amber-50 text-amber-700 border-amber-300' : ''}">
                         ${isSaved ? 'Saved' : 'Save'}
                       </button>
-                      <a href="/#list-detail?id=${id}" data-detail-id="${id}" class="js-view-detail inline-flex items-center gap-2 text-indigo-700 border border-indigo-300 px-2.5 py-1 rounded-full hover:border-indigo-500 hover:bg-indigo-50 transition">
+                      <a href="/#list-detail?id=${id}" data-detail-id="${id}" class="js-view-detail inline-flex items-center gap-2 text-indigo-700 border border-indigo-300 px-2.5 py-1 rounded-full hover:border-indigo-500 transition">
                         View
                         <span aria-hidden="true">→</span>
                       </a>

@@ -99,8 +99,23 @@ class AdminController {
     $user = $this->requireAdmin();
     if (empty($user)) return ['error' => 'Access denied'];
     $pdo = $GLOBALS['DB_PDO'];
-    $rows = $pdo->query("SELECT id, title, status, created_at FROM jb_jobs ORDER BY created_at DESC LIMIT 200")->fetchAll();
-    return $rows ?: [];
+    $rows = $pdo->query("SELECT id, title, status, created_at FROM jb_jobs ORDER BY created_at DESC LIMIT 200")->fetchAll() ?: [];
+    if (!$rows) return [];
+    $ids = array_map(fn($r) => (int) ($r['id'] ?? 0), $rows);
+    $metaMap = $this->fetchJobMeta($ids, ['job_payment_status','job_tier','job_tier_label','company']);
+    return array_map(function (array $row) use ($metaMap): array {
+      $id = (int) ($row['id'] ?? 0);
+      $meta = $metaMap[$id] ?? [];
+      return [
+        'id' => $id,
+        'title' => $row['title'] ?? '',
+        'status' => $row['status'] ?? '',
+        'created_at' => $row['created_at'] ?? '',
+        'payment_status' => $meta['job_payment_status'] ?? '',
+        'tier' => $meta['job_tier_label'] ?? $meta['job_tier'] ?? '',
+        'company' => $meta['company'] ?? '',
+      ];
+    }, $rows);
   }
 
   public function jobUpdate(): array {
@@ -125,7 +140,33 @@ class AdminController {
       ':now' => date('Y-m-d H:i:s'),
       ':id' => $id,
     ]);
+    $meta = $data['meta'] ?? [];
+    if (is_array($meta) && $meta) {
+      $jobModel = new \App\Models\JobModel();
+      $jobModel->updateMeta($id, $meta);
+    }
     return ['ok' => true];
+  }
+
+  private function fetchJobMeta(array $ids, array $keys): array {
+    $ids = array_values(array_filter(array_map('intval', $ids)));
+    if (!$ids || !$keys) return [];
+    $pdo = $GLOBALS['DB_PDO'];
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $keyPlaceholders = implode(',', array_fill(0, count($keys), '?'));
+    $sql = "SELECT job_id, meta_key, meta_value FROM jb_job_meta
+            WHERE job_id IN ($placeholders) AND meta_key IN ($keyPlaceholders)";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([...$ids, ...$keys]);
+    $rows = $stmt->fetchAll() ?: [];
+    $map = [];
+    foreach ($rows as $row) {
+      $jid = (int) ($row['job_id'] ?? 0);
+      if (!$jid) continue;
+      $map[$jid] = $map[$jid] ?? [];
+      $map[$jid][$row['meta_key']] = $row['meta_value'];
+    }
+    return $map;
   }
 
   public function jobDelete(): array {
@@ -199,6 +240,25 @@ class AdminController {
     $user = $this->requireAdmin();
     if (empty($user)) return ['error' => 'Access denied'];
     return $this->subscribers->list(200);
+  }
+
+  public function recentActivity(): array {
+    $user = $this->requireAdmin();
+    if (empty($user)) return ['error' => 'Access denied'];
+    $pdo = $GLOBALS['DB_PDO'];
+    $recentUsers = $pdo->query("SELECT id, username, email, role, created_at FROM jb_users ORDER BY created_at DESC LIMIT 10")->fetchAll() ?: [];
+    $recentJobs = $pdo->query("SELECT id, title, status, created_at FROM jb_jobs ORDER BY created_at DESC LIMIT 10")->fetchAll() ?: [];
+    $recentApps = [];
+    if ($pdo->query("SHOW TABLES LIKE 'jb_job_applications'")->fetchColumn()) {
+      $recentApps = $pdo->query("SELECT id, job_id, user_id, status, created_at FROM jb_job_applications ORDER BY created_at DESC LIMIT 10")->fetchAll() ?: [];
+    }
+    $recentAudit = $this->audit->list(20);
+    return [
+      'users' => $recentUsers,
+      'jobs' => $recentJobs,
+      'applications' => $recentApps,
+      'audit' => $recentAudit,
+    ];
   }
 
   public function bizDevList(): array {

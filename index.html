@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://js.stripe.com https://challenges.cloudflare.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.zippopotam.us https://formspree.io https://api.stripe.com https://js.stripe.com https://challenges.cloudflare.com; frame-src https://js.stripe.com https://checkout.stripe.com https://challenges.cloudflare.com; font-src 'self' data: https:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://js.stripe.com https://challenges.cloudflare.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.zippopotam.us https://formspree.io https://api.stripe.com https://js.stripe.com https://challenges.cloudflare.com; frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://challenges.cloudflare.com; font-src 'self' data: https:;">
   <title>JobBoard</title>
   <meta name="description" content="A job search site with privacy-first applications and smarter matching." />
   <meta property="og:title" content="JobBoard" />
@@ -18,14 +18,22 @@
    <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 <style>:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --site-font: system-ui;
+  font-family: var(--site-font), Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
- 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  color: #0f172a;
+  background-color: #ffffff;
+  --form-bg: #00000045;
+  --form-border: #cbd5e1;
+  --form-text: #0f172a;
+  --form-placeholder: #1f2937;
+  --form-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), inset 0 0 0 1px rgba(15, 23, 42, 0.02);
+  --form-focus: rgba(59, 130, 246, 0.45);
+  --button-bg: #1f2937;
+  --button-bg-hover: #374151;
+  --button-text: #e5e7eb;
+  --button-border: #475569;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -49,8 +57,8 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #ffffff;
-  color: #111827;
+  background-color: #1f2937;
+  color: #e5e7eb;
 }
 
 h1 {
@@ -59,22 +67,38 @@ h1 {
 }
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
+  border-radius: 12px;
+  border: 1px solid var(--button-border);
+  padding: 0.65em 1.2em;
+  font-size: 0.98em;
+  font-weight: 600;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--button-bg);
+  color: var(--button-text);
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: border-color 0.2s, background-color 0.2s, transform 0.05s;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
 }
 button:hover {
-  border-color: #646cff;
+  border-color: #64748b;
+  background-color: var(--button-bg);
 }
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: none;
+  box-shadow: 0 0 0 3px var(--form-focus);
+}
+
+.btn-close {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+.btn-close:focus,
+.btn-close:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 @media (prefers-color-scheme: light) {
@@ -89,20 +113,54 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
-form > div {
-  margin-bottom: 1rem;
-}
-
 input,
 textarea,
 select {
   display: block;
   width: auto;
-  padding: 0.5rem;
-  border: 1px solid #ccc;
-  border-radius: 0.375rem;
-  margin-top: 0.25rem;
-  max-width: 400px;
+  padding: 0.65rem 0.75rem;
+  border: 1.5px solid var(--form-border);
+  border-radius: 12px;
+  margin-top: 0.35rem;
+  max-width: 480px;
+  background-color: var(--form-bg);
+  color: var(--form-text);
+  box-shadow: var(--form-shadow);
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+
+input::placeholder,
+textarea::placeholder,
+select::placeholder {
+  color: var(--form-placeholder) !important;
+  opacity: 1 !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px var(--form-focus);
+  background-color: #ffffff;
+}
+form > div {
+  margin-bottom: 0.9rem;
+}
+
+label {
+  font-weight: 400;
+}
+
+.role-button {
+  display: inline-block;
+  padding: 5px 8px;
+  border: 1px solid #64748b;
+  border-radius: 9999px;
+  font-size: 11px;
+  line-height: 1;
+  color: #e2e8f0;
+  background: rgba(30, 41, 59, 0.5);
 }
 form button {
  
@@ -110,15 +168,16 @@ form button {
 }
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
+  border-radius: 12px;
+  border: 1px solid var(--button-border);
+  padding: 0.65em 1.2em;
+  font-size: 0.98em;
+  font-weight: 600;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--button-bg);
+  color: var(--button-text);
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: border-color 0.2s, background-color 0.2s, transform 0.05s;
   margin-top: 1rem;
   margin-right: 0.5rem;
 }
@@ -145,21 +204,17 @@ select.w-full {
 }
 
 button:hover {
-  border-color: #646cff;
+  border-color: #64748b;
+  background-color: var(--button-bg-hover);
 }
 
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: none;
+  box-shadow: 0 0 0 3px var(--form-focus);
 }
 
 /* Light mode override */
-@media (prefers-color-scheme: light) {
-  button {
-    background-color: #f9f9f9;
-  }
-}
-
 /* Mobile: full-width buttons if needed */
 @media (max-width: 640px) {
   button {

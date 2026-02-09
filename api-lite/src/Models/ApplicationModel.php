@@ -93,6 +93,15 @@ class ApplicationModel {
     return $stmt->fetchAll() ?: [];
   }
 
+  public function markReviewingByJob(int $jobId): void {
+    $pdo = $GLOBALS['DB_PDO'];
+    $stmt = $pdo->prepare("UPDATE jb_job_applications SET status = 'reviewing', updated_at = :updated WHERE job_id = :job_id AND status = 'submitted'");
+    $stmt->execute([
+      ':updated' => date('Y-m-d H:i:s'),
+      ':job_id' => $jobId,
+    ]);
+  }
+
   public function updateStatus(int $jobId, int $userId, ?string $status, int $rank): void {
     $pdo = $GLOBALS['DB_PDO'];
     $status = $status ?: null;

@@ -23,3 +23,5 @@ wp-content/themes/jobs/page-create-checkout.php
 error_log
 api-lite/public/error_log
 api-lite/logs/
+uploads/
+api-lite/uploads/

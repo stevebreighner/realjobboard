@@ -42,9 +42,9 @@ class AuthController {
     return null;
   }
 
-  private function passesTurnstile(array $data): bool {
+  private function passesTurnstile(array $data, bool $force = false): bool {
     $devMode = ($_ENV['DEV_MODE'] ?? '') === '1' || ($this->settings->get('dev_mode') === '1');
-    if ($devMode) return true;
+    if ($devMode && !$force) return true;
     $siteKey = $_ENV['TURNSTILE_SITE_KEY'] ?? '';
     $secret = $_ENV['TURNSTILE_SECRET_KEY'] ?? '';
     if (!$siteKey || !$secret) return true;
@@ -69,8 +69,46 @@ class AuthController {
     return !empty($json['success']);
   }
 
+  private function getCountryCode(): string {
+    $candidates = [
+      $_SERVER['HTTP_CF_IPCOUNTRY'] ?? '',
+      $_SERVER['GEOIP_COUNTRY_CODE'] ?? '',
+      $_SERVER['HTTP_X_COUNTRY_CODE'] ?? '',
+      $_SERVER['HTTP_X_FORWARDED_COUNTRY'] ?? '',
+    ];
+    foreach ($candidates as $code) {
+      $code = strtoupper(trim((string) $code));
+      if ($code !== '') return $code;
+    }
+    return '';
+  }
+
+  private function enforceUsOnly(): ?array {
+    $code = $this->getCountryCode();
+    if ($code && $code !== 'US') {
+      http_response_code(403);
+      return ['error' => 'This service is currently available in the United States only.'];
+    }
+    return null;
+  }
+
+  private function isDisposableDomain(string $email): bool {
+    $parts = explode('@', strtolower($email));
+    $domain = $parts[1] ?? '';
+    if (!$domain) return false;
+    $blocked = [
+      'mailinator.com','guerrillamail.com','10minutemail.com','tempmail.com','yopmail.com',
+      'getnada.com','trashmail.com','maildrop.cc','dispostable.com','minuteinbox.com',
+      'fakeinbox.com','sharklasers.com','temp-mail.org','emailondeck.com',
+    ];
+    return in_array($domain, $blocked, true);
+  }
+
   public function register(): array {
     if ($blocked = $this->rateLimit('register', 5, 600)) {
+      return $blocked;
+    }
+    if ($blocked = $this->enforceUsOnly()) {
       return $blocked;
     }
     $data = $this->jsonInput();
@@ -90,6 +128,10 @@ class AuthController {
     if (!$username || !$email || !$password) {
       http_response_code(422);
       return ['error' => 'Missing required fields'];
+    }
+    if ($this->isDisposableDomain($email)) {
+      http_response_code(422);
+      return ['error' => 'Disposable email domains are not allowed.'];
     }
     if (!$tosAccept) {
       http_response_code(422);
@@ -126,7 +168,7 @@ class AuthController {
       'email' => $email,
       'password' => $password,
       'role' => $role,
-      'email_verified' => 1,
+      'email_verified' => 0,
       'employer_verified' => $role === 'employer' ? 0 : 1,
       'company_name' => $companyName ?: null,
       'company_email' => $companyEmail ?: null,
@@ -139,6 +181,13 @@ class AuthController {
       'email' => $email,
       'username' => $username,
     ]);
+    $token = $this->tokens->createToken('jb_email_verifications', (int) $user['id'], 60);
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $link = "https://{$host}/#verify-email?token={$token}";
+    $mailer = new Mailer();
+    $subject = 'Verify your email';
+    $html = "<p>Verify your email by clicking this link:</p><p><a href=\"{$link}\">Verify Email</a></p>";
+    $mailer->send($user['email'], $subject, $html, "Verify email: {$link}");
 
     if ($role === 'employer' && $companyName) {
       $companyModel = new CompanyModel();
@@ -183,8 +232,12 @@ class AuthController {
     if ($blocked = $this->rateLimit('login', 8, 300)) {
       return $blocked;
     }
+    if ($blocked = $this->enforceUsOnly()) {
+      return $blocked;
+    }
     $data = $this->jsonInput();
-    if (!$this->passesTurnstile($data)) {
+    // Always enforce captcha on login, even in dev mode
+    if (!$this->passesTurnstile($data, true)) {
       http_response_code(403);
       return ['error' => 'Captcha required'];
     }
@@ -211,18 +264,26 @@ class AuthController {
     }
     $meta = new UserMetaModel();
     $twofaEnabled = $meta->getMeta((int) $user['id'], 'twofa_enabled') === '1';
+    $devMode = ($_ENV['DEV_MODE'] ?? '') === '1' || ($this->settings->get('dev_mode') === '1');
     if ($twofaEnabled) {
-      $pending = $this->tokens->createPending2fa((int) $user['id']);
-      $this->setPendingCookie($pending);
-      $this->audit->log((int) $user['id'], 'login_2fa_required', '2FA required');
-      return [
-        'twoFARequired' => true,
-        'message' => '2FA required',
-      ];
+      if ($devMode) {
+        // Skip 2FA in dev mode
+      } else {
+        $pending = $this->tokens->createPending2fa((int) $user['id']);
+        $this->setPendingCookie($pending);
+        $this->audit->log((int) $user['id'], 'login_2fa_required', '2FA required');
+        return [
+          'twoFARequired' => true,
+          'message' => '2FA required',
+        ];
+      }
     }
 
     $this->auth->createSession((int) $user['id']);
-    $this->audit->log((int) $user['id'], 'login_success', 'Login successful');
+    $this->audit->log((int) $user['id'], 'login_success', 'Login successful', [
+      'username' => $user['username'] ?? '',
+      'login' => $login,
+    ]);
     return [
       'message' => 'Login successful',
       'user' => [

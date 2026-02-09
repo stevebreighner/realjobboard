@@ -37,21 +37,26 @@ export function renderProfile(container) {
            alt="Avatar" class="rounded-full border object-cover" loading="lazy" decoding="async" />
     </div>
 
-    <div class="mb-4">
+    <div class="mb-4" id="avatarUploadSection">
       <label for="avatar" class="block font-semibold">Upload Avatar (Max 2MB)</label>
       <input type="file" id="avatar" name="avatar" class="w-full p-2 border rounded" accept="image/*" />
+      <div class="flex items-center gap-3 mt-2">
+        <button type="button" id="saveAvatarBtn" class="text-xs px-3 py-1.5 rounded-full border border-indigo-300 text-indigo-700 hover:border-indigo-500 transition hidden">Save avatar</button>
+        <button type="button" id="replaceAvatarBtn" class="text-xs text-indigo-600 hover:underline hidden">Replace avatar</button>
+        <span id="avatarStatus" class="text-xs text-slate-600"></span>
+      </div>
     </div>
 
     <div id="profileLayout" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <form id="profileForm" class="grid grid-cols-1 md:grid-cols-2 gap-4" onsubmit="handleProfileUpdate(event)">
+    <form id="profileForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <div>
       <label for="username" class="block font-semibold">Username</label>
-      <input type="text" id="username" name="username" class="w-full p-2 border rounded" readonly data-locked-msg="Username is locked." />
+      <input type="text" id="username" name="username" class="w-full p-2 border rounded" readonly data-locked-msg="Username is locked. Contact support to change it." />
     </div>
 
     <div>
       <label for="email" class="block font-semibold">Email</label>
-      <input type="email" id="email" name="email" class="w-full p-2 border rounded" readonly data-locked-msg="Email is locked." />
+      <input type="email" id="email" name="email" class="w-full p-2 border rounded" readonly data-locked-msg="Email is locked. Contact support to change it." />
     </div>
 
     <div>
@@ -164,6 +169,10 @@ export function renderProfile(container) {
   const jobboardLinks = container.querySelector('#jobboard-links');
   const roleLabel     = container.querySelector('#roleLabel');
   const previewImg    = container.querySelector('#avatarPreview');
+  const avatarUploadSection = container.querySelector('#avatarUploadSection');
+  const replaceAvatarBtn = container.querySelector('#replaceAvatarBtn');
+  const saveAvatarBtn = container.querySelector('#saveAvatarBtn');
+  const avatarStatus = container.querySelector('#avatarStatus');
   const avatarInput = container.querySelector('#avatar');
   const profileForm = container.querySelector('#profileForm');
   const profileStatus = container.querySelector('#profileStatus');
@@ -175,7 +184,80 @@ export function renderProfile(container) {
   const zipInput = container.querySelector('#zip');
   const cityInput = container.querySelector('#city');
   const stateInput = container.querySelector('#state');
+  if (previewImg) {
+    previewImg.addEventListener('error', () => {
+      previewImg.src = '/default-avatar.svg';
+    });
+  }
+  if (avatarInput && previewImg) {
+    avatarInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) {
+        previewImg.src = '/default-avatar.svg';
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        previewImg.src = '/default-avatar.svg';
+        return;
+      }
+      window.__profileAvatarFile = file;
+      if (saveAvatarBtn) saveAvatarBtn.classList.remove('hidden');
+      if (avatarStatus) avatarStatus.textContent = 'Ready to upload.';
+      const reader = new FileReader();
+      reader.onload = () => {
+        previewImg.src = reader.result || '/default-avatar.svg';
+      };
+      reader.onerror = () => {
+        previewImg.src = '/default-avatar.svg';
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  if (replaceAvatarBtn && avatarInput) {
+    replaceAvatarBtn.addEventListener('click', () => {
+      avatarInput.classList.remove('hidden');
+      avatarInput.value = '';
+      if (saveAvatarBtn) saveAvatarBtn.classList.add('hidden');
+      if (avatarStatus) avatarStatus.textContent = '';
+      avatarInput.focus();
+    });
+  }
+  if (saveAvatarBtn) {
+    saveAvatarBtn.addEventListener('click', async () => {
+      if (!window.__profileAvatarFile) return;
+      const formData = new FormData();
+      formData.append('avatar', window.__profileAvatarFile);
+      formData.append('avatar_expected', '1');
+      if (avatarStatus) avatarStatus.textContent = 'Uploading...';
+      try {
+        const res = await fetch('/api/user-profile-update', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (avatarStatus) avatarStatus.textContent = data.error || 'Upload failed.';
+          return;
+        }
+        const newAvatarUrl = data.avatar_url || data.avatarUrl;
+        if (newAvatarUrl && previewImg) {
+          previewImg.src = newAvatarUrl;
+        }
+        if (avatarInput) avatarInput.classList.add('hidden');
+        if (replaceAvatarBtn) replaceAvatarBtn.classList.remove('hidden');
+        if (saveAvatarBtn) saveAvatarBtn.classList.add('hidden');
+        window.__profileAvatarFile = null;
+        if (avatarStatus) avatarStatus.textContent = 'Avatar updated.';
+      } catch (err) {
+        if (avatarStatus) avatarStatus.textContent = 'Upload failed.';
+      }
+    });
+  }
   attachFieldHints(profileForm);
+  if (profileForm) {
+    profileForm.addEventListener('submit', handleProfileUpdate);
+  }
   if (zipInput && cityInput && stateInput) {
     const handleZipLookup = async () => {
       const zip = (zipInput.value || '').trim();
@@ -188,8 +270,8 @@ export function renderProfile(container) {
         if (!place) return;
         const city = place['place name'] || '';
         const state = place['state abbreviation'] || '';
-        if (city && !cityInput.value) cityInput.value = city;
-        if (state && !stateInput.value) stateInput.value = state;
+        if (city) cityInput.value = city;
+        if (state) stateInput.value = state;
       } catch (err) {}
     };
     zipInput.addEventListener('blur', handleZipLookup);
@@ -266,7 +348,17 @@ export function renderProfile(container) {
     setValue('zip', data.zip || '');
     setValue('country', data.country || 'United States');
     setChecked('hide_email', data.hide_email);
-    previewImg.src = data.avatar_url || '/default-avatar.svg';
+    const avatarUrl = data.avatar_url || '';
+    previewImg.src = avatarUrl || '/default-avatar.svg';
+    if (avatarUploadSection && replaceAvatarBtn && avatarInput) {
+      if (avatarUrl) {
+        avatarInput.classList.add('hidden');
+        replaceAvatarBtn.classList.remove('hidden');
+      } else {
+        avatarInput.classList.remove('hidden');
+        replaceAvatarBtn.classList.add('hidden');
+      }
+    }
 
     if (profileStatus) {
       profileStatus.textContent = 'Profile decrypted.';
@@ -486,8 +578,10 @@ async function handleProfileUpdate(event) {
   const errorEl = document.getElementById('profileError');
   const formData = new FormData(form);
   const avatarFileInput = document.getElementById('avatar');
-  if (avatarFileInput && avatarFileInput.files && avatarFileInput.files[0]) {
-    formData.append('avatar', avatarFileInput.files[0]);
+  const avatarFile = window.__profileAvatarFile || (avatarFileInput && avatarFileInput.files && avatarFileInput.files[0]);
+  if (avatarFile) {
+    formData.append('avatar', avatarFile);
+    formData.append('avatar_expected', '1');
   }
   if (errorEl) errorEl.textContent = '';
 
@@ -579,9 +673,26 @@ async function handleProfileUpdate(event) {
         errorEl.textContent = 'Profile updated successfully.';
         errorEl.className = 'text-sm text-green-700';
       }
+      const newAvatarUrl = data.avatar_url || data.avatarUrl;
+      const preview = document.getElementById('avatarPreview');
+      if (newAvatarUrl && preview) {
+        preview.src = newAvatarUrl;
+        const replaceBtn = document.getElementById('replaceAvatarBtn');
+        const avatarInputEl = document.getElementById('avatar');
+        if (replaceBtn && avatarInputEl) {
+          avatarInputEl.classList.add('hidden');
+          replaceBtn.classList.remove('hidden');
+        }
+      }
+      if (avatarFile && !newAvatarUrl && errorEl) {
+        const debug = data && data.debug ? JSON.stringify(data.debug) : '';
+        errorEl.textContent = debug ? `Avatar upload failed. Debug: ${debug}` : 'Avatar upload failed. Please try again.';
+        errorEl.className = 'text-sm text-red-600';
+      }
+      window.__profileAvatarFile = null;
     } else {
       if (errorEl) {
-        errorEl.textContent = 'Failed to update profile: ' + (data.message || 'Unknown error');
+        errorEl.textContent = data.error || data.message || 'Failed to update profile.';
         errorEl.className = 'text-sm text-red-600';
       }
     }
@@ -593,4 +704,4 @@ async function handleProfileUpdate(event) {
   }
 }
 
-window.handleProfileUpdate = handleProfileUpdate; // 👈 make it globally callable from form
+// No global handler; bound directly in renderProfile

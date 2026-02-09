@@ -28,6 +28,7 @@ import { renderCompany } from './views/company.js';
 import { renderMagicLogin } from './views/magicLogin.js';
 import { renderVerifyEmail } from './views/verifyEmail.js';
 import { renderUnsubscribe } from './views/unsubscribe.js';
+import { renderSavedSearches } from './views/savedSearches.js';
 
 function parseHash() {
   const rawHash = window.location.hash.slice(1);
@@ -45,8 +46,8 @@ function kebabToCamel(str) {
   return str.replace(/-([a-z])/g, (_, char) => char.toUpperCase());
 }
 
-const protectedRoutes = ['profile', 'updatePassword','post','apply','resume', 'myJobPosts', 'myJobPostDetail', 'myApplications', 'admin'];
-const employerRoutes = ['post', 'myJobPosts', 'myJobPostDetail'];
+const protectedRoutes = ['profile', 'updatePassword','post','apply','resume', 'myJobPosts', 'myJobPostDetail', 'myApplications', 'myjobposts', 'myjobpostdetail', 'myapplications', 'admin', 'savedSearches', 'savedsearches', 'saved-searches'];
+const employerRoutes = ['post', 'myJobPosts', 'myJobPostDetail', 'myjobposts', 'myjobpostdetail'];
 const adminRoutes = ['admin'];
 
 export async function router() {
@@ -104,7 +105,7 @@ export async function router() {
 
   switch (normalizedPath) {
     case 'home':
-      renderHome(app);
+      await renderHome(app);
       return scrollToTopAfterRender();
     case 'login':
       renderLogin(app);
@@ -126,12 +127,15 @@ export async function router() {
         app.innerHTML = '<h1 class="text-xl">Missing ID for List Detail</h1>';
         return;
         case 'myJobPosts':
+        case 'myjobposts':
   renderMyJobPosts(app);
   return scrollToTopAfterRender();
 case 'myJobPostDetail':
+case 'myjobpostdetail':
   renderMyJobPostDetail(app, params.id);
   return scrollToTopAfterRender();
 case 'myApplications':
+case 'myapplications':
   renderMyApplications(app);
   return scrollToTopAfterRender();
     case 'post':
@@ -185,6 +189,11 @@ case 'myApplications':
       return scrollToTopAfterRender();
     case 'unsubscribe':
       renderUnsubscribe(app);
+      return scrollToTopAfterRender();
+    case 'savedSearches':
+    case 'savedsearches':
+    case 'saved-searches':
+      renderSavedSearches(app);
       return scrollToTopAfterRender();
         case '2fa':
           render2FA(app);

@@ -86,6 +86,8 @@ class ProfileController {
           'name' => $row['file_name'] ?: 'Resume',
           'url' => $token ? "/api/user-file?token={$token}" : '',
           'time' => $time,
+          'mime' => $row['mime_type'] ?? '',
+          'size' => (int) ($row['file_size'] ?? 0),
         ];
       }, $resumes),
       'cover_letters' => array_map(function (array $row): array {
@@ -96,6 +98,8 @@ class ProfileController {
           'name' => $row['file_name'] ?: 'Cover Letter',
           'url' => $token ? "/api/user-file?token={$token}" : '',
           'time' => $time,
+          'mime' => $row['mime_type'] ?? '',
+          'size' => (int) ($row['file_size'] ?? 0),
         ];
       }, $covers),
     ];
@@ -107,6 +111,8 @@ class ProfileController {
       http_response_code(403);
       return ['error' => 'Not logged in'];
     }
+    $devMode = ($_ENV['DEV_MODE'] ?? '') === '1';
+    $debugInfo = $devMode ? [] : null;
 
     $fields = [
       'first_name', 'last_name', 'dob',
@@ -140,22 +146,77 @@ class ProfileController {
     }
 
     // Simple avatar upload handling (optional)
-    if (!empty($_FILES['avatar']['tmp_name'])) {
-      $tmp = $_FILES['avatar']['tmp_name'];
-      $name = basename($_FILES['avatar']['name'] ?? 'avatar.png');
-      $uploadDir = __DIR__ . '/../../uploads/avatars';
-      if (!is_dir($uploadDir)) {
-        @mkdir($uploadDir, 0755, true);
-      }
-      $ext = pathinfo($name, PATHINFO_EXTENSION) ?: 'png';
-      $fileName = 'avatar_' . $user['id'] . '_' . time() . '.' . $ext;
-      $dest = $uploadDir . '/' . $fileName;
-      if (@move_uploaded_file($tmp, $dest)) {
-        $url = '/uploads/avatars/' . $fileName;
-        $this->profiles->setMeta((int) $user['id'], 'avatar_url', $url);
+    $avatarUrl = '';
+    if (!empty($_POST['avatar_expected']) && empty($_FILES['avatar']['tmp_name'])) {
+      if ($devMode) {
+        http_response_code(422);
+        return [
+          'error' => 'Avatar file missing from request.',
+          'debug' => [
+            'files' => array_keys($_FILES),
+            'post' => array_keys($_POST),
+          ],
+        ];
       }
     }
 
-    return ['success' => true];
+    if (!empty($_FILES['avatar']['tmp_name'])) {
+      $tmp = $_FILES['avatar']['tmp_name'];
+      $name = basename($_FILES['avatar']['name'] ?? 'avatar.png');
+      $size = (int) ($_FILES['avatar']['size'] ?? 0);
+      $maxBytes = 2 * 1024 * 1024;
+      if ($size > $maxBytes) {
+        http_response_code(413);
+        return ['error' => 'Avatar too large (max 2MB).'];
+      }
+      $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION) ?: 'png');
+      $allowedExt = ['png','jpg','jpeg','gif','webp'];
+      if (!in_array($ext, $allowedExt, true)) {
+        http_response_code(422);
+        return ['error' => 'Invalid avatar type. Use PNG, JPG, GIF, or WEBP.'];
+      }
+      $uploadDir = __DIR__ . '/../../../uploads/avatars';
+      if (!is_dir($uploadDir)) {
+        @mkdir($uploadDir, 0777, true);
+      }
+      @chmod($uploadDir, 0777);
+      $fileName = 'avatar_' . $user['id'] . '_' . time() . '.' . $ext;
+      $dest = $uploadDir . '/' . $fileName;
+      $moved = @move_uploaded_file($tmp, $dest);
+      if (!$moved) {
+        $moved = @copy($tmp, $dest);
+        if ($moved) @unlink($tmp);
+      }
+      if ($moved) {
+        @chmod($dest, 0644);
+        $avatarUrl = '/uploads/avatars/' . $fileName;
+        $this->profiles->setMeta((int) $user['id'], 'avatar_url', $avatarUrl);
+        if ($devMode) {
+          $debugInfo['dest'] = $dest;
+          $debugInfo['file_exists'] = file_exists($dest);
+        }
+      } else {
+        http_response_code(500);
+        $lastErr = error_get_last();
+        return ['error' => $devMode ? ('Avatar upload failed. tmp=' . $tmp . ' dest=' . $dest . ' perms=' . substr(sprintf('%o', @fileperms($uploadDir)), -4) . ' last=' . json_encode($lastErr)) : 'Avatar upload failed.'];
+      }
+    }
+
+    if ($devMode) {
+      $debugInfo['has_tmp'] = !empty($_FILES['avatar']['tmp_name']);
+      $debugInfo['upload_dir'] = $uploadDir ?? null;
+      $debugInfo['upload_dir_writable'] = isset($uploadDir) ? is_writable($uploadDir) : null;
+    }
+
+    if (!$avatarUrl) {
+      $existing = $this->profiles->getMeta((int) $user['id'], ['avatar_url']);
+      $avatarUrl = $existing['avatar_url'] ?? '';
+    }
+
+    return [
+      'success' => true,
+      'avatar_url' => $avatarUrl,
+      'debug' => $debugInfo,
+    ];
   }
 }

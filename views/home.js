@@ -2,7 +2,7 @@
 
 import { CONFIG } from '../config.js';
 import { getSessionCached } from '../utils/session.js';
-export function renderHome(container) {
+export async function renderHome(container) {
   const heroes = Array.isArray(CONFIG.HOME_HEROES) && CONFIG.HOME_HEROES.length
     ? CONFIG.HOME_HEROES
     : [
@@ -362,7 +362,7 @@ export function renderHome(container) {
       listEndpoint = '/api/user-jobs';
     } else {
       actions = [
-        { label: CONFIG.JOB_COPY?.SEARCH_CTA || 'Search openings', href: '/#list' },
+        { label: 'Saved searches', href: '/#saved-searches' },
         { label: 'My applications', href: '/#myApplications' },
         { label: 'Update profile', href: '/#profile' },
       ];
@@ -382,7 +382,7 @@ export function renderHome(container) {
             </div>
             <div class="flex flex-wrap gap-2">
               ${actions.map(a => `
-                <a href="${a.href}" class="bg-purple text-white font-semibold px-4 py-2 rounded-lg">
+                <a href="${a.href}" class="inline-flex items-center border border-indigo-300 text-indigo-700 font-semibold px-4 py-2 rounded-lg hover:border-indigo-500">
                   ${a.label}
                 </a>
               `).join('')}
@@ -394,6 +394,12 @@ export function renderHome(container) {
           <h2 class="text-xl font-semibold mb-3">${listTitle}</h2>
           <div id="homeRecentList" class="space-y-3"></div>
         </div>
+        ${!isEmployer && !isAdmin ? `
+          <div class="mt-8">
+            <h2 class="text-xl font-semibold mb-3">Matches from saved searches</h2>
+            <div id="homeSavedMatches" class="space-y-3"></div>
+          </div>
+        ` : ''}
       </div>
     `;
 
@@ -427,7 +433,15 @@ export function renderHome(container) {
             <div class="border rounded-lg p-4 bg-white shadow-sm">
               <div class="font-semibold text-gray-900">${app.job_title || 'Untitled role'}</div>
               <div class="text-xs text-gray-500 mt-1">${[app.company, app.location].filter(Boolean).join(' • ')}</div>
-              <div class="text-xs text-gray-600 mt-1">Status: ${app.status || 'new'}</div>
+              <div class="text-xs text-gray-600 mt-1">Status: ${(() => {
+                const raw = (app.status || 'new').toString().toLowerCase();
+                if (raw === 'reviewing') return 'Received';
+                if (raw === 'shortlisted') return 'Reviewing';
+                if (raw === 'submitted') return 'Submitted';
+                if (raw === 'withdrawn') return 'Withdrawn';
+                if (raw === 'rejected') return 'Rejected';
+                return raw.charAt(0).toUpperCase() + raw.slice(1);
+              })()}</div>
               <a class="text-sm text-indigo-600 hover:underline mt-2 inline-block" href="/#myApplications">View applications →</a>
             </div>
           `).join('');
@@ -436,6 +450,66 @@ export function renderHome(container) {
       .catch(() => {
         listEl.innerHTML = `<div class="text-sm text-gray-600">${listEmpty}</div>`;
       });
+
+    if (!isEmployer && !isAdmin) {
+      const matchEl = container.querySelector('#homeSavedMatches');
+      if (matchEl) {
+        matchEl.innerHTML = `<div class="text-sm text-gray-500">Loading...</div>`;
+        Promise.all([
+          fetch('/api/job-alerts', { credentials: 'include' }).then(r => r.json()).catch(() => []),
+          fetch('/api/get-list').then(r => r.json()).catch(() => []),
+        ]).then(([alerts, jobs]) => {
+          if (!Array.isArray(alerts) || !alerts.length || !Array.isArray(jobs) || !jobs.length) {
+            matchEl.innerHTML = `<div class="text-sm text-gray-600">No saved search matches yet.</div>`;
+            return;
+          }
+          const queries = alerts.map(a => (a.criteria?.query || a.label || '').toLowerCase()).filter(Boolean);
+          if (!queries.length) {
+            matchEl.innerHTML = `<div class="text-sm text-gray-600">No saved search matches yet.</div>`;
+            return;
+          }
+          const matches = [];
+          jobs.forEach(job => {
+            const text = `${job.title || ''} ${job.description || ''} ${job.meta?.company || ''} ${job.meta?.field || ''}`.toLowerCase();
+            const score = queries.reduce((acc, q) => acc + (text.includes(q) ? 1 : 0), 0);
+            if (score > 0) matches.push({ job, score });
+          });
+          const top = matches.sort((a, b) => b.score - a.score).slice(0, 3);
+          if (!top.length) {
+            matchEl.innerHTML = `<div class="text-sm text-gray-600">No saved search matches yet.</div>`;
+            return;
+          }
+          matchEl.innerHTML = top.map(({ job, score }) => `
+            <div class="border rounded-lg p-4 bg-white shadow-sm">
+              <div class="font-semibold text-gray-900">${job.title || 'Job'}</div>
+              <div class="text-xs text-gray-500 mt-1">${job.meta?.company || ''}</div>
+              <div class="text-xs text-gray-600 mt-1">Match score: ${score}</div>
+              <a class="text-sm text-indigo-600 hover:underline mt-2 inline-block" href="/#list-detail?id=${job.id}">View job →</a>
+            </div>
+          `).join('');
+        }).catch(() => {
+          matchEl.innerHTML = `<div class="text-sm text-gray-600">No saved search matches yet.</div>`;
+        });
+      }
+    }
+  }
+
+  container.innerHTML = `
+    <div class="max-w-3xl mx-auto px-4 py-12 text-sm text-gray-500 text-center">
+      Loading...
+    </div>
+  `;
+
+  let session = null;
+  try {
+    session = await getSessionCached({ maxAgeMs: 30000 });
+  } catch (err) {
+    session = null;
+  }
+
+  if (session) {
+    renderLoggedInHome(session);
+    return;
   }
 
   container.innerHTML = loggedOutHtml;
@@ -457,20 +531,12 @@ export function renderHome(container) {
   }
 
   const postCta = container.querySelector('#postCta');
-  getSessionCached({ maxAgeMs: 30000 })
-    .then(session => {
-      if (session) {
-        renderLoggedInHome(session);
-        return;
-      }
-      const roles = Array.isArray(session?.roles) ? session.roles : [];
-      if (postCta && roles.includes('employer')) {
-        postCta.style.display = 'inline-block';
-      } else if (postCta) {
-        postCta.style.display = 'none';
-      }
-    })
-    .catch(() => {});
+  const roles = Array.isArray(session?.roles) ? session.roles : [];
+  if (postCta && roles.includes('employer')) {
+    postCta.style.display = 'inline-block';
+  } else if (postCta) {
+    postCta.style.display = 'none';
+  }
 
   
 }

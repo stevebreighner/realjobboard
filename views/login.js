@@ -80,9 +80,8 @@ export function renderLogin(container) {
       const data = await res.json();
       devMode = !!data?.dev_mode;
     } catch (err) {}
-    if (devMode) {
-      if (turnstileContainer) turnstileContainer.innerHTML = '<div class="text-xs text-gray-500">Dev mode: captcha disabled</div>';
-      return;
+    if (devMode && turnstileContainer) {
+      turnstileContainer.insertAdjacentHTML('afterend', '<div class="text-xs text-gray-500 mt-1">Dev mode: captcha still required for login.</div>');
     }
     if (!window.turnstile) {
       const script = document.createElement('script');
@@ -125,19 +124,15 @@ export function renderLogin(container) {
     if (window.turnstile && turnstileWidgetId !== null) {
       turnstileToken = window.turnstile.getResponse(turnstileWidgetId);
     }
-    if (turnstileContainer && turnstileContainer.textContent.includes('captcha disabled')) {
-      turnstileToken = '';
-    }
     if (!CONFIG.TURNSTILE_SITE_KEY) {
       turnstileToken = '';
     }
-    const captchaDisabled = turnstileContainer && turnstileContainer.textContent.includes('captcha disabled');
     if (CONFIG.TURNSTILE_SITE_KEY && !window.turnstile) {
       messageEl.className = 'mt-4 text-sm text-amber-700';
       messageEl.textContent = 'Captcha is blocked by the browser. Please refresh or disable blockers.';
       return;
     }
-    if (!turnstileToken && turnstileContainer && !captchaDisabled && CONFIG.TURNSTILE_SITE_KEY) {
+    if (!turnstileToken && turnstileContainer && CONFIG.TURNSTILE_SITE_KEY) {
       messageEl.className = 'mt-4 text-sm text-amber-700';
       messageEl.textContent = 'Please complete the captcha.';
       return;
