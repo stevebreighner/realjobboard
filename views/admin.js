@@ -6,6 +6,42 @@ export async function renderAdmin(container) {
       <h1 class="text-2xl font-bold mb-4">Admin</h1>
 
       <div id="adminNotice" class="mb-4 text-sm text-gray-600"></div>
+      <div class="mb-6 text-sm text-slate-600 flex flex-wrap gap-3">
+        <a href="#admin-analytics" class="text-indigo-600 hover:underline">Analytics</a>
+        <a href="#admin-promos" class="text-indigo-600 hover:underline">Promo codes</a>
+        <a href="#admin-bizdev" class="text-indigo-600 hover:underline">Biz dev targets</a>
+      </div>
+
+      <div class="mb-8">
+        <h2 class="text-xl font-semibold mb-2">Dev Mode</h2>
+        <p class="text-sm text-gray-600 mb-3">
+          For development only: bypasses Turnstile/Captcha, enables verbose error details, and makes test flows faster.
+          Do not enable on production unless you are actively testing.
+        </p>
+        <div class="flex items-center gap-3">
+          <label class="inline-flex items-center gap-2 text-sm">
+            <input type="checkbox" id="devModeToggle" class="h-4 w-4" />
+            <span>Disable Turnstile/Captcha checks</span>
+          </label>
+          <span id="devModeStatus" class="text-xs text-gray-500"></span>
+        </div>
+        <div class="mt-3 flex items-center gap-3">
+          <label class="inline-flex items-center gap-2 text-sm">
+            <input type="checkbox" id="paymentPhaseToggle" class="h-4 w-4" />
+            <span>Phase 2: Require payment to publish jobs</span>
+          </label>
+          <span id="paymentPhaseStatus" class="text-xs text-gray-500"></span>
+        </div>
+      </div>
+
+      <div class="mb-8">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Recent Activity</h2>
+          <button id="refreshRecent" class="text-sm text-indigo-600 hover:underline">Refresh</button>
+        </div>
+        <div id="recentActivity" class="space-y-2 text-sm"></div>
+        <div id="recentErrors" class="mt-3 text-xs text-rose-700 space-y-1"></div>
+      </div>
 
       <div class="mb-8">
         <h2 class="text-xl font-semibold mb-2">Create User</h2>
@@ -14,7 +50,7 @@ export async function renderAdmin(container) {
           <input name="email" type="email" class="p-2 border rounded" placeholder="Email" required />
           <input name="password" type="text" class="p-2 border rounded" placeholder="Temp Password" required />
           <select name="role" class="p-2 border rounded">
-            <option value="employee">Employee</option>
+            <option value="employee">Job Seeker</option>
             <option value="employer">Employer</option>
             <option value="site_admin">Site Admin</option>
           </select>
@@ -48,6 +84,14 @@ export async function renderAdmin(container) {
 
       <div class="mb-10">
         <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Companies</h2>
+          <button id="refreshCompanies" class="text-sm text-indigo-600 hover:underline">Refresh</button>
+        </div>
+        <div id="companiesContainer" class="space-y-3 text-sm"></div>
+      </div>
+
+      <div class="mb-10">
+        <div class="flex items-center justify-between mb-2">
           <h2 class="text-xl font-semibold">Jobs</h2>
           <div class="flex items-center space-x-3">
             <button id="exportJobs" class="text-sm text-indigo-600 hover:underline">Export CSV</button>
@@ -64,6 +108,95 @@ export async function renderAdmin(container) {
         </div>
         <div id="auditContainer" class="space-y-2 text-sm"></div>
       </div>
+
+      <div class="mb-10">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Email Templates</h2>
+          <div class="flex items-center space-x-3">
+            <button id="addTemplate" class="text-sm text-indigo-600 hover:underline">Add template</button>
+            <button id="saveTemplates" class="text-sm text-indigo-600 hover:underline">Save</button>
+          </div>
+        </div>
+        <p class="text-xs text-gray-500 mb-2">These templates appear in employer/applicant message dropdowns.</p>
+        <div id="templatesMsg" class="text-sm mb-2"></div>
+        <div class="flex items-center gap-3 text-xs text-gray-500 mb-2">
+          <span>Variables: {job_title}, {company}, {site_name}, {site_url}, {applicant_name}, {employer_name}</span>
+        </div>
+        <div id="historyRow" class="flex items-center gap-2 text-xs text-gray-500 mb-2 hidden">
+          <label for="historySelect">Restore previous:</label>
+          <select id="historySelect" class="border rounded p-1 text-xs"></select>
+          <button id="restoreHistory" class="text-xs text-indigo-600 hover:underline">Restore</button>
+        </div>
+        <div id="templatesContainer" class="space-y-3"></div>
+      </div>
+
+      <div class="mb-10" id="admin-bizdev">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Business Development Targets</h2>
+          <button id="refreshBizDev" class="text-sm text-indigo-600 hover:underline">Refresh</button>
+        </div>
+        <p class="text-xs text-gray-500 mb-2">Track companies to invite. Generates a free‑post promo code for each entry.</p>
+        <form id="bizDevForm" class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+          <input name="name" class="p-2 border rounded" placeholder="Company / Contact" />
+          <input name="email" type="email" class="p-2 border rounded" placeholder="Email" />
+          <input name="free_posts" type="number" min="1" max="50" class="p-2 border rounded" placeholder="Free posts (default 5)" />
+          <input name="notes" class="p-2 border rounded md:col-span-4" placeholder="Notes (optional)" />
+          <button type="submit" class="text-purple px-4 py-2 rounded md:col-span-4">Add Target</button>
+        </form>
+        <div id="bizDevMsg" class="text-sm mb-2"></div>
+        <div id="bizDevList" class="space-y-2 text-sm"></div>
+      </div>
+
+      <div class="mb-10" id="admin-promos">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Promo Codes</h2>
+          <button id="refreshPromos" class="text-sm text-indigo-600 hover:underline">Refresh</button>
+        </div>
+        <form id="promoForm" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+          <select name="discount" class="p-2 border rounded">
+            <option value="20">20% off</option>
+            <option value="50">50% off</option>
+            <option value="100">Free</option>
+          </select>
+          <input name="max_uses" class="p-2 border rounded" placeholder="Max uses (optional)" />
+          <button type="submit" class="text-purple px-4 py-2 rounded">Generate</button>
+        </form>
+        <div id="promoMsg" class="text-sm mb-2"></div>
+        <div id="promoList" class="space-y-2 text-sm"></div>
+      </div>
+
+      <div class="mb-10">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">System Log</h2>
+          <div class="flex items-center gap-3">
+            <button id="downloadLog" class="text-sm text-indigo-600 hover:underline">Download</button>
+            <button id="refreshLog" class="text-sm text-indigo-600 hover:underline">Refresh</button>
+          </div>
+        </div>
+        <div id="logContainer" class="text-xs bg-slate-50 border rounded p-3 whitespace-pre-wrap"></div>
+      </div>
+
+      <div class="mb-10" id="admin-analytics">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Analytics</h2>
+          <button id="refreshAnalytics" class="text-sm text-indigo-600 hover:underline">Refresh</button>
+        </div>
+        <p class="text-xs text-gray-500 mb-2">Minimal, first‑party only. Includes path, referrer, and timestamp.</p>
+        <div id="analyticsContainer" class="space-y-2 text-sm"></div>
+      </div>
+
+      <div class="mb-10">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Email Subscribers</h2>
+          <div class="flex items-center gap-3">
+            <button id="sendDigest" class="text-sm text-indigo-600 hover:underline">Send digest</button>
+            <button id="refreshSubscribers" class="text-sm text-indigo-600 hover:underline">Refresh</button>
+          </div>
+        </div>
+        <p class="text-xs text-gray-500 mb-2">Users who saved job alerts (email list).</p>
+        <div id="subscribersMsg" class="text-sm mb-2"></div>
+        <div id="subscribersContainer" class="space-y-2 text-sm"></div>
+      </div>
     </div>
   `;
 
@@ -71,16 +204,49 @@ export async function renderAdmin(container) {
   const usersContainer = container.querySelector('#usersContainer');
   const jobsContainer = container.querySelector('#jobsContainer');
   const companyGroups = container.querySelector('#companyGroups');
+  const companiesContainer = container.querySelector('#companiesContainer');
+  const refreshCompaniesBtn = container.querySelector('#refreshCompanies');
   const refreshUsersBtn = container.querySelector('#refreshUsers');
   const refreshJobsBtn = container.querySelector('#refreshJobs');
   const exportUsersBtn = container.querySelector('#exportUsers');
   const exportJobsBtn = container.querySelector('#exportJobs');
+  const refreshRecentBtn = container.querySelector('#refreshRecent');
+  const recentActivity = container.querySelector('#recentActivity');
+  const recentErrors = container.querySelector('#recentErrors');
   const refreshAuditBtn = container.querySelector('#refreshAudit');
   const auditContainer = container.querySelector('#auditContainer');
   const createForm = container.querySelector('#adminCreateUser');
   const createMsg = container.querySelector('#createUserMsg');
   const generateTestUserBtn = container.querySelector('#generateTestUser');
   const generatePasswordBtn = container.querySelector('#generatePassword');
+  const addTemplateBtn = container.querySelector('#addTemplate');
+  const saveTemplatesBtn = container.querySelector('#saveTemplates');
+  const templatesContainer = container.querySelector('#templatesContainer');
+  const templatesMsg = container.querySelector('#templatesMsg');
+  const historyRow = container.querySelector('#historyRow');
+  const historySelect = container.querySelector('#historySelect');
+  const restoreHistoryBtn = container.querySelector('#restoreHistory');
+  const devModeToggle = container.querySelector('#devModeToggle');
+  const devModeStatus = container.querySelector('#devModeStatus');
+  const paymentPhaseToggle = container.querySelector('#paymentPhaseToggle');
+  const paymentPhaseStatus = container.querySelector('#paymentPhaseStatus');
+  const promoForm = container.querySelector('#promoForm');
+  const promoList = container.querySelector('#promoList');
+  const promoMsg = container.querySelector('#promoMsg');
+  const refreshPromosBtn = container.querySelector('#refreshPromos');
+  const bizDevForm = container.querySelector('#bizDevForm');
+  const bizDevList = container.querySelector('#bizDevList');
+  const bizDevMsg = container.querySelector('#bizDevMsg');
+  const refreshBizDevBtn = container.querySelector('#refreshBizDev');
+  const refreshLogBtn = container.querySelector('#refreshLog');
+  const downloadLogBtn = container.querySelector('#downloadLog');
+  const logContainer = container.querySelector('#logContainer');
+  const refreshAnalyticsBtn = container.querySelector('#refreshAnalytics');
+  const analyticsContainer = container.querySelector('#analyticsContainer');
+  const refreshSubscribersBtn = container.querySelector('#refreshSubscribers');
+  const subscribersContainer = container.querySelector('#subscribersContainer');
+  const sendDigestBtn = container.querySelector('#sendDigest');
+  const subscribersMsg = container.querySelector('#subscribersMsg');
 
   const session = await getSessionCached({ maxAgeMs: 30000 });
   const roles = Array.isArray(session?.roles) ? session.roles : [];
@@ -88,10 +254,379 @@ export async function renderAdmin(container) {
     noticeEl.textContent = 'Access denied.';
     return;
   }
+  noticeEl.innerHTML = `
+    <div class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900 space-y-2">
+      <div>
+        <strong>Stripe note:</strong> If you change the site URL/domain, remember to update your Stripe webhook
+        endpoint URL and any Stripe env vars in <code>.env</code> (or hosting settings).
+      </div>
+      <div>
+        <strong>Google Auth note:</strong> When you move to the real domain, update the OAuth Authorized
+        JavaScript origins + redirect URI in Google Cloud Console.
+      </div>
+    </div>
+  `;
+
+  async function loadRecentActivity() {
+    if (!recentActivity) return;
+    recentActivity.innerHTML = '<div class="text-gray-500">Loading...</div>';
+    if (recentErrors) recentErrors.innerHTML = '';
+    try {
+      const [auditRes, errorRes, recentRes] = await Promise.all([
+        fetch(`/api/admin/audit?_=${Date.now()}`, { credentials: 'include' }),
+        fetch(`/api/admin/error-log?_=${Date.now()}`, { credentials: 'include' }),
+        fetch(`/api/admin/recent?_=${Date.now()}`, { credentials: 'include' }),
+      ]);
+      const auditData = await auditRes.json();
+      const errorData = await errorRes.json();
+      const recentData = await recentRes.json();
+
+      const auditRows = Array.isArray(auditData) ? auditData.slice(0, 8) : [];
+      const recentUsers = Array.isArray(recentData?.users) ? recentData.users : [];
+      const recentJobs = Array.isArray(recentData?.jobs) ? recentData.jobs : [];
+      const recentApps = Array.isArray(recentData?.applications) ? recentData.applications : [];
+
+      if (!auditRows.length && !recentUsers.length && !recentJobs.length && !recentApps.length) {
+        recentActivity.innerHTML = '<div class="text-gray-500">No recent activity.</div>';
+      } else {
+        recentActivity.innerHTML = `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="border rounded-lg p-3 bg-white">
+              <div class="font-semibold mb-2">Recent Users</div>
+              ${recentUsers.length ? recentUsers.map(u => `
+                <div class="text-xs text-slate-700 border-b border-slate-100 py-1">
+                  ${u.username || u.email} • ${u.role || '—'} • ${u.created_at || ''}
+                </div>
+              `).join('') : '<div class="text-xs text-slate-500">No recent users.</div>'}
+            </div>
+            <div class="border rounded-lg p-3 bg-white">
+              <div class="font-semibold mb-2">Recent Jobs</div>
+              ${recentJobs.length ? recentJobs.map(j => `
+                <div class="text-xs text-slate-700 border-b border-slate-100 py-1">
+                  ${j.title || 'Job'} • ${j.status || '—'} • ${j.created_at || ''}
+                </div>
+              `).join('') : '<div class="text-xs text-slate-500">No recent jobs.</div>'}
+            </div>
+          </div>
+          <div class="mt-4 border rounded-lg p-3 bg-white">
+            <div class="font-semibold mb-2">Recent Applications</div>
+            ${recentApps.length ? recentApps.map(a => `
+              <div class="text-xs text-slate-700 border-b border-slate-100 py-1">
+                Application #${a.id} • Job ${a.job_id} • User ${a.user_id} • ${a.status || '—'} • ${a.created_at || ''}
+              </div>
+            `).join('') : '<div class="text-xs text-slate-500">No recent applications.</div>'}
+          </div>
+          <div class="mt-4 border rounded-lg p-3 bg-white">
+            <div class="font-semibold mb-2">Audit Events</div>
+            ${auditRows.length ? auditRows.map(row => {
+              const label = row.label ? ` — ${row.label}` : '';
+              const meta = row.meta ? row.meta : {};
+              const who = meta.username || meta.login || '';
+              const whoLabel = who ? ` (${who})` : '';
+              return `
+                <div class="text-xs text-slate-700 border-b border-slate-100 py-1">
+                  ${row.event_type}${whoLabel}${label} • ${row.created_at || ''}
+                </div>
+              `;
+            }).join('') : '<div class="text-xs text-slate-500">No audit events.</div>'}
+          </div>
+        `;
+      }
+
+      const errorLines = Array.isArray(errorData?.lines) ? errorData.lines.slice(-5) : [];
+      if (recentErrors && errorLines.length) {
+        recentErrors.innerHTML = `
+          <div class="font-semibold text-rose-700">Recent errors</div>
+          ${errorLines.map(line => `<div>${line}</div>`).join('')}
+        `;
+      }
+    } catch (err) {
+      recentActivity.innerHTML = '<div class="text-rose-600">Unable to load recent activity.</div>';
+    }
+  }
+
+  refreshRecentBtn?.addEventListener('click', loadRecentActivity);
+
+  async function loadDevFlags() {
+    if (!devModeToggle) return;
+    try {
+      const res = await fetch('/api/dev-flags?_=' + Date.now(), { credentials: 'include' });
+      const data = await res.json();
+      if (res.ok) {
+        devModeToggle.checked = !!data.dev_mode;
+        devModeStatus.textContent = data.dev_mode ? 'Dev mode ON' : 'Dev mode OFF';
+        if (paymentPhaseToggle) {
+          paymentPhaseToggle.checked = !!data.jobs_require_payment;
+          paymentPhaseStatus.textContent = data.jobs_require_payment ? 'Phase 2 ON' : 'Phase 1 (free)';
+        }
+      }
+    } catch (err) {
+      devModeStatus.textContent = 'Unable to load dev mode';
+    }
+  }
+
+  async function fetchSubscribers() {
+    if (!subscribersContainer) return;
+    subscribersContainer.innerHTML = '<div class="text-gray-500">Loading...</div>';
+    try {
+      const res = await fetch(`/api/admin/subscribers?_=${Date.now()}`, { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data) || !data.length) {
+        subscribersContainer.innerHTML = '<div class="text-gray-500">No subscribers yet.</div>';
+        return;
+      }
+      subscribersContainer.innerHTML = data.map(row => `
+        <div class="border rounded-lg p-3 bg-white">
+          <div class="font-medium">${row.email}</div>
+          <div class="text-xs text-gray-500">User ID: ${row.user_id || '—'} • ${row.status} • Last: ${row.last_activity || ''}</div>
+        </div>
+      `).join('');
+    } catch (err) {
+      subscribersContainer.innerHTML = '<div class="text-red-600">Failed to load subscribers.</div>';
+    }
+  }
+
+  async function sendDigest() {
+    if (!subscribersMsg) return;
+    subscribersMsg.textContent = 'Sending digest...';
+    subscribersMsg.className = 'text-sm text-gray-600';
+    try {
+      const res = await fetch('/api/admin/subscribers-digest', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        subscribersMsg.textContent = data.error || 'Digest failed.';
+        subscribersMsg.className = 'text-sm text-red-600';
+        return;
+      }
+      subscribersMsg.textContent = `Digest sent to ${data.sent || 0} subscriber(s).`;
+      subscribersMsg.className = 'text-sm text-green-700';
+    } catch (err) {
+      subscribersMsg.textContent = 'Digest failed.';
+      subscribersMsg.className = 'text-sm text-red-600';
+    }
+  }
+
+  devModeToggle?.addEventListener('change', async () => {
+    devModeStatus.textContent = 'Saving...';
+    try {
+      const res = await fetch('/api/admin/flags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ dev_mode: devModeToggle.checked ? 1 : 0, jobs_require_payment: paymentPhaseToggle?.checked ? 1 : 0 }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        devModeStatus.textContent = data.message || 'Failed to save';
+        return;
+      }
+      devModeStatus.textContent = data.dev_mode ? 'Dev mode ON' : 'Dev mode OFF';
+    } catch (err) {
+      devModeStatus.textContent = 'Failed to save';
+    }
+  })
+  paymentPhaseToggle?.addEventListener('change', async () => {
+    paymentPhaseStatus.textContent = 'Saving...';
+    try {
+      const res = await fetch('/api/admin/flags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ dev_mode: devModeToggle?.checked ? 1 : 0, jobs_require_payment: paymentPhaseToggle.checked ? 1 : 0 }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        paymentPhaseStatus.textContent = data.message || 'Failed to save';
+        return;
+      }
+      paymentPhaseStatus.textContent = data.jobs_require_payment ? 'Phase 2 ON' : 'Phase 1 (free)';
+    } catch (err) {
+      paymentPhaseStatus.textContent = 'Failed to save';
+    }
+  });
+;
+
+  await loadDevFlags();
+
+  async function loadPromos() {
+    if (!promoList) return;
+    promoList.innerHTML = '<p class="text-xs text-gray-500">Loading promos...</p>';
+    try {
+      const res = await fetch('/api/admin/promos', { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data)) {
+        promoList.innerHTML = `<p class="text-xs text-red-600">${data.error || 'Failed to load promos.'}</p>`;
+        return;
+      }
+      promoList.innerHTML = data.length ? data.map(p => `
+        <div class="border rounded p-2 flex items-center justify-between">
+          <div>
+            <div class="font-medium">${p.code}</div>
+            <div class="text-xs text-gray-500">${p.is_free ? 'Free' : `${p.percent_off}% off`} • Uses: ${p.uses}/${p.max_uses || '∞'}</div>
+          </div>
+          <div class="text-xs text-gray-400">${p.expires_at ? `Expires ${new Date(p.expires_at).toLocaleDateString()}` : 'No expiry'}</div>
+        </div>
+      `).join('') : '<p class="text-xs text-gray-500">No promo codes yet.</p>';
+    } catch (err) {
+      promoList.innerHTML = '<p class="text-xs text-red-600">Failed to load promos.</p>';
+    }
+  }
+
+  async function loadBizDevTargets() {
+    if (!bizDevList) return;
+    bizDevList.innerHTML = '<div class="text-gray-500">Loading...</div>';
+    if (bizDevMsg) bizDevMsg.textContent = '';
+    try {
+      const res = await fetch('/api/admin/bizdev', { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data)) {
+        bizDevList.innerHTML = '<div class="text-xs text-red-600">Failed to load targets.</div>';
+        return;
+      }
+      if (!data.length) {
+        bizDevList.innerHTML = '<div class="text-xs text-gray-500">No targets yet.</div>';
+        return;
+      }
+      bizDevList.innerHTML = data.map(item => `
+        <div class="border rounded-lg p-3 bg-white shadow-sm">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="font-medium text-slate-900">${item.name || 'Untitled'}</div>
+              <div class="text-xs text-slate-500">${item.email || ''}</div>
+              ${item.notes ? `<div class="text-xs text-slate-500 mt-1">${item.notes}</div>` : ''}
+            </div>
+            <div class="text-xs text-slate-500 whitespace-nowrap text-right">
+              <div>Promo: <span class="font-semibold text-slate-900">${item.promo_code || ''}</span></div>
+              <div>Free posts: ${item.free_posts || 5}</div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    } catch (err) {
+      bizDevList.innerHTML = '<div class="text-xs text-red-600">Failed to load targets.</div>';
+    }
+  }
+
+  refreshPromosBtn?.addEventListener('click', loadPromos);
+  refreshBizDevBtn?.addEventListener('click', loadBizDevTargets);
+  promoForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!promoMsg) return;
+    promoMsg.textContent = 'Creating...';
+    const formData = Object.fromEntries(new FormData(promoForm).entries());
+    const payload = {
+      discount: parseInt(formData.discount || '0', 10),
+      max_uses: formData.max_uses ? parseInt(formData.max_uses, 10) : null,
+    };
+    try {
+      const res = await fetch('/api/admin/promos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        promoMsg.textContent = data.error || 'Failed to create promo.';
+        return;
+      }
+      promoMsg.textContent = `Created: ${data.promo?.code || ''}`;
+      await loadPromos();
+    } catch (err) {
+      promoMsg.textContent = 'Failed to create promo.';
+    }
+  });
+
+  bizDevForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!bizDevMsg) return;
+    bizDevMsg.textContent = 'Adding...';
+    const formData = Object.fromEntries(new FormData(bizDevForm).entries());
+    const payload = {
+      name: (formData.name || '').trim(),
+      email: (formData.email || '').trim(),
+      notes: (formData.notes || '').trim(),
+      free_posts: formData.free_posts ? Number(formData.free_posts) : 5,
+    };
+    try {
+      const res = await fetch('/api/admin/bizdev', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        bizDevMsg.textContent = data.error || 'Failed to add target.';
+        return;
+      }
+      bizDevMsg.textContent = `Added. Promo code: ${data.entry?.promo_code || ''}`;
+      bizDevForm.reset();
+      loadBizDevTargets();
+    } catch (err) {
+      bizDevMsg.textContent = 'Failed to add target.';
+    }
+  });
+
+  await loadPromos();
+  await loadBizDevTargets();
+
+  async function loadLog() {
+    if (!logContainer) return;
+    logContainer.textContent = 'Loading...';
+    try {
+      const res = await fetch('/api/admin/error-log', { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) {
+        logContainer.textContent = data.error || 'Failed to load log.';
+        return;
+      }
+      logContainer.textContent = (data.lines || []).join('\n') || 'Log is empty.';
+    } catch (err) {
+      logContainer.textContent = 'Failed to load log.';
+    }
+  }
+
+  refreshLogBtn?.addEventListener('click', loadLog);
+  downloadLogBtn?.addEventListener('click', () => {
+    window.location.href = '/api/admin/error-log-download';
+  });
+  await loadLog();
+
+  async function loadAnalytics() {
+    if (!analyticsContainer) return;
+    analyticsContainer.innerHTML = '<p class="text-sm text-gray-500">Loading analytics...</p>';
+    try {
+      const res = await fetch('/api/admin/analytics?_=' + Date.now(), { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) {
+        analyticsContainer.innerHTML = `<p class="text-sm text-red-600">${data.error || 'Failed to load analytics.'}</p>`;
+        return;
+      }
+      analyticsContainer.innerHTML = data.length
+        ? data.map(row => `
+            <div class="border rounded p-2 bg-white">
+              <div class="text-xs text-gray-500">${row.created_at || ''}</div>
+              <div class="font-medium">${row.event} • ${row.path}</div>
+              <div class="text-xs text-gray-500">Referrer: ${row.referrer || 'Direct'}</div>
+              ${row.user_id ? `<div class="text-xs text-gray-500">User ID: ${row.user_id}</div>` : ''}
+            </div>
+          `).join('')
+        : '<p class="text-sm text-gray-500">No analytics yet.</p>';
+    } catch (err) {
+      analyticsContainer.innerHTML = '<p class="text-sm text-gray-500">Unable to load analytics.</p>';
+    }
+  }
+
+  refreshAnalyticsBtn?.addEventListener('click', loadAnalytics);
+  await loadAnalytics();
 
   async function fetchUsers() {
     usersContainer.innerHTML = '<p class="text-sm text-gray-500">Loading users...</p>';
-    const res = await fetch('/wp-json/customapi/v1/admin/users', { credentials: 'include' });
+    const res = await fetch(`/api/admin/users?_=${Date.now()}`, { credentials: 'include' });
     const data = await res.json();
     if (!res.ok) {
       usersContainer.innerHTML = `<p class="text-sm text-red-600">${data.message || 'Failed to load users.'}</p>`;
@@ -125,12 +660,14 @@ export async function renderAdmin(container) {
         <div class="flex items-center justify-between">
           <div>
             <div class="font-semibold">${u.username}</div>
-            <div class="text-xs text-gray-500">Role: ${u.roles?.join(', ') || ''}</div>
+            <div class="text-xs text-gray-500">
+              <span class="role-button">Role: ${u.roles?.join(', ') || ''}</span>
+            </div>
             ${u.roles?.includes('employer') ? `<div class="text-xs ${u.employer_verified ? 'text-green-700' : 'text-amber-700'}">Employer ${u.employer_verified ? 'Verified' : 'Pending'}</div>` : ''}
           </div>
           <div class="flex items-center space-x-2">
-            <button class="text-sm text-indigo-600 hover:underline" data-action="toggle" data-id="${u.id}">Show details</button>
-            <button class="text-sm text-red-600 hover:underline" data-action="delete" data-id="${u.id}">Delete</button>
+            <button class="text-sm text-indigo-600 hover:underline px-2 py-1" data-action="toggle" data-id="${u.id}">Show details</button>
+            <button class="text-sm text-red-600 hover:underline px-2 py-1" data-action="delete" data-id="${u.id}">Delete</button>
           </div>
         </div>
         <div class="hidden mt-3 border-t pt-3" id="details-${u.id}">
@@ -140,9 +677,48 @@ export async function renderAdmin(container) {
     `).join('');
   }
 
+  async function fetchCompanies() {
+    if (!companiesContainer) return;
+    companiesContainer.innerHTML = '<p class="text-sm text-gray-500">Loading companies...</p>';
+    const res = await fetch(`/api/admin/companies?_=${Date.now()}`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) {
+      companiesContainer.innerHTML = `<p class="text-sm text-red-600">${data.error || 'Failed to load companies.'}</p>`;
+      return;
+    }
+    companiesContainer.innerHTML = data.length
+      ? data.map(c => {
+          const verified = Number(c.verified) === 1;
+          return `
+            <div class="border rounded p-3">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <div class="font-semibold">${c.name}</div>
+                  <div class="text-xs text-gray-500">Slug: ${c.slug} • Code: ${c.code || ''}</div>
+                  <div class="text-xs text-gray-500">Members: ${c.member_count || 0}</div>
+                  <div class="text-xs ${verified ? 'text-green-700' : 'text-amber-700'}">${verified ? 'Verified' : 'Not verified'}</div>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <button class="text-sm text-indigo-600 hover:underline" data-action="toggle-company" data-id="${c.id}" data-verified="${verified ? 1 : 0}">
+                    ${verified ? 'Unverify' : 'Verify'}
+                  </button>
+                  <button class="text-sm text-indigo-600 hover:underline" data-action="members" data-id="${c.id}">
+                    Members
+                  </button>
+                </div>
+              </div>
+              <div class="hidden mt-3 border-t pt-3" id="company-detail-${c.id}">
+                <div class="text-sm text-gray-600">Loading...</div>
+              </div>
+            </div>
+          `;
+        }).join('')
+      : '<p class="text-sm text-gray-500">No companies yet.</p>';
+  }
+
   async function fetchJobs() {
     jobsContainer.innerHTML = '<p class="text-sm text-gray-500">Loading jobs...</p>';
-    const res = await fetch('/wp-json/customapi/v1/admin/jobs', { credentials: 'include' });
+    const res = await fetch(`/api/admin/jobs?_=${Date.now()}`, { credentials: 'include' });
     const data = await res.json();
     if (!res.ok) {
       jobsContainer.innerHTML = `<p class="text-sm text-red-600">${data.message || 'Failed to load jobs.'}</p>`;
@@ -155,10 +731,13 @@ export async function renderAdmin(container) {
           <div>
             <div class="font-semibold">${j.title}</div>
             <div class="text-xs text-gray-500">Status: ${j.status} • ID: ${j.id}</div>
+            ${j.company ? `<div class="text-xs text-gray-500">Company: ${j.company}</div>` : ''}
+            ${j.payment_status ? `<div class="text-xs text-gray-500">Payment: ${j.payment_status}${j.tier ? ` • Tier: ${j.tier}` : ''}</div>` : ''}
           </div>
           <div class="flex items-center space-x-2">
-            <button class="text-sm text-indigo-600 hover:underline" data-action="edit-job" data-id="${j.id}" data-title="${encodeURIComponent(j.title)}" data-status="${j.status}">Edit</button>
-            <button class="text-sm text-red-600 hover:underline" data-action="delete-job" data-id="${j.id}">Delete</button>
+            ${j.status !== 'publish' ? `<button class="text-sm text-emerald-700 hover:underline px-2 py-1" data-action="approve-job" data-id="${j.id}">Approve</button>` : ''}
+            <button class="text-sm text-indigo-600 hover:underline px-2 py-1" data-action="edit-job" data-id="${j.id}" data-title="${encodeURIComponent(j.title)}" data-status="${j.status}">Edit</button>
+            <button class="text-sm text-red-600 hover:underline px-2 py-1" data-action="delete-job" data-id="${j.id}">Delete</button>
           </div>
         </div>
         <div class="hidden mt-3 border-t pt-3" id="job-edit-${j.id}">
@@ -178,9 +757,11 @@ export async function renderAdmin(container) {
     `).join('');
   }
 
+  refreshCompaniesBtn?.addEventListener('click', fetchCompanies);
+
   async function fetchAudit() {
     auditContainer.innerHTML = '<p class="text-gray-500">Loading audit log...</p>';
-    const res = await fetch('/wp-json/customapi/v1/admin/audit', { credentials: 'include' });
+    const res = await fetch(`/api/admin/audit?_=${Date.now()}`, { credentials: 'include' });
     const data = await res.json();
     if (!res.ok) {
       auditContainer.innerHTML = `<p class="text-red-600">${data.message || 'Failed to load audit log.'}</p>`;
@@ -198,6 +779,129 @@ export async function renderAdmin(container) {
       : '<p class="text-gray-500">No audit entries yet.</p>';
   }
 
+  let emailTemplates = [];
+  let templateHistory = [];
+  let autosaveTimer = null;
+
+  const renderTemplates = () => {
+    templatesContainer.innerHTML = emailTemplates.length
+      ? emailTemplates.map((tpl, idx) => `
+          <div class="border rounded p-3">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <input class="p-2 border rounded text-sm" data-role="tpl-title" data-idx="${idx}" placeholder="Title" value="${tpl.title || ''}" />
+            <select class="p-2 border rounded text-sm" data-role="tpl-scope" data-idx="${idx}">
+              <option value="employer" ${tpl.scope === 'employer' ? 'selected' : ''}>Employer</option>
+              <option value="applicant" ${tpl.scope === 'applicant' ? 'selected' : ''}>Applicant</option>
+            </select>
+            <input class="p-2 border rounded text-sm" data-role="tpl-category" data-idx="${idx}" placeholder="Category" value="${tpl.category || ''}" />
+            <button class="text-sm text-red-600 hover:underline px-2 py-1 justify-self-start md:justify-self-end" data-action="delete-template" data-idx="${idx}">Delete</button>
+          </div>
+            <textarea class="mt-2 w-full p-2 border rounded text-sm" rows="3" data-role="tpl-body" data-idx="${idx}" placeholder="Template body">${tpl.body || ''}</textarea>
+          </div>
+        `).join('')
+      : '<p class="text-gray-500">No templates yet.</p>';
+  };
+
+  const fetchTemplates = async () => {
+    templatesMsg.textContent = 'Loading templates...';
+    templatesMsg.className = 'text-sm text-gray-500';
+    const res = await fetch(`/api/admin/email-templates?_=${Date.now()}`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) {
+      templatesMsg.textContent = data.message || 'Failed to load templates.';
+      templatesMsg.className = 'text-sm text-red-600';
+      return;
+    }
+    emailTemplates = Array.isArray(data) ? data : (data.templates || []);
+    templateHistory = Array.isArray(data?.history) ? data.history : [];
+    templatesMsg.textContent = '';
+    renderTemplates();
+
+    if (historyRow && historySelect) {
+      if (templateHistory.length) {
+        historyRow.classList.remove('hidden');
+        historySelect.innerHTML = templateHistory.map((h, idx) => {
+          const label = new Date((h.time || 0) * 1000).toLocaleString();
+          return `<option value="${idx}">${label}</option>`;
+        }).join('');
+      } else {
+        historyRow.classList.add('hidden');
+      }
+    }
+  };
+
+  templatesContainer.addEventListener('input', (e) => {
+    const target = e.target;
+    const idx = Number(target.dataset.idx || -1);
+    if (idx < 0 || !emailTemplates[idx]) return;
+    if (target.dataset.role === 'tpl-title') emailTemplates[idx].title = target.value;
+    if (target.dataset.role === 'tpl-body') emailTemplates[idx].body = target.value;
+    if (target.dataset.role === 'tpl-category') emailTemplates[idx].category = target.value;
+    scheduleAutosave();
+  });
+
+  templatesContainer.addEventListener('change', (e) => {
+    const target = e.target;
+    const idx = Number(target.dataset.idx || -1);
+    if (idx < 0 || !emailTemplates[idx]) return;
+    if (target.dataset.role === 'tpl-scope') emailTemplates[idx].scope = target.value;
+    scheduleAutosave();
+  });
+
+  templatesContainer.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action="delete-template"]');
+    if (!btn) return;
+    const idx = Number(btn.dataset.idx || -1);
+    if (idx < 0) return;
+    emailTemplates.splice(idx, 1);
+    renderTemplates();
+  });
+
+  addTemplateBtn?.addEventListener('click', () => {
+    emailTemplates.push({ title: '', body: '', scope: 'employer', category: 'General', id: `tpl_${Date.now()}` });
+    renderTemplates();
+  });
+
+  const saveTemplates = async () => {
+    templatesMsg.textContent = 'Saving...';
+    templatesMsg.className = 'text-sm text-gray-500';
+    const res = await fetch('/api/admin/email-templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ templates: emailTemplates }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      templatesMsg.textContent = data.message || 'Save failed.';
+      templatesMsg.className = 'text-sm text-red-600';
+      return;
+    }
+    templatesMsg.textContent = 'Templates saved.';
+    templatesMsg.className = 'text-sm text-green-700';
+    emailTemplates = data.templates || emailTemplates;
+    templateHistory = data.history || templateHistory;
+    renderTemplates();
+  };
+
+  const scheduleAutosave = () => {
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => {
+      saveTemplates();
+    }, 1200);
+  };
+
+  saveTemplatesBtn?.addEventListener('click', saveTemplates);
+
+  restoreHistoryBtn?.addEventListener('click', () => {
+    const idx = Number(historySelect?.value || -1);
+    if (idx < 0 || !templateHistory[idx]) return;
+    if (!confirm('Restore this previous version?')) return;
+    emailTemplates = templateHistory[idx].templates || [];
+    renderTemplates();
+    saveTemplates();
+  });
+
   usersContainer.addEventListener('click', async (e) => {
     const btn = e.target.closest('button[data-action]');
     if (!btn) return;
@@ -213,7 +917,7 @@ export async function renderAdmin(container) {
       }
       btn.textContent = 'Hide details';
       detailEl.classList.remove('hidden');
-      const res = await fetch(`/wp-json/customapi/v1/admin/user?userId=${userId}`, { credentials: 'include' });
+      const res = await fetch(`/api/admin/user?userId=${userId}`, { credentials: 'include' });
       const data = await res.json();
       if (!res.ok) {
         detailEl.innerHTML = `<p class="text-sm text-red-600">${data.message || 'Failed to load details.'}</p>`;
@@ -232,13 +936,13 @@ export async function renderAdmin(container) {
           <div>ZIP: ${data.zip || ''}</div>
         </div>
         <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-          <input class="p-2 border rounded text-sm" id="company-${userId}" placeholder="Company" value="${data.company || ''}" />
-          <input class="p-2 border rounded text-sm" id="company-site-${userId}" placeholder="Company Website" value="${data.company_site || ''}" />
+          <input class="p-2 border rounded text-sm" id="company-${userId}" placeholder="Company name" value="${data.company || ''}" />
+          <input class="p-2 border rounded text-sm" id="company-site-${userId}" placeholder="Company website" value="${data.company_site || ''}" />
           <input class="p-2 border rounded text-sm md:col-span-2" id="company-key-${userId}" placeholder="Company Team Key" value="${data.company_key || ''}" />
         </div>
         <div class="mt-3 flex items-center space-x-2">
           <select class="p-2 border rounded text-sm" id="role-${userId}">
-            <option value="employee">Employee</option>
+            <option value="employee">Job Seeker</option>
             <option value="employer">Employer</option>
             <option value="site_admin">Site Admin</option>
           </select>
@@ -264,11 +968,11 @@ export async function renderAdmin(container) {
     }
     if (action === 'delete') {
       if (!confirm('Delete this user?')) return;
-      const res = await fetch('/wp-json/customapi/v1/admin/user-delete', {
+      const res = await fetch('/api/admin/user-delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ userId: Number(userId) }),
+        body: JSON.stringify({ id: Number(userId) }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -285,7 +989,7 @@ export async function renderAdmin(container) {
       const companySite = container.querySelector(`#company-site-${userId}`);
       const companyKey = container.querySelector(`#company-key-${userId}`);
       const msg = container.querySelector(`#saveMsg-${userId}`);
-      const res = await fetch('/wp-json/customapi/v1/admin/user-update', {
+      const res = await fetch('/api/admin/user-update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -333,7 +1037,7 @@ export async function renderAdmin(container) {
       const titleInput = container.querySelector(`#job-title-${jobId}`);
       const statusSelect = container.querySelector(`#job-status-${jobId}`);
       const msg = container.querySelector(`#job-msg-${jobId}`);
-      const res = await fetch('/wp-json/customapi/v1/admin/job-update', {
+      const res = await fetch('/api/admin/job-update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -356,7 +1060,7 @@ export async function renderAdmin(container) {
     }
     if (action === 'delete-job') {
       if (!confirm('Delete this job?')) return;
-      const res = await fetch('/wp-json/customapi/v1/admin/job-delete', {
+      const res = await fetch('/api/admin/job-delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -370,6 +1074,122 @@ export async function renderAdmin(container) {
       fetchJobs();
       fetchAudit();
     }
+    if (action === 'approve-job') {
+      const res = await fetch('/api/admin/job-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id: Number(jobId), status: 'publish' }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.message || 'Approve failed');
+        return;
+      }
+      fetchJobs();
+      fetchAudit();
+    }
+  });
+
+  companiesContainer?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const companyId = Number(btn.dataset.id || 0);
+    if (!companyId) return;
+
+    if (action === 'toggle-company') {
+      const currentlyVerified = btn.dataset.verified === '1';
+      const res = await fetch('/api/admin/company-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ company_id: companyId, verified: currentlyVerified ? 0 : 1 }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Update failed');
+        return;
+      }
+      fetchCompanies();
+      return;
+    }
+
+    if (action === 'members') {
+      const panel = container.querySelector(`#company-detail-${companyId}`);
+      if (!panel) return;
+      if (!panel.classList.contains('hidden')) {
+        panel.classList.add('hidden');
+        return;
+      }
+      panel.classList.remove('hidden');
+      panel.innerHTML = '<div class="text-sm text-gray-600">Loading...</div>';
+      try {
+        const res = await fetch(`/api/admin/company?id=${companyId}`, { credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) {
+          panel.innerHTML = `<div class="text-sm text-red-600">${data.error || 'Failed to load company.'}</div>`;
+          return;
+        }
+        const members = Array.isArray(data.members) ? data.members : [];
+        panel.innerHTML = `
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-sm font-semibold">Members</div>
+            <button class="text-xs text-indigo-600 hover:underline" data-action="add-member" data-id="${companyId}">Add member</button>
+          </div>
+          <div class="space-y-2">
+            ${members.length ? members.map(m => `
+              <div class="flex items-center justify-between border rounded px-2 py-1 text-xs">
+                <div>${m.username} • ${m.email} • <strong>${m.role}</strong></div>
+                <button class="text-xs text-red-600 hover:underline" data-action="remove-member" data-id="${companyId}" data-user="${m.user_id}">Remove</button>
+              </div>
+            `).join('') : '<div class="text-xs text-gray-500">No members yet.</div>'}
+          </div>
+        `;
+      } catch (err) {
+        panel.innerHTML = '<div class="text-sm text-red-600">Failed to load company.</div>';
+      }
+      return;
+    }
+
+    if (action === 'add-member') {
+      const userId = Number(prompt('Enter user ID to add:'));
+      if (!userId) return;
+      const role = prompt('Role (owner/editor/member):', 'member') || 'member';
+      const res = await fetch('/api/admin/company-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ company_id: companyId, user_id: userId, role }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Add member failed');
+        return;
+      }
+      fetchCompanies();
+      const panel = container.querySelector(`#company-detail-${companyId}`);
+      panel?.classList.add('hidden');
+      return;
+    }
+
+    if (action === 'remove-member') {
+      const userId = Number(btn.dataset.user || 0);
+      if (!userId) return;
+      if (!confirm('Remove this member?')) return;
+      const res = await fetch('/api/admin/company-member-remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ company_id: companyId, user_id: userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Remove failed');
+        return;
+      }
+      fetchCompanies();
+    }
   });
 
   createForm.addEventListener('submit', async (e) => {
@@ -377,7 +1197,7 @@ export async function renderAdmin(container) {
     createMsg.textContent = '';
     const formData = new FormData(createForm);
     const payload = Object.fromEntries(formData.entries());
-    const res = await fetch('/wp-json/customapi/v1/admin/user-create', {
+    const res = await fetch('/api/admin/user-create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -389,11 +1209,11 @@ export async function renderAdmin(container) {
       createMsg.className = 'text-sm text-red-600';
       return;
     }
-    createMsg.textContent = 'User created.';
+    createMsg.textContent = `User created (ID ${data.id || ''}). Refreshing list...`;
     createMsg.className = 'text-sm text-green-700';
     createForm.reset();
-    fetchUsers();
-    fetchAudit();
+    setTimeout(fetchUsers, 300);
+    setTimeout(fetchAudit, 300);
   });
 
   generatePasswordBtn.addEventListener('click', () => {
@@ -413,14 +1233,20 @@ export async function renderAdmin(container) {
   refreshUsersBtn.addEventListener('click', fetchUsers);
   refreshJobsBtn.addEventListener('click', fetchJobs);
   refreshAuditBtn.addEventListener('click', fetchAudit);
+  refreshSubscribersBtn?.addEventListener('click', fetchSubscribers);
+  sendDigestBtn?.addEventListener('click', sendDigest);
   exportUsersBtn.addEventListener('click', () => {
-    window.location.href = '/wp-json/customapi/v1/admin/export-users';
+    window.location.href = '/api/admin/export-users';
   });
   exportJobsBtn.addEventListener('click', () => {
-    window.location.href = '/wp-json/customapi/v1/admin/export-jobs';
+    window.location.href = '/api/admin/export-jobs';
   });
 
+  loadRecentActivity();
   fetchUsers();
+  fetchCompanies();
   fetchJobs();
   fetchAudit();
+  fetchTemplates();
+  fetchSubscribers();
 }

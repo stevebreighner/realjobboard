@@ -4,8 +4,12 @@ import { CONFIG } from '../config.js';
 import { getSessionCached, getUserProfileCached } from './utils/session.js';
 function startApp() {
   renderNavbar(document.getElementById('navbar'));
+  if (CONFIG.SITE_TITLE) {
+    document.title = CONFIG.SITE_TITLE;
+  }
   router();
   preloadData();
+  trackPageView();
 }
 // main.js or a dedicated footer.js
 const yearEl = document.getElementById('year');
@@ -16,14 +20,32 @@ companyNameEl.textContent = CONFIG.COMPANY_NAME; // will explain next
 // companyNameEl.textContent = CONFIG.COMPANY_BUSINESS_THING; // will explain next
 // Re-render both navbar and route on page load and route changes
 window.addEventListener('load', startApp);
-window.addEventListener('hashchange', router);
+window.addEventListener('hashchange', () => {
+  router();
+  trackPageView();
+});
+
+function trackPageView() {
+  const path = window.location.hash || '#home';
+  const payload = {
+    event: 'pageview',
+    path,
+    referrer: document.referrer || '',
+  };
+  fetch('/api/track', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    credentials: 'include',
+  }).catch(() => {});
+}
 
 function preloadData() {
   const run = () => {
     if (!window.__preload) {
       window.__preload = {};
     }
-    fetch('/wp-json/customapi/v1/get-list')
+    fetch('/api/jobs')
       .then(res => res.json())
       .then(data => {
         window.__preload.list = { data, ts: Date.now() };

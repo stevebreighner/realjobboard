@@ -18,3 +18,13 @@ wp-content/themes/jobs/inc/stripe-job.php
 wp-content/themes/jobs/page-create-account-test.php
 wp-content/themes/jobs/page-create-account.php
 wp-content/themes/jobs/page-create-checkout.php
+.htaccess
+.env
+utils/google.json
+utils/google_2.json
+utils/mysql
+error_log
+api-lite/public/error_log
+api-lite/logs/
+uploads/
+api-lite/uploads/

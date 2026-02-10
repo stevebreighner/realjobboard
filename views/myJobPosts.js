@@ -1,16 +1,48 @@
 import { CONFIG } from '../config.js';
 
 export function renderMyJobPosts(container) {
+  const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
+  const paid = params.get('paid');
+  const status = params.get('status');
+  const phase1Free = CONFIG.JOBS_REQUIRE_PAYMENT === false;
+
   container.innerHTML = `
     <div class="max-w-4xl mx-auto px-4">
-      <h1 class="text-2xl font-bold mb-4">My Job Posts</h1>
+      ${paid ? `<div class="mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">Payment successful. Your job is ready to review or publish.</div>` : ''}
+      ${status === 'free' ? `<div class="mb-4 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded px-3 py-2">Free post created as a draft. You can publish it from your dashboard.</div>` : ''}
+      <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold">${CONFIG.JOB_COPY?.MY_POSTS_TITLE || 'My Job Posts'}</h1>
+        <a href="/#post" class="text-purple px-4 py-2 rounded">Add Job</a>
+      </div>
 
-      <input
-        type="text"
-        id="searchInput"
-        class="w-full p-2 border rounded mb-4"
-        placeholder="Search my jobs..."
-      />
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+        <input
+          type="text"
+          id="searchInput"
+          class="w-full p-2 border rounded"
+          placeholder="Search title or summary..."
+        />
+        <input
+          type="text"
+          id="fieldFilter"
+          class="w-full p-2 border rounded"
+          placeholder="Filter by field"
+        />
+        <select id="statusFilter" class="w-full p-2 border rounded">
+          <option value="all" selected>All statuses</option>
+          <option value="paid">Paid</option>
+          <option value="unpaid">Unpaid</option>
+          <option value="featured">Featured</option>
+        </select>
+      </div>
+      <div class="flex flex-col md:flex-row gap-3 mb-4">
+        <select id="sortSelect" class="w-full md:w-56 p-2 border rounded">
+          <option value="newest" selected>Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="featured">Featured first</option>
+          <option value="title">Title A–Z</option>
+        </select>
+      </div>
 
       <div id="jobsContainer" class="space-y-4"></div>
     </div>
@@ -18,44 +50,107 @@ export function renderMyJobPosts(container) {
 
   const jobsContainer = container.querySelector('#jobsContainer');
   const searchInput = container.querySelector('#searchInput');
+  const fieldFilter = container.querySelector('#fieldFilter');
+  const statusFilter = container.querySelector('#statusFilter');
+  const sortSelect = container.querySelector('#sortSelect');
 
-  fetch('/wp-json/customapi/v1/user-jobs')
-    .then(res => res.json())
+  fetch('/api/user-jobs', { credentials: 'include' })
+    .then(async res => {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = data?.error || data?.message || 'Please log in to view your job posts.';
+        jobsContainer.innerHTML = `
+          <div class="text-sm text-rose-600">${msg}</div>
+          <a href="/#login" class="text-sm text-indigo-600 hover:underline">Go to login</a>
+        `;
+        return null;
+      }
+      return data;
+    })
     .then(data => {
+      if (!data) return;
       let jobs = data;
-      renderJobs(jobs);
 
-      searchInput.addEventListener('input', () => {
-        const query = searchInput.value.toLowerCase();
-        const filtered = jobs.filter(job =>
-          ['title', 'summary'].some(field =>
+      const applyFilters = () => {
+        const query = (searchInput.value || '').toLowerCase();
+        const fieldQuery = (fieldFilter.value || '').toLowerCase();
+        const status = statusFilter.value || 'all';
+        const sortMode = sortSelect.value || 'newest';
+
+        const filtered = jobs.filter(job => {
+          const matchesQuery = !query || ['title', 'summary'].some(field =>
             (job[field] || '').toLowerCase().includes(query)
-          )
-        );
-        renderJobs(filtered);
-      });
+          );
+          const jobField = (getMeta(job, 'field') || '').toLowerCase();
+          const matchesField = !fieldQuery || jobField.includes(fieldQuery);
+          const paid = isPaid(job);
+          const featured = isFeatured(job);
+          const statusOk =
+            status === 'all' ||
+            (status === 'paid' && paid) ||
+            (status === 'unpaid' && !paid) ||
+            (status === 'featured' && featured);
+          return matchesQuery && matchesField && statusOk;
+        });
+
+        const sorted = [...filtered].sort((a, b) => {
+          const dateA = new Date(a.date || 0).getTime();
+          const dateB = new Date(b.date || 0).getTime();
+          if (sortMode === 'oldest') return dateA - dateB;
+          if (sortMode === 'title') {
+            const titleA = (a.title || '').toLowerCase();
+            const titleB = (b.title || '').toLowerCase();
+            return titleA.localeCompare(titleB);
+          }
+          if (sortMode === 'featured') {
+            const diff = (isFeatured(b) ? 1 : 0) - (isFeatured(a) ? 1 : 0);
+            if (diff !== 0) return diff;
+          }
+          return dateB - dateA;
+        });
+
+        renderJobs(sorted);
+      };
+
+      [searchInput, fieldFilter].forEach(el => el.addEventListener('input', applyFilters));
+      statusFilter.addEventListener('change', applyFilters);
+      sortSelect.addEventListener('change', applyFilters);
+      applyFilters();
     })
     .catch(err => {
       jobsContainer.innerHTML = `<p class="text-red-600">Failed to load job posts.</p>`;
       console.error(err);
     });
 
+  const getMeta = (job, key) => (job?.meta && job.meta[key] != null ? job.meta[key] : job?.[key]) ?? '';
+  const isFeatured = (job) => ['1', 'true', 'yes'].includes(String(getMeta(job, 'job_featured') || '').toLowerCase());
+  const isPaid = (job) => String(getMeta(job, 'job_payment_status') || '').toLowerCase() === 'paid';
+
   function renderJobs(jobs) {
     jobsContainer.innerHTML = jobs.length
       ? jobs
           .map(job => {
             const id = job.id || job._id || job.slug;
+            const featured = isFeatured(job);
+            const paid = isPaid(job);
             return `
               <div class="border rounded p-4 shadow">
-                <h2 class="text-lg font-semibold">${job.title || job.name}</h2>
+                <div class="flex items-center justify-between">
+                  <h2 class="text-lg font-semibold">${job.title || job.name}</h2>
+                  <div class="flex items-center space-x-2">
+                    ${job.status && job.status !== 'publish' ? `<span class="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded">Draft</span>` : `<span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded">Live</span>`}
+                    ${featured ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">Featured</span>` : ''}
+                    ${(!phase1Free && !paid) ? `<span class="text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded">Unpaid</span>` : ''}
+                  </div>
+                </div>
                 <p class="text-sm text-gray-600">${job.summary || ''}</p>
                 <a href="/#my-job-post-detail?id=${id}" class="text-indigo-600 text-sm mt-2 inline-block hover:underline">
-                  View Job
+                  ${CONFIG.JOB_COPY?.VIEW_JOB || 'View job'}
                 </a>
               </div>
             `;
           })
           .join('')
-      : `<p>No job posts found.</p>`;
+      : `<p>${CONFIG.JOB_COPY?.JOBS_EMPTY || 'No job posts found.'}</p>`;
   }
 }

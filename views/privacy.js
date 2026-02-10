@@ -1,47 +1,68 @@
 export function renderPrivacy(container) {
   container.innerHTML = `
-    <div class="flex flex-col items-center justify-center text-left min-h-screen p-8 bg-gray-50 text-gray-900">
-      <section class="py-8 px-4 max-w-4xl w-full">
-        <h2 class="text-3xl font-semibold mb-4">Privacy</h2>
-        <p class="text-lg text-gray-700 mb-6">
-          We built this job board to respect privacy. We only collect what is needed to run the service and help you
-          apply for jobs.
-        </p>
+    <div class="max-w-3xl mx-auto px-4 py-8">
+      <div class="mb-6">
+        <h1 class="text-3xl font-bold">Privacy</h1>
+        <p class="text-sm text-gray-600">Clear, minimal data collection and no selling your info.</p>
+      </div>
 
-        <h3 class="text-2xl font-semibold mt-6 mb-3">What We Collect</h3>
-        <p class="text-lg text-gray-700 mb-4">
-          Profile details you provide (name, location, resume, cover letter, and contact preferences), plus basic account
-          info needed to sign in and manage applications.
-        </p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="border rounded-2xl p-4 bg-white shadow-sm">
+          <div class="text-xs uppercase tracking-widest text-indigo-600 mb-2">No Data Sales</div>
+          <p class="text-sm text-gray-700">
+            The platform is funded by paid job postings, not data sales.
+          </p>
+        </div>
+        <div class="border rounded-2xl p-4 bg-white shadow-sm">
+          <div class="text-xs uppercase tracking-widest text-indigo-600 mb-2">Opt‑In Only</div>
+          <p class="text-sm text-gray-700">
+            Optional updates are opt‑in — we never auto‑enroll.
+          </p>
+        </div>
+      </div>
 
-        <h3 class="text-2xl font-semibold mt-6 mb-3">How We Use It</h3>
-        <p class="text-lg text-gray-700 mb-4">
-          We use your data only to run the job board, process applications, and help employers review applicants.
-        </p>
-
-        <h3 class="text-2xl font-semibold mt-6 mb-3">No CRM-Style Data Mining</h3>
-        <p class="text-lg text-gray-700 mb-4">
-          We don’t use applicant data for unrelated marketing or CRM-style profiling. If we ever offer optional
-          updates, you can opt in — we don’t auto-enroll you.
-        </p>
-
-        <h3 class="text-2xl font-semibold mt-6 mb-3">We Don’t Sell Your Info</h3>
-        <p class="text-lg text-gray-700 mb-4">
-          We do not sell or rent your personal data. The platform is funded by paid job postings, not by selling user
-          information.
-        </p>
-
-        <h3 class="text-2xl font-semibold mt-6 mb-3">Security</h3>
-        <p class="text-lg text-gray-700 mb-4">
-          We use standard web security practices such as HTTPS in transit and access controls inside the app to protect
-          your information.
-        </p>
-
-        <h3 class="text-2xl font-semibold mt-6 mb-3">Contact</h3>
-        <p class="text-lg text-gray-700">
-          Questions or requests? Use the support form and we’ll respond quickly.
-        </p>
-      </section>
+      <div class="border rounded-2xl p-5 md:p-6 bg-white shadow-sm space-y-5">
+        <div>
+          <h2 class="text-xl font-semibold mb-2">What We Collect</h2>
+          <p class="text-gray-700">
+            Profile details you provide (name, location, resume, cover letter, and contact preferences), plus basic account
+            info needed to sign in and manage applications.
+          </p>
+        </div>
+        <div>
+          <h2 class="text-xl font-semibold mb-2">How We Use It</h2>
+          <p class="text-gray-700">
+            We use your data only to run the job board, process applications, and help employers review applicants.
+          </p>
+        </div>
+        <div>
+          <h2 class="text-xl font-semibold mb-2">No CRM‑Style Data Mining</h2>
+          <p class="text-gray-700">
+            We don’t use applicant data for unrelated marketing or CRM-style profiling.
+          </p>
+        </div>
+        <div>
+          <h2 class="text-xl font-semibold mb-2">Security</h2>
+          <p class="text-gray-700">
+            We use standard web security practices such as HTTPS in transit and access controls inside the app to protect
+            your information.
+          </p>
+        </div>
+        <div>
+          <h2 class="text-xl font-semibold mb-2">Minimal First‑Party Analytics</h2>
+          <p class="text-gray-700">
+            We do not send analytics data to Google or other third‑party trackers. We collect only minimal first‑party
+            metrics (page views, basic referrer, and coarse device info) to keep the site reliable and improve
+            performance. We do not sell or share this data.
+          </p>
+        </div>
+        <div>
+          <h2 class="text-xl font-semibold mb-2">Contact</h2>
+          <p class="text-gray-700">
+            Questions or requests? Use the support form and we’ll respond quickly.
+          </p>
+        </div>
+      </div>
     </div>
   `;
 }

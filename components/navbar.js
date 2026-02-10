@@ -17,6 +17,27 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     background: #fff;
     border-bottom: 1px solid #ddd;
   }
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .logo img {
+    width: 28px;
+    height: 28px;
+    display: block;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 
   .navbar a {
     color: #4f46e5;
@@ -39,9 +60,20 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     padding: 5px;
     background: none;
     border: none;
+    outline: none;
     font-size: 1.5rem;
     color: #4f46e5;
     cursor: pointer;
+    box-shadow: none;
+  }
+  .menu-toggle:hover {
+    background: none;
+    border: none;
+  }
+  .menu-toggle:focus,
+  .menu-toggle:focus-visible {
+    outline: none;
+    box-shadow: none;
   }
 
   @media (max-width: 640px) {
@@ -50,7 +82,6 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     }
 
     .menu {
-      display: none;
       flex-direction: column;
       align-items: flex-start;
       position: absolute;
@@ -61,10 +92,19 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
       padding: 0.75rem 1rem;
       border-top: 1px solid #ddd;
       z-index: 1000;
+      max-height: 0;
+      opacity: 0;
+      transform: translateY(-6px);
+      overflow: hidden;
+      pointer-events: none;
+      transition: max-height 0.35s ease, opacity 0.2s ease, transform 0.2s ease;
     }
 
     .menu.show {
-      display: flex;
+      max-height: 320px;
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
     }
 
     .navbar a {
@@ -75,14 +115,19 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
 
 
     <nav class="navbar">
-      <a href="/#home" class="logo">${CONFIG.COMPANY_NAME}</a>
+      <a href="/#home" class="logo" aria-label="${CONFIG.COMPANY_NAME}">
+        <img src="${CONFIG.LOGO_URL || '/logo.svg'}" alt="${CONFIG.COMPANY_NAME} logo" />
+        <span class="sr-only">${CONFIG.COMPANY_NAME}</span>
+      </a>
       <button id="menuToggle" class="menu-toggle" aria-label="Menu">☰</button>
       <div id="menu" class="menu">
-        ${!isLoggedIn ? '<a href="/#home" class="nav-link">Home</a>' : ''}
         <a href="/#list" class="nav-link">${CONFIG.COMPANY_BUSINESS_THING_PLURAL}</a>
         ${isEmployer ? `<a href="/#post" class="nav-link">Post a ${CONFIG.COMPANY_BUSINESS_THING}</a>` : ''}
+        ${isEmployer ? `<a href="/#my-job-posts" class="nav-link">${CONFIG.JOB_COPY?.MY_POSTS_TITLE || 'My Job Posts'}</a>` : ''}
         ${isSiteAdmin ? `<a href="/#admin" class="nav-link">Admin</a>` : ''}
         ${isLoggedIn ? '<a href="/#profile" class="nav-link">Profile</a>' : ''}
+        ${isLoggedIn && !isEmployer ? `<a href="/#saved-searches" class="nav-link">${CONFIG.JOB_COPY?.SAVED_SEARCHES_TITLE || 'Saved Searches'}</a>` : ''}
+        ${isLoggedIn && !isEmployer ? `<a href="/#myApplications" class="nav-link">${CONFIG.JOB_COPY?.MY_APPLICATIONS_TITLE || 'My Applications'}</a>` : ''}
         ${isLoggedIn
           ? '<a href="#" class="nav-link" id="logoutLink">Logout</a>'
           : '<a href="/#login" class="nav-link">Login</a>'
@@ -100,14 +145,29 @@ function bindNavbar(container, isLoggedIn) {
     menu.classList.toggle('show');
   });
 
+  const closeMenu = (evt) => {
+    if (!menu || !menu.classList.contains('show')) return;
+    const target = evt.target;
+    if (menu.contains(target) || toggle?.contains(target)) return;
+    menu.classList.remove('show');
+  };
+  document.addEventListener('click', closeMenu);
+  document.addEventListener('touchstart', closeMenu);
+
   // Logout handler
   if (isLoggedIn) {
     document.getElementById('logoutLink')?.addEventListener('click', async (e) => {
       e.preventDefault();
-      await fetch('/wp-json/customapi/v1/logout', {
+      let res = await fetch('/api/logout', {
         method: 'POST',
         credentials: 'include',
       });
+      if (!res.ok) {
+        await fetch('/api/logout', {
+          method: 'POST',
+          credentials: 'include',
+        });
+      }
       clearSessionCache();
       clearProfileCache();
       notifyAuthChanged(null);

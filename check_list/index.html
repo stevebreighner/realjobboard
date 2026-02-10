@@ -86,6 +86,23 @@
         // fallback if file missing
         checklist = JSON.parse(localStorage.getItem('checklist')) || [];
       }
+      if (!Array.isArray(checklist) || checklist.length === 0) {
+        checklist = [
+          { text: 'Register -> login -> view jobs -> apply -> see already applied message', done: false },
+          { text: 'All core routes work (#list, #list-detail?id=..., #apply?id=..., #profile)', done: false },
+          { text: 'Inline errors are shown (no alert popups)', done: false },
+          { text: 'Navbar shows Logout when logged in', done: false },
+          { text: 'Protected routes redirect to login', done: false },
+          { text: 'Jobs list loads consistently from the database', done: false },
+          { text: 'Applications are saved and can be checked', done: false },
+          { text: 'Admin can create job posts', done: false },
+          { text: 'Admin can view applicants (if needed for MVP)', done: false },
+          { text: 'Mobile layout looks good on home, list, and detail pages', done: false },
+          { text: '404 / unknown route shows a friendly message', done: false },
+          { text: 'Reset password flow returns to #login', done: false },
+          { text: 'Performance feels snappy (nav + route render under 1s)', done: false }
+        ];
+      }
       renderList();
     }
 

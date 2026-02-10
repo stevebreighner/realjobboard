@@ -1,145 +1,363 @@
 import { getUserProfileCached, getUserProfileCachedAny } from '../utils/session.js';
+import { CONFIG } from '../config.js';
+import { attachFieldHints, markInvalidField } from '../utils/formHints.js';
 
 export function renderProfile(container) {
   container.innerHTML = `
-  <h1 class="text-2xl font-bold mb-2">Profile</h1>
-  <style>
-    .profile-spinner {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      border: 2px solid rgba(79, 70, 229, 0.25);
-      border-top-color: #4f46e5;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      vertical-align: -2px;
-      margin-right: 6px;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-  </style>
-  <h2 id="roleLabel" class="text-lg font-semibold text-gray-700 mb-4"></h2>
-  <div id="profileStatus" class="mb-4 text-sm text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-3 py-2">
-    <span class="profile-spinner" aria-hidden="true"></span>
-    Decrypting profile...
-  </div>
-
-  <div id="avatar-preview-container" class="mb-4">
-    <img id="avatarPreview" src="/default-avatar.svg"
-         alt="Avatar" class="rounded-full border object-cover" loading="lazy" decoding="async" />
-  </div>
-
-  <div class="mb-4">
-    <label for="avatar" class="block font-semibold">Upload Avatar (Max 2MB)</label>
-    <input type="file" id="avatar" name="avatar" class="w-full p-2 border rounded" accept="image/*" />
-  </div>
-
-  <form class="space-y-4" onsubmit="handleProfileUpdate(event)">
-    <label for="username" class="block font-semibold">Username</label>
-    <input type="text" id="username" name="username" class="w-full p-2 border rounded" readonly /><br />
-
-    <label for="email" class="block font-semibold">Email</label>
-    <input type="email" id="email" name="email" class="w-full p-2 border rounded" readonly /><br />
-
-    <label for="company" class="block font-semibold">Company</label>
-    <input type="text" id="company" name="company" class="w-full p-2 border rounded" /><br />
-
-    <label for="company_site" class="block font-semibold">Company Website</label>
-    <input type="url" id="company_site" name="company_site" class="w-full p-2 border rounded" placeholder="https://example.com" /><br />
-
-    <label for="company_key" class="block font-semibold">Company Team Key (optional)</label>
-    <input type="text" id="company_key" name="company_key" class="w-full p-2 border rounded" placeholder="Shared key for your company" />
-    <p class="text-xs text-gray-500 mb-4">Use the same key across team members to group accounts later.</p>
-
-    <label for="first_name" class="block font-semibold">First Name</label>
-    <input type="text" id="first_name" name="first_name" class="w-full p-2 border rounded" /><br />
-
-    <label for="last_name" class="block font-semibold">Last Name</label>
-    <input type="text" id="last_name" name="last_name" class="w-full p-2 border rounded" /><br />
-
-    <label for="dob" class="block font-semibold">Date of Birth</label>
-    <input type="date" id="dob" name="dob" class="w-full p-2 border rounded" /><br />
-
-    <div class="mt-4">
-      <button type="button" id="toggleAddressBtn" class="text-sm text-indigo-600 hover:underline">
-        Hide Address Details
-      </button>
+  <div class="max-w-4xl mx-auto px-4">
+    <h1 class="text-2xl font-bold mb-2">Profile</h1>
+    <style>
+      .profile-spinner {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(79, 70, 229, 0.25);
+        border-top-color: #4f46e5;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        vertical-align: -2px;
+        margin-right: 6px;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+    <h2 id="roleLabel" class="text-lg font-semibold text-gray-700 mb-4"></h2>
+    <div id="profileStatus" class="mb-4 text-sm text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-3 py-2">
+      <span class="profile-spinner" aria-hidden="true"></span>
+      Decrypting profile...
     </div>
-    <div id="addressSection">
+    <div class="mb-4 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded px-3 py-2">
+      Some fields are required to use the site (location, role details, and contact preferences). If you signed in with Google,
+      we only receive your name and email, so please complete the rest here.
+    </div>
+
+    <div id="avatar-preview-container" class="mb-4">
+      <img id="avatarPreview" src="/default-avatar.svg"
+           alt="Avatar" class="rounded-full border object-cover" loading="lazy" decoding="async" />
+    </div>
+
+    <div class="mb-4" id="avatarUploadSection">
+      <label for="avatar" class="block font-semibold">Upload Avatar (Max 2MB)</label>
+      <input type="file" id="avatar" name="avatar" class="w-full p-2 border rounded" accept="image/*" />
+      <div class="flex items-center gap-3 mt-2">
+        <button type="button" id="saveAvatarBtn" class="text-xs px-3 py-1.5 rounded-full border border-indigo-300 text-indigo-700 hover:border-indigo-500 transition hidden">Save avatar</button>
+        <button type="button" id="replaceAvatarBtn" class="text-xs text-indigo-600 hover:underline hidden">Replace avatar</button>
+        <span id="avatarStatus" class="text-xs text-slate-600"></span>
+      </div>
+    </div>
+
+    <div id="profileLayout" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <form id="profileForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div>
+      <label for="username" class="block font-semibold">Username</label>
+      <input type="text" id="username" name="username" class="w-full p-2 border rounded" readonly data-locked-msg="Username is locked. Contact support to change it." />
+    </div>
+
+    <div>
+      <label for="email" class="block font-semibold">Email</label>
+      <input type="email" id="email" name="email" class="w-full p-2 border rounded" readonly data-locked-msg="Email is locked. Contact support to change it." />
+    </div>
+
+    <div>
+      <label for="first_name" class="block font-semibold">First Name</label>
+      <input type="text" id="first_name" name="first_name" class="w-full p-2 border rounded" />
+    </div>
+
+    <div>
+      <label for="last_name" class="block font-semibold">Last Name</label>
+      <input type="text" id="last_name" name="last_name" class="w-full p-2 border rounded" />
+    </div>
+
+    <div>
+      <label for="dob" class="block font-semibold">Date of Birth</label>
+      <input type="date" id="dob" name="dob" class="w-full p-2 border rounded" />
+    </div>
+
+    <div class="md:col-span-2" id="addressSection">
       <h3 class="text-lg font-semibold mt-2">Address (USA Only)</h3>
-      <label for="street1" class="block font-semibold">Street Address</label>
-      <input type="text" id="street1" name="street1" class="w-full p-2 border rounded" required /><br />
-
-      <label for="street2" class="block font-semibold">Unit/Suite (optional)</label>
-      <input type="text" id="street2" name="street2" class="w-full p-2 border rounded" /><br />
-
-      <label for="city" class="block font-semibold">City</label>
-      <input type="text" id="city" name="city" class="w-full p-2 border rounded" required /><br />
-
-      <label for="state" class="block font-semibold">State (2-letter)</label>
-      <input type="text" id="state" name="state" class="w-full p-2 border rounded" required maxlength="2" /><br />
-
-      <label for="zip" class="block font-semibold">ZIP Code</label>
-      <input type="text" id="zip" name="zip" class="w-full p-2 border rounded" required /><br />
-
-      <label for="country" class="block font-semibold">Country</label>
-      <input type="text" id="country" name="country" class="w-full p-2 border rounded" required /><br />
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+        <div class="md:col-span-2">
+          <label for="street1" class="block font-semibold">Street Address</label>
+          <input type="text" id="street1" name="street1" class="w-full p-2 border rounded" required />
+          <p class="text-xs text-gray-500 mt-1">Include a street number and name (e.g., 111 N Main St).</p>
+        </div>
+        <div>
+          <label for="street2" class="block font-semibold">Unit/Suite (optional)</label>
+          <input type="text" id="street2" name="street2" class="w-full p-2 border rounded" />
+        </div>
+        <div>
+          <label for="city" class="block font-semibold">City</label>
+          <input type="text" id="city" name="city" class="w-full p-2 border rounded" required />
+        </div>
+        <div>
+          <label for="state" class="block font-semibold">State (2-letter)</label>
+          <input type="text" id="state" name="state" class="w-full p-2 border rounded" required maxlength="2" />
+        </div>
+        <div>
+          <label for="zip" class="block font-semibold">ZIP Code</label>
+          <input type="text" id="zip" name="zip" class="w-full p-2 border rounded" required />
+        </div>
+        <div>
+          <label for="country" class="block font-semibold">Country</label>
+          <input type="text" id="country" name="country" class="w-full p-2 border rounded" required />
+        </div>
+      </div>
     </div>
 
-    <label class="flex items-center space-x-2">
-      <input type="checkbox" id="hide_email" name="hide_email" />
-      <span class="text-sm">Hide my email from employers</span>
-    </label>
+    <div class="md:col-span-2">
+      <label class="flex items-center space-x-2">
+        <input type="checkbox" id="hide_email" name="hide_email" />
+        <span class="text-sm">Hide my email</span>
+      </label>
+    </div>
 
-    <p id="profileError" class="text-sm text-red-600"></p>
-    <button type="submit" class="text-purple px-4 py-2 rounded">Save</button>
+    <div class="md:col-span-2">
+      <p id="profileError" class="text-sm text-red-600"></p>
+      <button type="submit" class="text-purple px-4 py-2 rounded">Save</button>
+    </div>
   </form>
+  <div id="companySection" class="hidden">
+    <div class="border rounded-lg p-4 bg-white">
+      <h3 class="text-lg font-semibold mb-2">Company Profile</h3>
+      <label for="company" class="block font-semibold">Company</label>
+      <input type="text" id="company" name="company" class="w-full p-2 border rounded" placeholder="Company name" /><br />
 
-  <div id="jobboard-links" class="mt-4"></div>
+      <label for="company_site" class="block font-semibold">Company Website</label>
+      <input type="url" id="company_site" name="company_site" class="w-full p-2 border rounded" placeholder="https://example.com" /><br />
 
-  <p class="mt-4"><a href="/#update-password" class="text-purple-600">Update Password</a></p>
+      <label for="company_email" class="block font-semibold">Company Email</label>
+      <input type="email" id="company_email" name="company_email" class="w-full p-2 border rounded" placeholder="name@company.com" /><br />
+
+      <label for="company_logo" class="block font-semibold">Company Logo URL</label>
+      <input type="url" id="company_logo" name="company_logo" class="w-full p-2 border rounded" placeholder="https://..." /><br />
+
+      <label for="company_street1" class="block font-semibold">Company Street</label>
+      <input type="text" id="company_street1" name="company_street1" class="w-full p-2 border rounded" /><br />
+
+      <label for="company_street2" class="block font-semibold">Company Suite (optional)</label>
+      <input type="text" id="company_street2" name="company_street2" class="w-full p-2 border rounded" /><br />
+
+      <label for="company_city" class="block font-semibold">Company City</label>
+      <input type="text" id="company_city" name="company_city" class="w-full p-2 border rounded" /><br />
+
+      <label for="company_state" class="block font-semibold">Company State</label>
+      <input type="text" id="company_state" name="company_state" class="w-full p-2 border rounded" maxlength="2" /><br />
+
+      <label for="company_zip" class="block font-semibold">Company ZIP</label>
+      <input type="text" id="company_zip" name="company_zip" class="w-full p-2 border rounded" /><br />
+
+      <label for="company_country" class="block font-semibold">Company Country</label>
+      <input type="text" id="company_country" name="company_country" class="w-full p-2 border rounded" /><br />
+
+      <button type="button" id="saveCompanyBtn" class="text-purple px-4 py-2 rounded">Save Company</button>
+      <p class="text-xs text-gray-500 mt-2">Company pages stay unverified until a site admin approves them.</p>
+      <p id="companyMsg" class="text-sm mt-2"></p>
+    </div>
+  </div>
+  </div>
+
+    <div id="jobboard-links" class="mt-4"></div>
+    <div id="companyOwnerSection" class="mt-8 hidden"></div>
+    <div id="savedJobsSection" class="mt-6"></div>
+    <div id="jobAlertsSection" class="mt-6"></div>
+
+    <p class="mt-4"><a href="/#update-password" class="text-purple-600">Update Password</a></p>
+  </div>
 `;
 
   const jobboardLinks = container.querySelector('#jobboard-links');
   const roleLabel     = container.querySelector('#roleLabel');
   const previewImg    = container.querySelector('#avatarPreview');
+  const avatarUploadSection = container.querySelector('#avatarUploadSection');
+  const replaceAvatarBtn = container.querySelector('#replaceAvatarBtn');
+  const saveAvatarBtn = container.querySelector('#saveAvatarBtn');
+  const avatarStatus = container.querySelector('#avatarStatus');
+  const avatarInput = container.querySelector('#avatar');
+  const profileForm = container.querySelector('#profileForm');
   const profileStatus = container.querySelector('#profileStatus');
-  const toggleAddressBtn = container.querySelector('#toggleAddressBtn');
   const addressSection = container.querySelector('#addressSection');
+  const hideEmailToggle = container.querySelector('#hide_email')?.closest('label');
+  const savedJobsSection = container.querySelector('#savedJobsSection');
+  const jobAlertsSection = container.querySelector('#jobAlertsSection');
+  const companyOwnerSection = container.querySelector('#companyOwnerSection');
+  const zipInput = container.querySelector('#zip');
+  const cityInput = container.querySelector('#city');
+  const stateInput = container.querySelector('#state');
+  if (previewImg) {
+    previewImg.addEventListener('error', () => {
+      previewImg.src = '/default-avatar.svg';
+    });
+  }
+  if (avatarInput && previewImg) {
+    avatarInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) {
+        previewImg.src = '/default-avatar.svg';
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        previewImg.src = '/default-avatar.svg';
+        return;
+      }
+      window.__profileAvatarFile = file;
+      if (saveAvatarBtn) saveAvatarBtn.classList.remove('hidden');
+      if (avatarStatus) avatarStatus.textContent = 'Ready to upload.';
+      const reader = new FileReader();
+      reader.onload = () => {
+        previewImg.src = reader.result || '/default-avatar.svg';
+      };
+      reader.onerror = () => {
+        previewImg.src = '/default-avatar.svg';
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  if (replaceAvatarBtn && avatarInput) {
+    replaceAvatarBtn.addEventListener('click', () => {
+      avatarInput.classList.remove('hidden');
+      avatarInput.value = '';
+      if (saveAvatarBtn) saveAvatarBtn.classList.add('hidden');
+      if (avatarStatus) avatarStatus.textContent = '';
+      avatarInput.focus();
+    });
+  }
+  if (saveAvatarBtn) {
+    saveAvatarBtn.addEventListener('click', async () => {
+      if (!window.__profileAvatarFile) return;
+      const formData = new FormData();
+      formData.append('avatar', window.__profileAvatarFile);
+      formData.append('avatar_expected', '1');
+      if (avatarStatus) avatarStatus.textContent = 'Uploading...';
+      try {
+        const res = await fetch('/api/user-profile-update', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (avatarStatus) avatarStatus.textContent = data.error || 'Upload failed.';
+          return;
+        }
+        const newAvatarUrl = data.avatar_url || data.avatarUrl;
+        if (newAvatarUrl && previewImg) {
+          previewImg.src = newAvatarUrl;
+        }
+        if (avatarInput) avatarInput.classList.add('hidden');
+        if (replaceAvatarBtn) replaceAvatarBtn.classList.remove('hidden');
+        if (saveAvatarBtn) saveAvatarBtn.classList.add('hidden');
+        window.__profileAvatarFile = null;
+        if (avatarStatus) avatarStatus.textContent = 'Avatar updated.';
+      } catch (err) {
+        if (avatarStatus) avatarStatus.textContent = 'Upload failed.';
+      }
+    });
+  }
+  attachFieldHints(profileForm);
+  if (profileForm) {
+    profileForm.addEventListener('submit', handleProfileUpdate);
+  }
+  if (zipInput && cityInput && stateInput) {
+    const handleZipLookup = async () => {
+      const zip = (zipInput.value || '').trim();
+      if (!/^\d{5}$/.test(zip)) return;
+      try {
+        const res = await fetch(`https://api.zippopotam.us/us/${zip}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const place = data.places && data.places[0];
+        if (!place) return;
+        const city = place['place name'] || '';
+        const state = place['state abbreviation'] || '';
+        if (city) cityInput.value = city;
+        if (state) stateInput.value = state;
+      } catch (err) {}
+    };
+    zipInput.addEventListener('blur', handleZipLookup);
+    zipInput.addEventListener('change', handleZipLookup);
+  }
+
+  const saveCompanyBtn = container.querySelector('#saveCompanyBtn');
+  const companyMsg = container.querySelector('#companyMsg');
+  saveCompanyBtn?.addEventListener('click', async () => {
+    if (!companyMsg) return;
+    companyMsg.textContent = 'Saving...';
+    const payload = {
+      company: (document.getElementById('company')?.value || '').trim(),
+      company_site: (document.getElementById('company_site')?.value || '').trim(),
+      company_email: (document.getElementById('company_email')?.value || '').trim(),
+      logo_url: (document.getElementById('company_logo')?.value || '').trim(),
+      street1: (document.getElementById('company_street1')?.value || '').trim(),
+      street2: (document.getElementById('company_street2')?.value || '').trim(),
+      city: (document.getElementById('company_city')?.value || '').trim(),
+      state: (document.getElementById('company_state')?.value || '').trim(),
+      zip: (document.getElementById('company_zip')?.value || '').trim(),
+      country: (document.getElementById('company_country')?.value || '').trim(),
+    };
+    if (!payload.company) {
+      companyMsg.textContent = 'Company name is required.';
+      companyMsg.className = 'text-sm text-red-600';
+      return;
+    }
+    try {
+      const res = await fetch('/api/company-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        companyMsg.textContent = data.error || 'Failed to save company.';
+        companyMsg.className = 'text-sm text-red-600';
+        return;
+      }
+      companyMsg.textContent = 'Company saved.';
+      companyMsg.className = 'text-sm text-green-700';
+    } catch (err) {
+      companyMsg.textContent = 'Failed to save company.';
+      companyMsg.className = 'text-sm text-red-600';
+    }
+  });
 
   // Fetch profile + role info
   function applyProfileData(data) {
-    document.getElementById('username').value   = data.username || '';
-    document.getElementById('email').value      = data.email || '';
-    document.getElementById('first_name').value = data.first_name || '';
-    document.getElementById('last_name').value  = data.last_name || '';
-    document.getElementById('company').value  = data.company || '';
-    document.getElementById('company_site').value  = data.company_site || '';
-    document.getElementById('company_key').value  = data.company_key || '';
-    document.getElementById('dob').value        = data.dob || '';
-    document.getElementById('street1').value    = data.street1 || '';
-    document.getElementById('street2').value    = data.street2 || '';
-    document.getElementById('city').value       = data.city || '';
-    document.getElementById('state').value      = data.state || '';
-    document.getElementById('zip').value        = data.zip || '';
-    document.getElementById('country').value    = data.country || 'United States';
-    document.getElementById('hide_email').checked = !!data.hide_email;
-    previewImg.src = data.avatar_url || '/default-avatar.svg';
+    const setValue = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.value = value ?? '';
+    };
+    const setChecked = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.checked = !!value;
+    };
 
-    // Determine role + links
-    const roles = data.roles || []; // backend should return roles array
-    if (roles.includes('employer')) {
-      const verified = data.employer_verified;
-      roleLabel.textContent = verified ? "Employer (Verified)" : "Employer (Pending Verification)";
-      jobboardLinks.innerHTML = `
-        <p class="mt-2"><a href="/#my-job-posts" class="text-blue-600">Manage My Openings</a></p>
-      `;
-    } else {
-      roleLabel.textContent = "Job Seeker";
-      jobboardLinks.innerHTML = `
-        <p class="mt-2"><a href="/#resume" class="text-blue-600">Manage Resume & Cover Letter</a></p>
-      `;
+    setValue('username', data.username || '');
+    setValue('email', data.email || '');
+    setValue('first_name', data.first_name || '');
+    setValue('last_name', data.last_name || '');
+    setValue('company', data.company || '');
+    setValue('company_site', data.company_site || '');
+    setValue('company_email', data.company_email || '');
+    setValue('company_key', data.company_key || '');
+    setValue('dob', data.dob || '');
+    setValue('street1', data.street1 || '');
+    setValue('street2', data.street2 || '');
+    setValue('city', data.city || '');
+    setValue('state', data.state || '');
+    setValue('zip', data.zip || '');
+    setValue('country', data.country || 'United States');
+    setChecked('hide_email', data.hide_email);
+    const avatarUrl = data.avatar_url || '';
+    previewImg.src = avatarUrl || '/default-avatar.svg';
+    if (avatarUploadSection && replaceAvatarBtn && avatarInput) {
+      if (avatarUrl) {
+        avatarInput.classList.add('hidden');
+        replaceAvatarBtn.classList.remove('hidden');
+      } else {
+        avatarInput.classList.remove('hidden');
+        replaceAvatarBtn.classList.add('hidden');
+      }
     }
 
     if (profileStatus) {
@@ -149,6 +367,180 @@ export function renderProfile(container) {
         profileStatus.classList.add('hidden');
       }, 1500);
     }
+
+    // Determine role + links
+    const roles = data.roles || []; // backend should return roles array
+    const isSiteAdmin = roles.includes('site_admin') || roles.includes('administrator');
+    if (isSiteAdmin) {
+      roleLabel.textContent = "Site Admin";
+      jobboardLinks.innerHTML = `
+        <p class="mt-2"><a href="/#admin" class="text-blue-600">Open Admin Panel</a></p>
+      `;
+      if (addressSection) {
+        addressSection.classList.add('hidden');
+        ['street1', 'city', 'state', 'zip', 'country'].forEach((id) => {
+          const el = container.querySelector(`#${id}`);
+          if (el) el.required = false;
+        });
+      }
+      if (hideEmailToggle) hideEmailToggle.classList.add('hidden');
+      return;
+    }
+
+    if (roles.includes('employer')) {
+      const verified = data.employer_verified;
+      roleLabel.textContent = verified
+        ? (CONFIG.JOB_COPY?.ROLE_EMPLOYER_VERIFIED || "Employer (Verified)")
+        : (CONFIG.JOB_COPY?.ROLE_EMPLOYER_PENDING || "Employer (Pending Verification)");
+      jobboardLinks.innerHTML = `
+        <p class="mt-2"><a href="/#my-job-posts" class="text-blue-600">${CONFIG.JOB_COPY?.MANAGE_OPENINGS || 'Manage My Openings'}</a></p>
+      `;
+      const companySection = container.querySelector('#companySection');
+      if (companySection) companySection.classList.remove('hidden');
+    } else {
+      roleLabel.textContent = CONFIG.JOB_COPY?.ROLE_EMPLOYEE || "Job Seeker";
+      jobboardLinks.innerHTML = `
+        <p class="mt-2"><a href="/#resume" class="text-blue-600">${CONFIG.JOB_COPY?.MANAGE_RESUME || 'Manage Resume & Cover Letter'}</a></p>
+        <p class="mt-2"><a href="/#my-applications" class="text-blue-600">${CONFIG.JOB_COPY?.MY_APPLICATIONS || 'My Applications'}</a></p>
+      `;
+
+      const renderSavedJobs = async () => {
+        if (!savedJobsSection) return;
+        savedJobsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.SAVED_JOBS || 'Saved Jobs'}</h3><p class="text-sm text-gray-500">Loading...</p>`;
+        try {
+          const savedRes = await fetch('/api/saved-jobs', { credentials: 'include' });
+          const savedIds = await savedRes.json();
+          if (!savedRes.ok || !Array.isArray(savedIds) || !savedIds.length) {
+            savedJobsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.SAVED_JOBS || 'Saved Jobs'}</h3><p class="text-sm text-gray-500">No saved jobs yet.</p>`;
+            return;
+          }
+          const listRes = await fetch('/api/get-list');
+          const list = await listRes.json();
+          const savedSet = new Set(savedIds.map(Number));
+          const matches = (Array.isArray(list) ? list : []).filter(j => savedSet.has(Number(j.id || j._id || j.slug)));
+          savedJobsSection.innerHTML = `
+            <h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.SAVED_JOBS || 'Saved Jobs'}</h3>
+            <div class="space-y-2">
+              ${matches.map(job => `
+                <div class="border rounded-lg p-3 bg-white shadow-sm">
+                  <div class="font-medium">${job.title || job.name || 'Job'}</div>
+                  <div class="text-xs text-gray-500">${job.meta?.company || ''}</div>
+                  <a class="text-sm text-indigo-600 hover:underline" href="/#list-detail?id=${job.id}">${CONFIG.JOB_COPY?.VIEW_JOB || 'View job'}</a>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        } catch (err) {
+          savedJobsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.SAVED_JOBS || 'Saved Jobs'}</h3><p class="text-sm text-gray-500">Unable to load saved jobs.</p>`;
+        }
+      };
+
+      const renderAlerts = async () => {
+        if (!jobAlertsSection) return;
+        jobAlertsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.JOB_ALERTS || 'Job Alerts'}</h3><p class="text-sm text-gray-500">Loading...</p>`;
+        try {
+          const res = await fetch('/api/job-alerts', { credentials: 'include' });
+          const data = await res.json();
+          if (!res.ok || !Array.isArray(data) || !data.length) {
+            jobAlertsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.JOB_ALERTS || 'Job Alerts'}</h3><p class="text-sm text-gray-500">No alerts yet.</p>`;
+            return;
+          }
+          jobAlertsSection.innerHTML = `
+            <h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.JOB_ALERTS || 'Job Alerts'}</h3>
+            <div class="space-y-2">
+              ${data.map(alert => `
+                <div class="border rounded-lg p-3 bg-white shadow-sm">
+                  <div class="font-medium">${alert.label || 'Alert'}</div>
+                  <div class="text-xs text-gray-500">${alert.criteria?.query ? `Query: ${alert.criteria.query}` : 'Saved search'}</div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        } catch (err) {
+          jobAlertsSection.innerHTML = `<h3 class="text-lg font-semibold mb-2">${CONFIG.JOB_COPY?.JOB_ALERTS || 'Job Alerts'}</h3><p class="text-sm text-gray-500">Unable to load alerts.</p>`;
+        }
+      };
+
+      renderSavedJobs();
+      renderAlerts();
+    }
+
+  }
+
+  async function loadCompanyOwner() {
+    if (!companyOwnerSection) return;
+    try {
+      const res = await fetch('/api/company-owner', { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok || !data?.company) {
+        companyOwnerSection.classList.add('hidden');
+        return;
+      }
+      const company = data.company;
+      const isVerified = Number(company.verified) === 1;
+      companyOwnerSection.classList.remove('hidden');
+      const companyLabel = CONFIG.COMPANY_ENTITY_LABEL || 'Company page';
+      companyOwnerSection.innerHTML = `
+        <div class="border rounded-lg p-4 bg-white">
+          <h3 class="text-lg font-semibold mb-3">${companyLabel}</h3>
+          <p class="text-xs text-gray-500 mb-3">Update how your company appears publicly.</p>
+          ${isVerified ? '' : '<p class="text-xs text-amber-700 mb-3">Company updates are locked until a site admin verifies your company.</p>'}
+          <form id="companyOwnerForm" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input name="logo_url" class="p-2 border rounded" placeholder="Logo URL" value="${company.logo_url || ''}" />
+            <input name="logo_file" type="file" accept="image/*" class="p-2 border rounded" />
+            <input name="street1" class="p-2 border rounded" placeholder="Street Address" value="${company.street1 || ''}" />
+            <input name="street2" class="p-2 border rounded" placeholder="Unit/Suite" value="${company.street2 || ''}" />
+            <input name="city" class="p-2 border rounded" placeholder="City" value="${company.city || ''}" />
+            <input name="state" class="p-2 border rounded" placeholder="State" value="${company.state || ''}" />
+            <input name="zip" class="p-2 border rounded" placeholder="ZIP" value="${company.zip || ''}" />
+            <input name="country" class="p-2 border rounded" placeholder="Country" value="${company.country || ''}" />
+            <button type="submit" class="text-purple px-4 py-2 rounded md:col-span-2" ${isVerified ? '' : 'disabled'}>Save Company</button>
+          </form>
+          <p id="companyOwnerMsg" class="text-sm mt-2"></p>
+        </div>
+      `;
+      const form = companyOwnerSection.querySelector('#companyOwnerForm');
+      const msg = companyOwnerSection.querySelector('#companyOwnerMsg');
+      const logoUrlInput = companyOwnerSection.querySelector('input[name="logo_url"]');
+      const logoFileInput = companyOwnerSection.querySelector('input[name="logo_file"]');
+      logoFileInput?.addEventListener('change', () => {
+        const file = logoFileInput.files && logoFileInput.files[0];
+        if (!file || !logoUrlInput) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          logoUrlInput.value = typeof reader.result === 'string' ? reader.result : '';
+        };
+        reader.readAsDataURL(file);
+      });
+
+      form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!isVerified) {
+          msg.textContent = 'Company is not verified yet.';
+          msg.className = 'text-sm text-amber-700 mt-2';
+          return;
+        }
+        msg.textContent = 'Saving...';
+        const payload = Object.fromEntries(new FormData(form).entries());
+        delete payload.logo_file;
+        const saveRes = await fetch('/api/company-owner', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload),
+        });
+        const saveData = await saveRes.json();
+        if (!saveRes.ok) {
+          msg.textContent = saveData.error || 'Save failed.';
+          msg.className = 'text-sm text-red-600 mt-2';
+          return;
+        }
+        msg.textContent = 'Company updated.';
+        msg.className = 'text-sm text-green-700 mt-2';
+      });
+    } catch (err) {
+      companyOwnerSection.classList.add('hidden');
+    }
   }
 
   async function getProfileInfo() {
@@ -157,11 +549,13 @@ export function renderProfile(container) {
       const cached = getUserProfileCachedAny({ light: false });
       if (cached) {
         applyProfileData(cached);
+        loadCompanyOwner();
       }
 
       const data = await getUserProfileCached({ maxAgeMs: 30000, light: false });
       if (data) {
         applyProfileData(data);
+        loadCompanyOwner();
       } else {
         alert('❌ Error fetching profile: Unable to load profile.');
         window.location.hash = '#/login';
@@ -173,22 +567,9 @@ export function renderProfile(container) {
 
   getProfileInfo();
 
-  let addressCollapsed = false;
-  const updateAddressVisibility = () => {
-    if (!addressSection || !toggleAddressBtn) return;
-    if (addressCollapsed) {
-      addressSection.classList.add('hidden');
-      toggleAddressBtn.textContent = 'Show Address Details';
-    } else {
-      addressSection.classList.remove('hidden');
-      toggleAddressBtn.textContent = 'Hide Address Details';
-    }
-  };
-  updateAddressVisibility();
-  toggleAddressBtn?.addEventListener('click', () => {
-    addressCollapsed = !addressCollapsed;
-    updateAddressVisibility();
-  });
+  if (addressSection) {
+    addressSection.classList.remove('hidden');
+  }
 }
 async function handleProfileUpdate(event) {
   event.preventDefault();
@@ -196,42 +577,131 @@ async function handleProfileUpdate(event) {
   const form = event.target;
   const errorEl = document.getElementById('profileError');
   const formData = new FormData(form);
+  const avatarFileInput = document.getElementById('avatar');
+  const avatarFile = window.__profileAvatarFile || (avatarFileInput && avatarFileInput.files && avatarFileInput.files[0]);
+  if (avatarFile) {
+    formData.append('avatar', avatarFile);
+    formData.append('avatar_expected', '1');
+  }
   if (errorEl) errorEl.textContent = '';
 
   const country = (formData.get('country') || '').trim();
   const state = (formData.get('state') || '').trim();
   const zip = (formData.get('zip') || '').trim();
+  const countryEl = document.getElementById('country');
+  const stateEl = document.getElementById('state');
+  const zipEl = document.getElementById('zip');
+  const cityEl = document.getElementById('city');
+  const dob = (formData.get('dob') || '').trim();
+  const dobEl = document.getElementById('dob');
   const usaValues = ['usa', 'us', 'united states', 'united states of america'];
   if (!usaValues.includes(country.toLowerCase())) {
     if (errorEl) errorEl.textContent = 'USA only: please enter United States.';
+    markInvalidField(countryEl, 'USA only: please enter United States.');
     return;
   }
   if (state && !/^[A-Za-z]{2}$/.test(state)) {
     if (errorEl) errorEl.textContent = 'State must be a 2-letter code.';
+    markInvalidField(stateEl, 'State must be a 2-letter code.');
     return;
   }
   if (zip && !/^\d{5}(-\d{4})?$/.test(zip)) {
     if (errorEl) errorEl.textContent = 'ZIP must be 5 digits (or 5+4).';
+    markInvalidField(zipEl, 'ZIP must be 5 digits (or 5+4).');
     return;
+  }
+  if (dob) {
+    const dobDate = new Date(dob);
+    if (!isNaN(dobDate.getTime())) {
+      const now = new Date();
+      let age = now.getFullYear() - dobDate.getFullYear();
+      const m = now.getMonth() - dobDate.getMonth();
+      if (m < 0 || (m === 0 && now.getDate() < dobDate.getDate())) {
+        age--;
+      }
+      if (age < 18) {
+        if (errorEl) errorEl.textContent = 'You must be at least 18 years old.';
+        markInvalidField(dobEl, 'You must be at least 18 years old.');
+        return;
+      }
+    }
+  }
+  if (zip && zip.length >= 5) {
+    try {
+      const zipRes = await fetch(`https://api.zippopotam.us/us/${zip.substring(0, 5)}`);
+      if (!zipRes.ok) {
+        if (errorEl) errorEl.textContent = 'ZIP code not found.';
+        markInvalidField(zipEl, 'ZIP code not found.');
+        return;
+      }
+      const zipData = await zipRes.json();
+      const places = zipData.places || [];
+      const cityNorm = (formData.get('city') || '').trim().toLowerCase();
+      const stateNorm = (formData.get('state') || '').trim().toUpperCase();
+      const match = places.some(p =>
+        (p['place name'] || '').toLowerCase() === cityNorm &&
+        (p['state abbreviation'] || '').toUpperCase() === stateNorm
+      );
+      if (!match) {
+        if (errorEl) errorEl.textContent = 'City and state do not match the ZIP code.';
+        markInvalidField(cityEl, 'City and state do not match the ZIP code.');
+        markInvalidField(stateEl, 'City and state do not match the ZIP code.');
+        return;
+      }
+    } catch (err) {
+      if (errorEl) errorEl.textContent = 'Unable to verify ZIP code. Please try again.';
+      markInvalidField(zipEl, 'Unable to verify ZIP code.');
+      return;
+    }
   }
 
   try {
-    const response = await fetch('/wp-json/customapi/v1/user-profile-update', {
+    const response = await fetch('/api/user-profile-update', {
       method: 'POST',
       body: formData,
       credentials: 'include'
     });
+    let data = {};
+    try {
+      data = await response.json();
+    } catch (err) {
+      data = {};
+    }
 
-    const data = await response.json();
-
-    if (response.ok && data.success) {
-      alert('✅ Profile updated successfully!');
+    if (response.ok && (data.success || Object.keys(data).length === 0)) {
+      if (errorEl) {
+        errorEl.textContent = 'Profile updated successfully.';
+        errorEl.className = 'text-sm text-green-700';
+      }
+      const newAvatarUrl = data.avatar_url || data.avatarUrl;
+      const preview = document.getElementById('avatarPreview');
+      if (newAvatarUrl && preview) {
+        preview.src = newAvatarUrl;
+        const replaceBtn = document.getElementById('replaceAvatarBtn');
+        const avatarInputEl = document.getElementById('avatar');
+        if (replaceBtn && avatarInputEl) {
+          avatarInputEl.classList.add('hidden');
+          replaceBtn.classList.remove('hidden');
+        }
+      }
+      if (avatarFile && !newAvatarUrl && errorEl) {
+        const debug = data && data.debug ? JSON.stringify(data.debug) : '';
+        errorEl.textContent = debug ? `Avatar upload failed. Debug: ${debug}` : 'Avatar upload failed. Please try again.';
+        errorEl.className = 'text-sm text-red-600';
+      }
+      window.__profileAvatarFile = null;
     } else {
-      alert('❌ Failed to update profile: ' + (data.message || 'Unknown error'));
+      if (errorEl) {
+        errorEl.textContent = data.error || data.message || 'Failed to update profile.';
+        errorEl.className = 'text-sm text-red-600';
+      }
     }
   } catch (err) {
-    alert('❌ Network error: ' + err.message);
+    if (errorEl) {
+      errorEl.textContent = 'Network error: ' + err.message;
+      errorEl.className = 'text-sm text-red-600';
+    }
   }
 }
 
-window.handleProfileUpdate = handleProfileUpdate; // 👈 make it globally callable from form
+// No global handler; bound directly in renderProfile

@@ -1,0 +1,381 @@
+<?php
+declare(strict_types=1);
+
+namespace App\Controllers;
+
+use App\Services\AuthService;
+use App\Models\JobModel;
+use App\Models\UserMetaModel;
+use App\Models\ApplicationModel;
+use App\Models\UserProfileModel;
+use App\Models\CompanyModel;
+use App\Models\UserFileModel;
+use App\Services\RateLimiter;
+use App\Services\Mailer;
+use App\Services\EncryptionService;
+use App\Models\SettingsModel;
+use App\Models\AuditLogModel;
+
+class JobPostController {
+  private AuthService $auth;
+  private JobModel $jobs;
+  private UserMetaModel $userMeta;
+  private ApplicationModel $applications;
+  private UserProfileModel $profiles;
+  private UserFileModel $files;
+  private CompanyModel $companies;
+  private EncryptionService $crypto;
+  private SettingsModel $settings;
+  private AuditLogModel $audit;
+
+  public function __construct() {
+    $this->auth = new AuthService($GLOBALS['DB_PDO']);
+    $this->jobs = new JobModel();
+    $this->userMeta = new UserMetaModel();
+    $this->applications = new ApplicationModel();
+    $this->profiles = new UserProfileModel();
+    $this->files = new UserFileModel();
+    $this->companies = new CompanyModel();
+    $this->crypto = new EncryptionService();
+    $this->settings = new SettingsModel();
+    $this->audit = new AuditLogModel();
+  }
+
+  private function requireEmployer(): array {
+    $user = $this->auth->getSessionUser();
+    if (empty($user)) {
+      http_response_code(403);
+      return [];
+    }
+    $role = $user['role'] ?? '';
+    if ($role !== 'employer' && $role !== 'site_admin' && $role !== 'administrator') {
+      http_response_code(403);
+      return [];
+    }
+    if (($user['email_verified'] ?? 0) != 1 && $role === 'employer') {
+      http_response_code(403);
+      return ['error' => 'Email verification required.'];
+    }
+    return $user;
+  }
+
+  private function jsonInput(): array {
+    $raw = file_get_contents('php://input');
+    $data = json_decode($raw, true);
+    return is_array($data) ? $data : [];
+  }
+
+  private function rateLimit(string $action, int $limit, int $windowSeconds): ?array {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $key = "{$action}:{$ip}";
+    $limiter = new RateLimiter($GLOBALS['DB_PDO']);
+    if (!$limiter->check($key, $limit, $windowSeconds)) {
+      http_response_code(429);
+      return ['error' => 'Too many requests. Please try again later.'];
+    }
+    return null;
+  }
+
+  private function passesTurnstile(array $data): bool {
+    $devMode = ($_ENV['DEV_MODE'] ?? '') === '1' || ($this->settings->get('dev_mode') === '1');
+    if ($devMode) return true;
+    $siteKey = $_ENV['TURNSTILE_SITE_KEY'] ?? '';
+    $secret = $_ENV['TURNSTILE_SECRET_KEY'] ?? '';
+    if (!$siteKey || !$secret) return true;
+    $token = $data['turnstile_token'] ?? '';
+    if (!$token) return false;
+    $payload = http_build_query([
+      'secret' => $secret,
+      'response' => $token,
+      'remoteip' => $_SERVER['REMOTE_ADDR'] ?? '',
+    ]);
+    $context = stream_context_create([
+      'http' => [
+        'method' => 'POST',
+        'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
+        'content' => $payload,
+        'timeout' => 6,
+      ],
+    ]);
+    $resp = @file_get_contents('https://challenges.cloudflare.com/turnstile/v0/siteverify', false, $context);
+    if ($resp === false) return false;
+    $json = json_decode($resp, true);
+    return !empty($json['success']);
+  }
+
+  public function listUserJobs(): array {
+    $user = $this->requireEmployer();
+    if (empty($user)) return ['error' => 'Not logged in'];
+    $jobs = $this->jobs->listByOwner((int) $user['id']);
+    $companyId = (int) ($this->userMeta->getMeta((int) $user['id'], 'company_id') ?? 0);
+    if ($companyId) {
+      $jobs = array_merge($jobs, $this->jobs->listByCompanyId($companyId));
+    }
+    $companyName = trim((string) ($user['company_name'] ?? ''));
+    if ($companyName) {
+      $jobs = array_merge($jobs, $this->jobs->listByCompanyName($companyName));
+    }
+    // De-duplicate by id
+    $unique = [];
+    foreach ($jobs as $job) {
+      $id = $job['id'] ?? null;
+      if ($id === null) continue;
+      $unique[$id] = $job;
+    }
+    return array_values($unique);
+  }
+
+  public function detail(): array {
+    $user = $this->requireEmployer();
+    if (empty($user)) return ['error' => 'Not logged in'];
+    $jobId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+    if ($jobId <= 0) {
+      http_response_code(422);
+      return ['error' => 'Missing job id'];
+    }
+    $job = $this->jobs->getById($jobId);
+    if (empty($job)) {
+      http_response_code(404);
+      return ['error' => 'Job not found'];
+    }
+    $ownerId = $job['meta']['owner_id'] ?? null;
+    if ($ownerId && (int) $ownerId !== (int) $user['id'] && !in_array($user['role'], ['site_admin','administrator'], true)) {
+      http_response_code(403);
+      return ['error' => 'Access denied'];
+    }
+
+    // Auto-advance submitted applications to reviewing when employer opens applicants
+    $this->applications->markReviewingByJob($jobId);
+
+    $apps = $this->applications->listByJob($jobId);
+    $appIds = array_map(fn($a) => (int) $a['id'], $apps);
+    $complianceMap = $this->applications->getMetaByApplications($appIds, 'compliance');
+    $applicants = [];
+    foreach ($apps as $app) {
+      $appUserId = (int) $app['user_id'];
+      $meta = $this->profiles->getMeta($appUserId, ['first_name','last_name','city','state','zip','hide_email']);
+      $u = $this->auth->getUserById($appUserId);
+      $name = trim(($meta['first_name'] ?? '') . ' ' . ($meta['last_name'] ?? ''));
+      if (!$name) $name = $u['username'] ?? 'Applicant';
+      $complianceAnswers = null;
+      $metaRow = $complianceMap[(int) $app['id']] ?? null;
+      if ($metaRow && !empty($metaRow['value'])) {
+        $rawValue = (string) $metaRow['value'];
+        if ((function_exists('str_starts_with') ? \str_starts_with($rawValue, 'b64:') : (substr($rawValue, 0, 4) === 'b64:'))) {
+          $rawValue = substr($rawValue, 4);
+        }
+        $ciphertext = base64_decode($rawValue, true);
+        if ($ciphertext !== false) {
+          $decrypted = $this->crypto->decrypt($ciphertext, (string) $metaRow['iv'], (string) $metaRow['tag']);
+        } else {
+          $decrypted = '';
+        }
+        $decoded = json_decode($decrypted, true);
+        if (is_array($decoded)) {
+          $complianceAnswers = $decoded;
+        }
+      }
+      $applicants[] = [
+        'id' => $appUserId,
+        'name' => $name,
+        'email' => $u['email'] ?? '',
+        'hide_email' => ($meta['hide_email'] ?? '') === '1',
+        'resume' => $app['resume_url'] ?? '',
+        'cover' => $app['cover_url'] ?? '',
+        'status' => $app['status'] ?? 'new',
+        'rank' => (int) ($app['rank'] ?? 0),
+        'match_score' => (int) ($app['match_score'] ?? 0),
+        'pref_score' => (int) ($app['pref_score'] ?? 0),
+        'resume_text' => $app['resume_text'] ?? '',
+        'city' => $meta['city'] ?? '',
+        'state' => $meta['state'] ?? '',
+        'zip' => $meta['zip'] ?? '',
+        'compliance' => $complianceAnswers,
+      ];
+    }
+
+    return array_merge($job, [
+      'applicants' => $applicants,
+      'raw_content' => $job['meta']['description'] ?? $job['description'] ?? '',
+    ]);
+  }
+
+  public function update(): array {
+    $user = $this->requireEmployer();
+    if (empty($user)) return ['error' => 'Not logged in'];
+    $data = $this->jsonInput();
+    $jobId = (int) ($data['id'] ?? 0);
+    if (!$jobId) {
+      http_response_code(422);
+      return ['error' => 'Missing job id'];
+    }
+    $job = $this->jobs->getById($jobId);
+    if (empty($job)) {
+      http_response_code(404);
+      return ['error' => 'Job not found'];
+    }
+    $ownerId = $job['meta']['owner_id'] ?? null;
+    if ($ownerId && (int) $ownerId !== (int) $user['id'] && !in_array($user['role'], ['site_admin','administrator'], true)) {
+      http_response_code(403);
+      return ['error' => 'Access denied'];
+    }
+    $title = trim((string) ($data['title'] ?? $job['title']));
+    $status = trim((string) ($data['status'] ?? 'draft'));
+    if (!in_array($status, ['draft','publish'], true)) $status = 'draft';
+    $this->jobs->updateJob($jobId, $title ?: 'Untitled', $status);
+    $meta = $data['meta'] ?? $data;
+    $allowed = ['description','field','employment_type','street1','street2','city','state','zip','country','rate_type','rate_min','rate_max','job_type','company','company_site','job_featured','job_payment_status','job_tier','job_tier_label','compliance_enabled','compliance_federal','compliance_blocks'];
+    $update = [];
+    foreach ($allowed as $key) {
+      if (array_key_exists($key, $meta)) {
+        $update[$key] = $meta[$key];
+      }
+    }
+    $this->jobs->updateMeta($jobId, $update);
+    return ['ok' => true];
+  }
+
+  public function create(): array {
+    $user = $this->requireEmployer();
+    if (empty($user)) return ['error' => 'Not logged in'];
+    $data = $this->jsonInput();
+    $title = trim((string) ($data['title'] ?? 'Untitled'));
+    $status = trim((string) ($data['status'] ?? 'draft'));
+    if (!in_array($status, ['draft','publish'], true)) $status = 'draft';
+    $meta = $data['meta'] ?? $data;
+    $companyId = (int) ($this->userMeta->getMeta((int) $user['id'], 'company_id') ?? 0);
+    if ($companyId) {
+      $company = $this->companies->findById($companyId);
+      if ($company) {
+        $meta['company'] = $meta['company'] ?? $company['name'];
+        $meta['company_slug'] = $meta['company_slug'] ?? $company['slug'];
+        $meta['company_id'] = $meta['company_id'] ?? (string) $company['id'];
+      }
+    }
+    $meta['owner_id'] = (string) $user['id'];
+    $meta['owner_email'] = $user['email'] ?? '';
+    $jobId = $this->jobs->createDraft($title, [], $status);
+    $this->jobs->updateMeta($jobId, $meta);
+    $this->audit->log((int) $user['id'], 'job_created', 'Job draft created', [
+      'job_id' => $jobId,
+      'title' => $title,
+      'status' => $status,
+    ]);
+    $this->notifyAdminsJobCreated($title, $jobId, $meta['company'] ?? '');
+    return ['id' => $jobId];
+  }
+
+  private function notifyAdminsJobCreated(string $title, int $jobId, string $company = ''): void {
+    $pdo = $GLOBALS['DB_PDO'];
+    $admins = $pdo->query("SELECT email FROM jb_users WHERE role IN ('site_admin','administrator')")->fetchAll();
+    $adminEmails = array_values(array_filter(array_map(fn($r) => $r['email'] ?? '', $admins ?: [])));
+    if (!$adminEmails) return;
+    $siteName = $_ENV['EMAIL_FROM_NAME'] ?? 'JobBoard';
+    $subject = $siteName . ' — Job post created';
+    $jobUrl = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/#list-detail?id=' . $jobId;
+    $html = '
+      <div style="font-family: Arial, sans-serif; background:#f8fafc; padding:24px;">
+        <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;">
+          <h2 style="margin:0 0 12px 0;color:#0f172a;">Job post created</h2>
+          <p style="margin:0 0 12px 0;color:#475569;">Title: <strong>' . htmlspecialchars($title, ENT_QUOTES) . '</strong></p>
+          <p style="margin:0 0 12px 0;color:#475569;">Company: ' . htmlspecialchars($company, ENT_QUOTES) . '</p>
+          <p style="margin:0;color:#64748b;font-size:13px;">View: <a href="' . htmlspecialchars($jobUrl, ENT_QUOTES) . '">' . htmlspecialchars($jobUrl, ENT_QUOTES) . '</a></p>
+        </div>
+      </div>
+    ';
+    $mailer = new Mailer();
+    foreach ($adminEmails as $to) {
+      $mailer->send($to, $subject, $html);
+    }
+  }
+
+  public function delete(): array {
+    $user = $this->requireEmployer();
+    if (empty($user)) return ['error' => 'Not logged in'];
+    $data = $this->jsonInput();
+    $jobId = (int) ($data['id'] ?? 0);
+    if (!$jobId) {
+      http_response_code(422);
+      return ['error' => 'Missing job id'];
+    }
+    $job = $this->jobs->getById($jobId);
+    if (empty($job)) {
+      http_response_code(404);
+      return ['error' => 'Job not found'];
+    }
+    $ownerId = $job['meta']['owner_id'] ?? null;
+    if ($ownerId && (int) $ownerId !== (int) $user['id'] && !in_array($user['role'], ['site_admin','administrator'], true)) {
+      http_response_code(403);
+      return ['error' => 'Access denied'];
+    }
+    $this->jobs->deleteJob($jobId);
+    return ['ok' => true];
+  }
+
+  public function updateApplicationStatus(): array {
+    $user = $this->requireEmployer();
+    if (empty($user)) return ['error' => 'Not logged in'];
+    $data = $this->jsonInput();
+    $jobId = (int) ($data['job_id'] ?? 0);
+    $userId = (int) ($data['user_id'] ?? 0);
+    if (!$jobId || !$userId) {
+      http_response_code(422);
+      return ['error' => 'Missing job/user'];
+    }
+    $status = $data['status'] ?? null;
+    $rank = (int) ($data['rank'] ?? 0);
+    $this->applications->updateStatus($jobId, $userId, $status ? (string) $status : null, $rank);
+    return ['ok' => true];
+  }
+
+  public function removeApplication(): array {
+    $user = $this->requireEmployer();
+    if (empty($user)) return ['error' => 'Not logged in'];
+    $data = $this->jsonInput();
+    $jobId = (int) ($data['job_id'] ?? 0);
+    $userId = (int) ($data['user_id'] ?? 0);
+    if (!$jobId || !$userId) {
+      http_response_code(422);
+      return ['error' => 'Missing job/user'];
+    }
+    $this->applications->remove($jobId, $userId);
+    return ['ok' => true];
+  }
+
+  public function employerClick(): array {
+    // placeholder for learning
+    return ['ok' => true];
+  }
+
+  public function resetLearning(): array {
+    return ['ok' => true, 'message' => 'Learning reset'];
+  }
+
+  public function contactApplicant(): array {
+    if ($blocked = $this->rateLimit('contact_applicant', 6, 300)) {
+      return $blocked;
+    }
+    $user = $this->requireEmployer();
+    if (empty($user)) return ['error' => 'Not logged in'];
+    $data = $this->jsonInput();
+    if (!$this->passesTurnstile($data)) {
+      http_response_code(403);
+      return ['error' => 'Captcha required'];
+    }
+    $applicantId = (int) ($data['user_id'] ?? 0);
+    $message = trim((string) ($data['message'] ?? ''));
+    if (!$applicantId || !$message) {
+      http_response_code(422);
+      return ['error' => 'Missing fields'];
+    }
+    $app = $this->auth->getUserById($applicantId);
+    if (empty($app)) {
+      http_response_code(404);
+      return ['error' => 'Applicant not found'];
+    }
+    $mailer = new Mailer();
+    $subject = 'Message from employer';
+    $mailer->send($app['email'], $subject, nl2br(htmlspecialchars($message, ENT_QUOTES)), $message);
+    return ['ok' => true];
+  }
+}
