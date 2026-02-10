@@ -77,6 +77,7 @@ return [
   ],
   'POST' => [
     '/api/register' => [new AuthController(), 'register'],
+    '/api/username-available' => [new AuthController(), 'usernameAvailable'],
     '/api/login' => [new AuthController(), 'login'],
     '/api/logout' => [new AuthController(), 'logout'],
     '/api/forgot-password' => [new AuthController(), 'forgotPassword'],

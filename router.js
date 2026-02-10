@@ -29,6 +29,7 @@ import { renderMagicLogin } from './views/magicLogin.js';
 import { renderVerifyEmail } from './views/verifyEmail.js';
 import { renderUnsubscribe } from './views/unsubscribe.js';
 import { renderSavedSearches } from './views/savedSearches.js';
+import { renderCompleteProfile } from './views/completeProfile.js';
 
 function parseHash() {
   const rawHash = window.location.hash.slice(1);
@@ -46,7 +47,7 @@ function kebabToCamel(str) {
   return str.replace(/-([a-z])/g, (_, char) => char.toUpperCase());
 }
 
-const protectedRoutes = ['profile', 'updatePassword','post','apply','resume', 'myJobPosts', 'myJobPostDetail', 'myApplications', 'myjobposts', 'myjobpostdetail', 'myapplications', 'admin', 'savedSearches', 'savedsearches', 'saved-searches'];
+const protectedRoutes = ['profile', 'updatePassword','post','apply','resume', 'myJobPosts', 'myJobPostDetail', 'myApplications', 'myjobposts', 'myjobpostdetail', 'myapplications', 'admin', 'savedSearches', 'savedsearches', 'saved-searches', 'complete-profile', 'completeProfile'];
 const employerRoutes = ['post', 'myJobPosts', 'myJobPostDetail', 'myjobposts', 'myjobpostdetail'];
 const adminRoutes = ['admin'];
 
@@ -194,6 +195,10 @@ case 'myapplications':
     case 'savedsearches':
     case 'saved-searches':
       renderSavedSearches(app);
+      return scrollToTopAfterRender();
+    case 'completeProfile':
+    case 'complete-profile':
+      await renderCompleteProfile(app);
       return scrollToTopAfterRender();
         case '2fa':
           render2FA(app);

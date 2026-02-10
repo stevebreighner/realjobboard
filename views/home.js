@@ -124,6 +124,7 @@ export async function renderHome(container) {
         <div class="relative z-10 text-shadow text-center max-w-5xl mx-auto">
           <div class="text-xs uppercase tracking-widest text-white/80 mb-2">${CONFIG.SITE_TAGLINE || 'A job search site'}</div>
           <h1 class="text-3xl md:text-5xl font-bold mb-3">${hero.title}</h1>
+          <p class="text-white/90 text-base mt-1">${CONFIG.HOME_HERO_BLURB || 'A privacy-first job search site with smarter matching.'}</p>
           ${heroLines}
           <div class="mt-6 flex gap-3 justify-center flex-wrap">
             <a ${hero.primary.id ? `id="${hero.primary.id}"` : ''} href="${hero.primary.href}" class="bg-white text-slate-900 font-semibold px-4 py-2 rounded-lg">${hero.primary.label}</a>
@@ -132,6 +133,20 @@ export async function renderHome(container) {
         </div>
       </div>
     </div>
+
+    <!-- Quick Value Section -->
+    <section class="bg-white text-gray-900 py-10 px-6 md:px-12">
+      <div class="max-w-6xl mx-auto">
+        <div class="grid gap-6 md:grid-cols-3">
+          ${Array.isArray(CONFIG.HOME_INFO_CARDS) ? CONFIG.HOME_INFO_CARDS.map(card => `
+            <div class="rounded-2xl border shadow-sm p-6 bg-white">
+              <div class="text-sm uppercase tracking-widest text-slate-500 mb-2">${card.title}</div>
+              <p class="text-sm text-slate-600">${card.body}</p>
+            </div>
+          `).join('') : ''}
+        </div>
+      </div>
+    </section>
 
     <!-- What We Do Section -->
     <section class="bg-white text-gray-800 py-10 md:py-14 px-6 md:px-12">
@@ -508,6 +523,10 @@ export async function renderHome(container) {
   }
 
   if (session) {
+    if (session.needs_profile) {
+      window.location.hash = '#complete-profile';
+      return;
+    }
     renderLoggedInHome(session);
     return;
   }

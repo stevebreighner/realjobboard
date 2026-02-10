@@ -52,8 +52,20 @@ class OAuthController {
     $token = $this->oauth->exchangeCode((string) $code);
     $accessToken = $token['access_token'] ?? '';
     if (!$accessToken) {
+      $devMode = ($_ENV['DEV_MODE'] ?? '') === '1';
+      $err = $token['error_description'] ?? $token['error'] ?? 'OAuth token error';
+      $redirectUri = $this->oauth->getRedirectUri();
+      $clientId = $_ENV['GOOGLE_CLIENT_ID'] ?? '';
       http_response_code(400);
-      echo 'OAuth token error';
+      if ($devMode) {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "OAuth token error: {$err}\n";
+        echo "redirect_uri={$redirectUri}\n";
+        echo "client_id_set=" . (!empty($clientId) ? 'yes' : 'no') . "\n";
+        echo "raw=" . json_encode($token);
+      } else {
+        echo 'OAuth token error';
+      }
       return;
     }
     $info = $this->oauth->fetchUserInfo($accessToken);
@@ -64,6 +76,7 @@ class OAuthController {
       return;
     }
     $user = $this->auth->getUserByEmailOrUsername($email);
+    $isNew = false;
     if (empty($user)) {
       $username = $this->generateUsername((string) ($info['name'] ?? ''), $email);
       $user = $this->auth->createUser([
@@ -74,12 +87,16 @@ class OAuthController {
         'email_verified' => 1,
         'employer_verified' => 0,
       ]);
+      $isNew = true;
     }
     $this->meta->setMeta((int) $user['id'], 'oauth_google', '1');
+    if ($isNew) {
+      $this->meta->setMeta((int) $user['id'], 'needs_profile', '1');
+    }
     $this->auth->createSession((int) $user['id']);
     $this->clearCookie('oauth_state');
     $this->clearCookie('oauth_nonce');
-    header('Location: /#home');
+    header('Location: ' . ($isNew ? '/#complete-profile' : '/#home'));
     exit;
   }
 

@@ -129,6 +129,12 @@ class AdminUserController {
     $pdo = $GLOBALS['DB_PDO'];
     $role = $data['role'] ?? null;
     $employerVerified = isset($data['employer_verified']) ? (int) !!$data['employer_verified'] : null;
+    $companyName = isset($data['company']) ? trim((string) $data['company']) : null;
+    $companySite = isset($data['company_site']) ? trim((string) $data['company_site']) : null;
+    $companyKey = isset($data['company_key']) ? trim((string) $data['company_key']) : null;
+    if ($employerVerified === 1 && !$companyName) {
+      $employerVerified = 0;
+    }
     $fields = [];
     $params = [':id' => $userId];
     if ($role && in_array($role, ['employee','employer','site_admin','administrator'], true)) {
@@ -139,10 +145,21 @@ class AdminUserController {
       $fields[] = 'employer_verified = :ev';
       $params[':ev'] = $employerVerified;
     }
+    if ($companyName !== null) {
+      $fields[] = 'company_name = :company_name';
+      $params[':company_name'] = $companyName;
+    }
+    if ($companySite !== null) {
+      $fields[] = 'company_site = :company_site';
+      $params[':company_site'] = $companySite;
+    }
     if ($fields) {
       $sql = "UPDATE jb_users SET " . implode(', ', $fields) . " WHERE id = :id";
       $stmt = $pdo->prepare($sql);
       $stmt->execute($params);
+    }
+    if ($companyKey !== null) {
+      $this->meta->setMeta($userId, 'company_code', $companyKey);
     }
     return ['ok' => true];
   }

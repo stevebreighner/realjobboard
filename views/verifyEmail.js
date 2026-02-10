@@ -1,4 +1,9 @@
+import { clearSessionCache, clearProfileCache, notifyAuthChanged } from '../utils/session.js';
+
 export async function renderVerifyEmail(container, params = {}) {
+  clearSessionCache();
+  clearProfileCache();
+  notifyAuthChanged(null);
   const token = params.token || '';
   container.innerHTML = `
     <div class="max-w-md mx-auto px-4">

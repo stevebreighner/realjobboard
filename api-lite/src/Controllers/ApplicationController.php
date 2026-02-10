@@ -72,6 +72,10 @@ class ApplicationController {
       http_response_code(403);
       return ['error' => 'Not logged in'];
     }
+    if ((int) ($user['email_verified'] ?? 0) !== 1) {
+      http_response_code(403);
+      return ['error' => 'Email verification required.'];
+    }
 
     $jobId = isset($_GET['jobId']) ? (int) $_GET['jobId'] : 0;
     if ($jobId <= 0) {
@@ -105,6 +109,10 @@ class ApplicationController {
     if (empty($user)) {
       http_response_code(403);
       return ['error' => 'Not logged in'];
+    }
+    if ((int) ($user['email_verified'] ?? 0) !== 1) {
+      http_response_code(403);
+      return ['error' => 'Email verification required.'];
     }
 
     $data = $this->jsonInput();

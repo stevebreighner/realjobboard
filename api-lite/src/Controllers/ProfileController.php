@@ -130,6 +130,8 @@ class ProfileController {
         $this->profiles->setMeta((int) $user['id'], $field, $val);
       }
     }
+    // Clear needs_profile flag once user updates profile
+    $this->profiles->setMeta((int) $user['id'], 'needs_profile', '0');
 
     if (isset($_POST['dob']) && $_POST['dob'] !== '') {
       $dob = (string) $_POST['dob'];

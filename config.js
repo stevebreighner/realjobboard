@@ -239,6 +239,28 @@ export const CONFIG = {
     },
     HOME_HEROES: [
       {
+        key: 'privacy',
+        title: 'Not another job board.',
+        lines: [
+          'Your job search data isn’t tracked, sold, or shared. Period.',
+          'Privacy‑first defaults with encrypted files and minimal data collection.',
+          'A clean, respectful place to search and hire.'
+        ],
+        primary: { label: 'Search openings', href: '/#list' },
+        secondary: { label: 'How privacy works', href: '/#privacy' }
+      },
+      {
+        key: 'analytics',
+        title: 'Self‑hosted analytics. No third‑party trackers.',
+        lines: [
+          'We keep lightweight, first‑party analytics on our own servers.',
+          'No Google Analytics, no ad pixels, and no data resale.',
+          'You get insights without sacrificing user privacy.'
+        ],
+        primary: { label: 'See privacy policy', href: '/#privacy' },
+        secondary: { label: 'Browse listings', href: '/#list' }
+      },
+      {
         key: 'employers',
         title: 'Fewer distractions. Better hires.',
         lines: [
@@ -281,6 +303,21 @@ export const CONFIG = {
         ],
         primary: { label: 'Try multi‑search', href: '/#list' },
         secondary: { label: 'Employer tools', href: '/#employers' }
+      }
+    ],
+    HOME_HERO_BLURB: 'A privacy‑first job search site with smart matching and verified employers.',
+    HOME_INFO_CARDS: [
+      {
+        title: 'Smart matching, no black‑box AI',
+        body: 'Multi‑search ranks results by term matches so you get signal fast.'
+      },
+      {
+        title: 'Privacy‑first by design',
+        body: 'Your job search data isn’t tracked, sold, or shared. Files are encrypted by default.'
+      },
+      {
+        title: 'Verified employers only',
+        body: 'Company verification and reporting keep listings clean and trustworthy.'
       }
     ],
   

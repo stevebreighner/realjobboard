@@ -13,7 +13,8 @@ class OAuthService {
     $this->baseUrl = $this->detectBaseUrl();
     $this->clientId = (string) ($_ENV['GOOGLE_CLIENT_ID'] ?? '');
     $this->clientSecret = (string) ($_ENV['GOOGLE_CLIENT_SECRET'] ?? '');
-    $this->redirectUri = $this->baseUrl . '/api/oauth/google/callback';
+    $envRedirect = (string) ($_ENV['GOOGLE_REDIRECT_URI'] ?? '');
+    $this->redirectUri = $envRedirect !== '' ? $envRedirect : ($this->baseUrl . '/api/oauth/google/callback');
   }
 
   public function isConfigured(): bool {
@@ -41,20 +42,20 @@ class OAuthService {
       'redirect_uri' => $this->redirectUri,
       'grant_type' => 'authorization_code',
     ];
-    $context = stream_context_create([
-      'http' => [
-        'method' => 'POST',
-        'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
-        'content' => http_build_query($payload),
-        'timeout' => 10,
-      ]
-    ]);
-    $raw = file_get_contents('https://oauth2.googleapis.com/token', false, $context);
+    $raw = $this->postForm('https://oauth2.googleapis.com/token', $payload);
     if ($raw === false) {
+      $this->log('OAuth token request failed (no response).');
       return [];
     }
     $data = json_decode($raw, true);
-    return is_array($data) ? $data : [];
+    if (!is_array($data)) {
+      $this->log('OAuth token invalid JSON: ' . substr($raw, 0, 500));
+      return [];
+    }
+    if (isset($data['error'])) {
+      $this->log('OAuth token error: ' . ($data['error_description'] ?? $data['error']));
+    }
+    return $data;
   }
 
   public function fetchUserInfo(string $accessToken): array {
@@ -67,10 +68,52 @@ class OAuthService {
     ]);
     $raw = file_get_contents('https://openidconnect.googleapis.com/v1/userinfo', false, $context);
     if ($raw === false) {
+      $this->log('OAuth userinfo request failed.');
       return [];
     }
     $data = json_decode($raw, true);
     return is_array($data) ? $data : [];
+  }
+
+  public function getRedirectUri(): string {
+    return $this->redirectUri;
+  }
+
+  private function log(string $message): void {
+    $logDir = __DIR__ . '/../../logs';
+    if (!is_dir($logDir)) {
+      @mkdir($logDir, 0755, true);
+    }
+    $line = sprintf("[%s] %s\n", date('c'), $message);
+    @file_put_contents($logDir . '/oauth.log', $line, FILE_APPEND);
+  }
+
+  private function postForm(string $url, array $payload) {
+    $body = http_build_query($payload);
+    // Try curl first if available
+    if (function_exists('curl_init')) {
+      $ch = curl_init($url);
+      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+      curl_setopt($ch, CURLOPT_POST, true);
+      curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+      curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+      curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+      $resp = curl_exec($ch);
+      if ($resp === false) {
+        $this->log('OAuth curl error: ' . curl_error($ch));
+      }
+      curl_close($ch);
+      if ($resp !== false) return $resp;
+    }
+    $context = stream_context_create([
+      'http' => [
+        'method' => 'POST',
+        'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
+        'content' => $body,
+        'timeout' => 12,
+      ]
+    ]);
+    return @file_get_contents($url, false, $context);
   }
 
   private function detectBaseUrl(): string {

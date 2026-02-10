@@ -17,12 +17,14 @@ class AuthController {
   private AuthTokenModel $tokens;
   private SettingsModel $settings;
   private AuditLogModel $audit;
+  private UserMetaModel $meta;
 
   public function __construct() {
     $this->auth = new AuthService($GLOBALS['DB_PDO']);
     $this->tokens = new AuthTokenModel();
     $this->settings = new SettingsModel();
     $this->audit = new AuditLogModel();
+    $this->meta = new UserMetaModel();
   }
 
   private function jsonInput(): array {
@@ -228,6 +230,16 @@ class AuthController {
     ];
   }
 
+  public function usernameAvailable(): array {
+    $username = trim((string) ($_GET['username'] ?? ''));
+    if (!$username || strlen($username) < 3) {
+      http_response_code(422);
+      return ['error' => 'Username too short', 'available' => false];
+    }
+    $existing = $this->auth->getUserByEmailOrUsername($username);
+    return ['available' => empty($existing)];
+  }
+
   public function login(): array {
     if ($blocked = $this->rateLimit('login', 8, 300)) {
       return $blocked;
@@ -310,11 +322,13 @@ class AuthController {
       http_response_code(403);
       return ['error' => 'Not logged in'];
     }
+    $needsProfile = $this->meta->getMeta((int) $user['id'], 'needs_profile');
     return [
       'id' => $user['id'],
       'username' => $user['username'],
       'email' => $user['email'],
       'roles' => [$user['role']],
+      'needs_profile' => $needsProfile === '1',
     ];
   }
 

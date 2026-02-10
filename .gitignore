@@ -20,6 +20,7 @@ wp-content/themes/jobs/page-create-account.php
 wp-content/themes/jobs/page-create-checkout.php
 .htaccess
 .env
+utils/google.json
 error_log
 api-lite/public/error_log
 api-lite/logs/

@@ -6,6 +6,11 @@ export async function renderAdmin(container) {
       <h1 class="text-2xl font-bold mb-4">Admin</h1>
 
       <div id="adminNotice" class="mb-4 text-sm text-gray-600"></div>
+      <div class="mb-6 text-sm text-slate-600 flex flex-wrap gap-3">
+        <a href="#admin-analytics" class="text-indigo-600 hover:underline">Analytics</a>
+        <a href="#admin-promos" class="text-indigo-600 hover:underline">Promo codes</a>
+        <a href="#admin-bizdev" class="text-indigo-600 hover:underline">Biz dev targets</a>
+      </div>
 
       <div class="mb-8">
         <h2 class="text-xl font-semibold mb-2">Dev Mode</h2>
@@ -125,7 +130,7 @@ export async function renderAdmin(container) {
         <div id="templatesContainer" class="space-y-3"></div>
       </div>
 
-      <div class="mb-10">
+      <div class="mb-10" id="admin-bizdev">
         <div class="flex items-center justify-between mb-2">
           <h2 class="text-xl font-semibold">Business Development Targets</h2>
           <button id="refreshBizDev" class="text-sm text-indigo-600 hover:underline">Refresh</button>
@@ -142,7 +147,7 @@ export async function renderAdmin(container) {
         <div id="bizDevList" class="space-y-2 text-sm"></div>
       </div>
 
-      <div class="mb-10">
+      <div class="mb-10" id="admin-promos">
         <div class="flex items-center justify-between mb-2">
           <h2 class="text-xl font-semibold">Promo Codes</h2>
           <button id="refreshPromos" class="text-sm text-indigo-600 hover:underline">Refresh</button>
@@ -171,7 +176,7 @@ export async function renderAdmin(container) {
         <div id="logContainer" class="text-xs bg-slate-50 border rounded p-3 whitespace-pre-wrap"></div>
       </div>
 
-      <div class="mb-10">
+      <div class="mb-10" id="admin-analytics">
         <div class="flex items-center justify-between mb-2">
           <h2 class="text-xl font-semibold">Analytics</h2>
           <button id="refreshAnalytics" class="text-sm text-indigo-600 hover:underline">Refresh</button>
@@ -661,7 +666,7 @@ export async function renderAdmin(container) {
             ${u.roles?.includes('employer') ? `<div class="text-xs ${u.employer_verified ? 'text-green-700' : 'text-amber-700'}">Employer ${u.employer_verified ? 'Verified' : 'Pending'}</div>` : ''}
           </div>
           <div class="flex items-center space-x-2">
-            <button class="text-sm text-indigo-600 hover:underline" data-action="toggle" data-id="${u.id}">Show details</button>
+            <button class="text-sm text-indigo-600 hover:underline px-2 py-1" data-action="toggle" data-id="${u.id}">Show details</button>
             <button class="text-sm text-red-600 hover:underline px-2 py-1" data-action="delete" data-id="${u.id}">Delete</button>
           </div>
         </div>
@@ -931,8 +936,8 @@ export async function renderAdmin(container) {
           <div>ZIP: ${data.zip || ''}</div>
         </div>
         <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-          <input class="p-2 border rounded text-sm" id="company-${userId}" placeholder="Company" value="${data.company || ''}" />
-          <input class="p-2 border rounded text-sm" id="company-site-${userId}" placeholder="Company Website" value="${data.company_site || ''}" />
+          <input class="p-2 border rounded text-sm" id="company-${userId}" placeholder="Company name" value="${data.company || ''}" />
+          <input class="p-2 border rounded text-sm" id="company-site-${userId}" placeholder="Company website" value="${data.company_site || ''}" />
           <input class="p-2 border rounded text-sm md:col-span-2" id="company-key-${userId}" placeholder="Company Team Key" value="${data.company_key || ''}" />
         </div>
         <div class="mt-3 flex items-center space-x-2">
@@ -967,7 +972,7 @@ export async function renderAdmin(container) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ userId: Number(userId) }),
+        body: JSON.stringify({ id: Number(userId) }),
       });
       const data = await res.json();
       if (!res.ok) {

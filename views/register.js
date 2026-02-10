@@ -69,6 +69,7 @@ export function renderRegister(container) {
       </label>
 
       <button type="submit" class="text-purple px-4 py-2 rounded">Register</button>
+      <div id="registerMessage" class="text-sm"></div>
     </form>
       <p class="mt-4 text-center">
         Have an account? <a href="#/login" class="text-blue-600">Login here</a>
@@ -82,6 +83,8 @@ export function renderRegister(container) {
   const passwordInput = container.querySelector('#registerPassword');
   const togglePasswordBtn = container.querySelector('#toggleRegisterPassword');
   const roleSelect = container.querySelector('select[name="role"]');
+  const usernameInput = container.querySelector('input[name="username"]');
+  const messageEl = container.querySelector('#registerMessage');
   const employerFields = container.querySelector('#employerFields');
   const companyInput = container.querySelector('input[name="company"]');
   const companySuggestions = container.querySelector('#companySuggestions');
@@ -103,6 +106,17 @@ export function renderRegister(container) {
     } catch (err) {}
     window.__dev_flags = { dev_mode: 0 };
     return window.__dev_flags;
+  };
+
+  const setMessage = (text, type = 'error') => {
+    if (!messageEl) return;
+    messageEl.textContent = text;
+    messageEl.className = `text-sm ${type === 'success' ? 'text-emerald-600' : 'text-rose-600'}`;
+  };
+  const clearMessage = () => {
+    if (!messageEl) return;
+    messageEl.textContent = '';
+    messageEl.className = 'text-sm';
   };
 
   attachFieldHints(form);
@@ -186,12 +200,36 @@ export function renderRegister(container) {
     }, 250);
   });
 
+  let usernameTimer = null;
+  usernameInput?.addEventListener('input', () => {
+    clearMessage();
+    if (usernameTimer) clearTimeout(usernameTimer);
+    usernameTimer = setTimeout(async () => {
+      const name = (usernameInput.value || '').trim();
+      if (name.length < 3) return;
+      try {
+        const res = await fetch(`/api/username-available?username=${encodeURIComponent(name)}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return;
+        if (!data.available) {
+          markInvalidField(usernameInput, 'Username already taken.');
+          setMessage('Username already taken.');
+        } else {
+          clearInvalidField(usernameInput);
+        }
+      } catch (err) {
+        // ignore
+      }
+    }, 250);
+  });
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = Object.fromEntries(new FormData(form).entries());
     formData.tos_accept = formData.tos_accept ? 1 : 0;
     const devFlags = await getDevFlags();
     const password = (formData.password || '').toString();
+    clearMessage();
     if (!devFlags.dev_mode) {
       const strongEnough =
         password.length >= 10 &&
@@ -200,12 +238,13 @@ export function renderRegister(container) {
         /\d/.test(password) &&
         /[^A-Za-z0-9]/.test(password);
       if (!strongEnough) {
-        alert('Password must be at least 10 characters and include uppercase, lowercase, number, and symbol.');
+        markInvalidField(passwordInput, 'Password must include upper/lowercase, number, symbol (min 10).');
+        setMessage('Password must be at least 10 characters and include uppercase, lowercase, number, and symbol.');
         return;
       }
     }
     if (!formData.tos_accept) {
-      alert('Please agree to the Terms & Disclaimer.');
+      setMessage('Please agree to the Terms & Disclaimer.');
       return;
     }
     const country = (formData.country || '').trim();
@@ -264,7 +303,7 @@ export function renderRegister(container) {
       if (!formData.turnstile_token) {
         const ts = form.querySelector('#turnstile-container');
         if (ts) ts.classList.add('ring-1', 'ring-red-500');
-        alert('Please complete the captcha.');
+        setMessage('Please complete the captcha.');
         return;
       }
     }
@@ -315,14 +354,14 @@ export function renderRegister(container) {
       }
 
       if (response.ok) {
-        alert('✅ Registered! Check your email to verify your account before logging in.');
+        setMessage('Registered! Check your email to verify your account before logging in.', 'success');
         window.location.hash = '#/login';
       } else {
-        alert('❌ Registration failed: ' + (data.message || data.error || 'Unknown error'));
+        setMessage(data.message || data.error || 'Registration failed.');
       }
     } catch (err) {
       console.error(err);
-      alert('❌ Registration error. Check console.');
+      setMessage('Registration error. Please try again.');
     }
   });
 
