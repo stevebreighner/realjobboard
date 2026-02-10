@@ -97,6 +97,7 @@ return [
     '/api/admin/job-update' => [new AdminController(), 'jobUpdate'],
     '/api/admin/job-delete' => [new AdminController(), 'jobDelete'],
     '/api/user-profile-update' => [new ProfileController(), 'update'],
+    '/api/delete-account' => [new ProfileController(), 'deleteAccount'],
     '/api/admin/flags' => [new DevFlagController(), 'adminFlags'],
     '/api/saved-jobs' => [new SavedJobController(), 'toggle'],
     '/api/job-alerts' => [new JobAlertController(), 'create'],

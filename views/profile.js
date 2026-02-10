@@ -161,6 +161,14 @@ export function renderProfile(container) {
     <div id="companyOwnerSection" class="mt-8 hidden"></div>
     <div id="savedJobsSection" class="mt-6"></div>
     <div id="jobAlertsSection" class="mt-6"></div>
+    <div id="deleteAccountSection" class="mt-8 border-t pt-6 hidden">
+      <h3 class="text-lg font-semibold text-slate-800">Delete Account</h3>
+      <p class="text-sm text-slate-600 mt-1">This will permanently remove your profile, applications, saved searches, and files. This action cannot be undone.</p>
+      <div class="mt-3 flex flex-wrap items-center gap-3">
+        <button type="button" id="deleteAccountBtn" class="text-xs px-4 py-2 rounded-full border border-red-300 text-red-700 hover:border-red-500 transition">Delete my account</button>
+        <span id="deleteAccountStatus" class="text-xs text-slate-600"></span>
+      </div>
+    </div>
 
     <p class="mt-4"><a href="/#update-password" class="text-purple-600">Update Password</a></p>
   </div>
@@ -181,6 +189,9 @@ export function renderProfile(container) {
   const savedJobsSection = container.querySelector('#savedJobsSection');
   const jobAlertsSection = container.querySelector('#jobAlertsSection');
   const companyOwnerSection = container.querySelector('#companyOwnerSection');
+  const deleteAccountSection = container.querySelector('#deleteAccountSection');
+  const deleteAccountBtn = container.querySelector('#deleteAccountBtn');
+  const deleteAccountStatus = container.querySelector('#deleteAccountStatus');
   const zipInput = container.querySelector('#zip');
   const cityInput = container.querySelector('#city');
   const stateInput = container.querySelector('#state');
@@ -371,6 +382,9 @@ export function renderProfile(container) {
     // Determine role + links
     const roles = data.roles || []; // backend should return roles array
     const isSiteAdmin = roles.includes('site_admin') || roles.includes('administrator');
+    if (deleteAccountSection) {
+      deleteAccountSection.classList.toggle('hidden', isSiteAdmin);
+    }
     if (isSiteAdmin) {
       roleLabel.textContent = "Site Admin";
       jobboardLinks.innerHTML = `
@@ -563,6 +577,38 @@ export function renderProfile(container) {
     } catch (err) {
       alert('❌ Network error: ' + err.message);
     }
+  }
+
+  if (deleteAccountBtn) {
+    deleteAccountBtn.addEventListener('click', async () => {
+      if (!confirm('Are you sure? This permanently deletes your account.')) return;
+      const typed = prompt('Type DELETE to confirm account removal.');
+      if (typed !== 'DELETE') {
+        if (deleteAccountStatus) deleteAccountStatus.textContent = 'Delete cancelled.';
+        return;
+      }
+      if (deleteAccountStatus) deleteAccountStatus.textContent = 'Deleting...';
+      try {
+        const res = await fetch('/api/delete-account', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ confirm: true }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (deleteAccountStatus) deleteAccountStatus.textContent = data.error || 'Unable to delete account.';
+          return;
+        }
+        if (deleteAccountStatus) deleteAccountStatus.textContent = 'Account deleted. Redirecting...';
+        setTimeout(() => {
+          window.location.hash = '#home';
+          window.location.reload();
+        }, 800);
+      } catch (err) {
+        if (deleteAccountStatus) deleteAccountStatus.textContent = 'Unable to delete account.';
+      }
+    });
   }
 
   getProfileInfo();

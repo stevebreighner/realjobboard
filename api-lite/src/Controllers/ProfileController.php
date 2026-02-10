@@ -221,4 +221,148 @@ class ProfileController {
       'debug' => $debugInfo,
     ];
   }
+
+  public function deleteAccount(): array {
+    $user = $this->auth->getSessionUser();
+    if (empty($user)) {
+      http_response_code(403);
+      return ['error' => 'Not logged in'];
+    }
+    $role = (string) ($user['role'] ?? '');
+    if (in_array($role, ['site_admin','administrator'], true)) {
+      http_response_code(403);
+      return ['error' => 'Admins cannot delete their account.'];
+    }
+
+    $userId = (int) $user['id'];
+    $pdo = $GLOBALS['DB_PDO'];
+    $pdo->beginTransaction();
+    try {
+      // Remove user meta and sessions
+      if ($this->tableExists('jb_user_meta')) {
+        $stmt = $pdo->prepare("DELETE FROM jb_user_meta WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+      }
+      if ($this->tableExists('jb_sessions')) {
+        $stmt = $pdo->prepare("DELETE FROM jb_sessions WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+      }
+
+      // Remove auth tokens
+      foreach (['jb_password_resets','jb_magic_links','jb_email_verifications','jb_pending_2fa'] as $tokenTable) {
+        if ($this->tableExists($tokenTable)) {
+          $stmt = $pdo->prepare("DELETE FROM {$tokenTable} WHERE user_id = :id");
+          $stmt->execute([':id' => $userId]);
+        }
+      }
+
+      // Remove saved jobs and alerts
+      if ($this->tableExists('jb_saved_jobs')) {
+        $stmt = $pdo->prepare("DELETE FROM jb_saved_jobs WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+      }
+      if ($this->tableExists('jb_job_alerts')) {
+        $stmt = $pdo->prepare("DELETE FROM jb_job_alerts WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+      }
+      if ($this->tableExists('jb_email_subscribers')) {
+        $stmt = $pdo->prepare("DELETE FROM jb_email_subscribers WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+      }
+
+      // Remove company memberships
+      if ($this->tableExists('jb_company_members')) {
+        $stmt = $pdo->prepare("DELETE FROM jb_company_members WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+      }
+
+      // Remove job applications and meta
+      $appIds = [];
+      if ($this->tableExists('jb_job_applications')) {
+        $stmt = $pdo->prepare("SELECT id FROM jb_job_applications WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+        $appIds = array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
+      }
+      if ($appIds && $this->tableExists('jb_job_application_meta')) {
+        $in = implode(',', array_fill(0, count($appIds), '?'));
+        $stmt = $pdo->prepare("DELETE FROM jb_job_application_meta WHERE application_id IN ({$in})");
+        $stmt->execute($appIds);
+      }
+      if ($this->tableExists('jb_job_applications')) {
+        $stmt = $pdo->prepare("DELETE FROM jb_job_applications WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+      }
+
+      // Delete owned jobs
+      $ownedJobIds = [];
+      if ($this->tableExists('jb_job_meta')) {
+        $stmt = $pdo->prepare("SELECT job_id FROM jb_job_meta WHERE meta_key = 'owner_id' AND meta_value = :id");
+        $stmt->execute([':id' => (string) $userId]);
+        $ownedJobIds = array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
+      }
+      if ($ownedJobIds && $this->tableExists('jb_jobs')) {
+        $in = implode(',', array_fill(0, count($ownedJobIds), '?'));
+        $stmt = $pdo->prepare("DELETE FROM jb_jobs WHERE id IN ({$in})");
+        $stmt->execute($ownedJobIds);
+      }
+      if ($this->tableExists('jb_job_meta')) {
+        $stmt = $pdo->prepare("DELETE FROM jb_job_meta WHERE meta_key = 'owner_id' AND meta_value = :id");
+        $stmt->execute([':id' => (string) $userId]);
+      }
+
+      // Delete user files (and storage on disk)
+      if ($this->tableExists('jb_user_files')) {
+        $stmt = $pdo->prepare("SELECT storage_path FROM jb_user_files WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+        $paths = $stmt->fetchAll(\PDO::FETCH_COLUMN) ?: [];
+        foreach ($paths as $path) {
+          $fullPath = $path;
+          if ($path && $path[0] !== '/' && $path[1] !== ':') {
+            $fullPath = __DIR__ . '/../../../' . ltrim($path, '/');
+          }
+          if ($fullPath && file_exists($fullPath)) {
+            @unlink($fullPath);
+          }
+        }
+        $stmt = $pdo->prepare("DELETE FROM jb_user_files WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+      }
+
+      // Delete avatar file if stored locally
+      $meta = $this->profiles->getMeta($userId, ['avatar_url']);
+      $avatarUrl = $meta['avatar_url'] ?? '';
+      if ($avatarUrl && strpos($avatarUrl, '/uploads/') === 0) {
+        $avatarPath = __DIR__ . '/../../../' . ltrim($avatarUrl, '/');
+        if (file_exists($avatarPath)) {
+          @unlink($avatarPath);
+        }
+      }
+
+      // Tracking events
+      if ($this->tableExists('jb_tracking_events')) {
+        $stmt = $pdo->prepare("DELETE FROM jb_tracking_events WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+      }
+
+      // Finally delete user
+      $stmt = $pdo->prepare("DELETE FROM jb_users WHERE id = :id");
+      $stmt->execute([':id' => $userId]);
+
+      $pdo->commit();
+    } catch (\Throwable $e) {
+      $pdo->rollBack();
+      http_response_code(500);
+      return ['error' => 'Delete failed'];
+    }
+
+    $this->auth->clearSession();
+    return ['ok' => true];
+  }
+
+  private function tableExists(string $table): bool {
+    $pdo = $GLOBALS['DB_PDO'];
+    $stmt = $pdo->prepare('SHOW TABLES LIKE :t');
+    $stmt->execute([':t' => $table]);
+    return (bool) $stmt->fetchColumn();
+  }
 }
