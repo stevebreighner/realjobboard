@@ -1,0 +1,20 @@
+SetEnv STRIPE_SECRET_KEY sk_test_51P3zmJHlusB1EIZ8UedPKPM7dgISnZ5xiUNIulWdWp4djeJ7pLlp7GGXe5c8JIxM4EkPZGoMeaArda5D6hIJRhxC00DgCr6cEG
+SetEnv STRIPE_SECRET_SIGN whsec_pNLT8Rb8mFqaDgNIxDrg1qiW84rAClPA
+SetEnv STRIPE_PUBLISHABLE_KEY pk_test_51SNbHAHub7eJ0QAmrJaBMPwH9GafwJ2MzjDSV1LsCTeBu8d7I6OuwmLrTfIlnfr1GxHsfwN7CCu2c0ysE1cq3ddU00u8dhocN1
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule ^api/?$ /api-lite/public/index.php [L,QSA]
+RewriteRule ^api/(.*)$ /api-lite/public/index.php [L,QSA]
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+RewriteRule ^ /index.html [L]
+</IfModule>
+# Disable directory listing
+Options All -Indexes
+
+# Remove header with PHP version
+Header always unset X-Powered-By
+Header unset X-Powered-By
+# END Security Block
