@@ -21,6 +21,8 @@ wp-content/themes/jobs/page-create-checkout.php
 .htaccess
 .env
 utils/google.json
+utils/google_2.json
+utils/mysql
 error_log
 api-lite/public/error_log
 api-lite/logs/
