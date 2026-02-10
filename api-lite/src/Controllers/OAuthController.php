@@ -93,6 +93,7 @@ class OAuthController {
     if ($isNew) {
       $this->meta->setMeta((int) $user['id'], 'needs_profile', '1');
     }
+    $this->maybeStoreGoogleAvatar($info, (int) $user['id']);
     $this->auth->createSession((int) $user['id']);
     $this->clearCookie('oauth_state');
     $this->clearCookie('oauth_nonce');
@@ -151,5 +152,82 @@ class OAuthController {
       if ($i > 50) break;
     }
     return $candidate;
+  }
+
+  private function maybeStoreGoogleAvatar(array $info, int $userId): void {
+    $picture = (string) ($info['picture'] ?? '');
+    if ($picture === '') return;
+    $existing = $this->meta->getMeta($userId, 'avatar_url');
+    if (!empty($existing)) return;
+    if (!preg_match('~^https://~i', $picture)) return;
+
+    $parts = parse_url($picture);
+    $host = strtolower((string) ($parts['host'] ?? ''));
+    if ($host === '' || !preg_match('~(googleusercontent\.com|ggpht\.com)$~', $host)) {
+      return;
+    }
+
+    $tmpFile = tempnam(sys_get_temp_dir(), 'gavatar_');
+    if ($tmpFile === false) return;
+
+    $maxBytes = 2 * 1024 * 1024;
+    $downloaded = 0;
+    $ch = curl_init($picture);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, false);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_MAXREDIRS, 3);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    $fh = fopen($tmpFile, 'wb');
+    if ($fh === false) {
+      @curl_close($ch);
+      @unlink($tmpFile);
+      return;
+    }
+    curl_setopt($ch, CURLOPT_WRITEFUNCTION, function ($ch, $data) use ($fh, &$downloaded, $maxBytes) {
+      $len = strlen($data);
+      $downloaded += $len;
+      if ($downloaded > $maxBytes) {
+        return 0;
+      }
+      return fwrite($fh, $data);
+    });
+    curl_exec($ch);
+    $curlErr = curl_error($ch);
+    $contentType = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    curl_close($ch);
+    fclose($fh);
+
+    if ($curlErr !== '' || !file_exists($tmpFile) || filesize($tmpFile) === 0) {
+      @unlink($tmpFile);
+      return;
+    }
+    if (stripos($contentType, 'image/') !== 0) {
+      @unlink($tmpFile);
+      return;
+    }
+
+    $ext = 'jpg';
+    if (stripos($contentType, 'png') !== false) $ext = 'png';
+    if (stripos($contentType, 'webp') !== false) $ext = 'webp';
+    if (stripos($contentType, 'gif') !== false) $ext = 'gif';
+
+    $uploadDir = __DIR__ . '/../../../uploads/avatars';
+    if (!is_dir($uploadDir)) {
+      @mkdir($uploadDir, 0777, true);
+    }
+    @chmod($uploadDir, 0777);
+    $fileName = 'avatar_' . $userId . '_google_' . time() . '.' . $ext;
+    $dest = $uploadDir . '/' . $fileName;
+    $moved = @rename($tmpFile, $dest);
+    if (!$moved) {
+      $moved = @copy($tmpFile, $dest);
+      if ($moved) @unlink($tmpFile);
+    }
+    if (!$moved) {
+      @unlink($tmpFile);
+      return;
+    }
+    @chmod($dest, 0644);
+    $this->meta->setMeta($userId, 'avatar_url', '/uploads/avatars/' . $fileName);
   }
 }
