@@ -41,7 +41,7 @@ export function renderProfile(container) {
       <label for="avatar" class="block font-semibold">Upload Avatar (Max 2MB)</label>
       <input type="file" id="avatar" name="avatar" class="w-full p-2 border rounded" accept="image/*" />
       <div class="flex items-center gap-3 mt-2">
-        <button type="button" id="saveAvatarBtn" class="text-xs px-3 py-1.5 rounded-full border border-indigo-300 text-indigo-700 hover:border-indigo-500 transition hidden">Save avatar</button>
+        <button type="button" id="saveAvatarBtn" class="btn-primary text-xs px-3 py-1.5 rounded-full border transition hidden">Save avatar</button>
         <button type="button" id="replaceAvatarBtn" class="text-xs text-indigo-600 hover:underline hidden">Replace avatar</button>
         <span id="avatarStatus" class="text-xs text-slate-600"></span>
       </div>
@@ -150,7 +150,7 @@ export function renderProfile(container) {
       <label for="company_country" class="block font-semibold">Company Country</label>
       <input type="text" id="company_country" name="company_country" class="w-full p-2 border rounded" /><br />
 
-      <button type="button" id="saveCompanyBtn" class="text-purple px-4 py-2 rounded">Save Company</button>
+      <button type="button" id="saveCompanyBtn" class="btn-primary px-4 py-2 rounded">Save Company</button>
       <p class="text-xs text-gray-500 mt-2">Company pages stay unverified until a site admin approves them.</p>
       <p id="companyMsg" class="text-sm mt-2"></p>
     </div>

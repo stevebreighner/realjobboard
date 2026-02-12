@@ -117,8 +117,8 @@ export async function renderMyJobPostDetail(container, jobId) {
       <div class="max-w-5xl mx-auto px-4 py-6 space-y-6">
         <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div>
-            <h1 class="text-2xl font-semibold text-slate-900">${data.title || 'Job'}</h1>
-            <div class="text-sm text-slate-600 mt-1">
+            <h1 id="jobTitle" class="text-2xl font-semibold text-slate-900">${data.title || 'Job'}</h1>
+            <div id="jobLocation" class="text-sm text-slate-600 mt-1">
               <span class="font-medium">${companyName || 'Company'}</span>
               ${locationFull ? ` • ${locationFull}` : ''}
             </div>
@@ -141,22 +141,22 @@ export async function renderMyJobPostDetail(container, jobId) {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-700">
             <div>
               <div class="text-xs uppercase tracking-wide text-slate-500">Industry</div>
-              <div class="font-medium">${jobField || '—'}</div>
+              <div id="jobField" class="font-medium">${jobField || '—'}</div>
             </div>
             <div>
               <div class="text-xs uppercase tracking-wide text-slate-500">Employment Type</div>
-              <div class="font-medium">${employmentType || '—'}</div>
+              <div id="jobEmployment" class="font-medium">${employmentType || '—'}</div>
             </div>
             <div>
               <div class="text-xs uppercase tracking-wide text-slate-500">Rate</div>
-              <div class="font-medium">${formatRate(rateMin, rateMax, rateType)}</div>
+              <div id="jobRate" class="font-medium">${formatRate(rateMin, rateMax, rateType)}</div>
             </div>
             <div>
               <div class="text-xs uppercase tracking-wide text-slate-500">Status</div>
               <div class="font-medium">${data.status || 'draft'}</div>
             </div>
           </div>
-          <div class="mt-4 text-sm text-slate-700 whitespace-pre-wrap">${rawContent || getMeta('description') || ''}</div>
+          <div id="jobContent" class="mt-4 text-sm text-slate-700 whitespace-pre-wrap">${rawContent || getMeta('description') || ''}</div>
           ${paymentStatus === 'unpaid' ? `
             <div class="mt-4">
               <button id="payNowBtn" class="px-3 py-1.5 border rounded text-sm">Continue to payment</button>
@@ -242,7 +242,7 @@ export async function renderMyJobPostDetail(container, jobId) {
             <textarea id="editContent" class="w-full p-2 border rounded min-h-[140px]">${rawContent || ''}</textarea>
             <div class="mt-2 flex items-center gap-2">
               <button id="editPreviewBtn" class="px-3 py-1.5 border rounded text-sm">Preview</button>
-              <button id="saveJobBtn" class="px-3 py-1.5 border rounded text-sm">Save</button>
+              <button id="saveJobBtn" class="btn-primary px-3 py-1.5 border rounded text-sm">Save</button>
               <button id="cancelEditBtn" class="px-3 py-1.5 border rounded text-sm">Cancel</button>
             </div>
             <div id="editPreview" class="mt-2 text-sm text-slate-600"></div>
@@ -328,7 +328,7 @@ export async function renderMyJobPostDetail(container, jobId) {
             <textarea id="createContent" class="w-full p-2 border rounded min-h-[140px]"></textarea>
             <div class="mt-2 flex items-center gap-2">
               <button id="createPreviewBtn" class="px-3 py-1.5 border rounded text-sm">Preview</button>
-              <button id="createSubmitBtn" class="px-3 py-1.5 border rounded text-sm">Create</button>
+              <button id="createSubmitBtn" class="btn-primary px-3 py-1.5 border rounded text-sm">Create</button>
               <button id="createCancelBtn" class="px-3 py-1.5 border rounded text-sm">Cancel</button>
             </div>
             <div id="createPreview" class="mt-2 text-sm text-slate-600"></div>
@@ -1085,8 +1085,8 @@ export async function renderMyJobPostDetail(container, jobId) {
       jobEdit.classList.remove('hidden');
       createSection.classList.add('hidden');
       editPreview.classList.add('hidden');
-      editPreviewBtn.textContent = 'Preview';
-      editMessage.textContent = '';
+      if (editPreviewBtn) editPreviewBtn.textContent = 'Preview';
+      if (editMessage) editMessage.textContent = '';
     });
 
     createBtn?.addEventListener('click', () => {
@@ -1094,8 +1094,8 @@ export async function renderMyJobPostDetail(container, jobId) {
       jobEdit.classList.add('hidden');
       createSection.classList.remove('hidden');
       createPreview.classList.add('hidden');
-      createPreviewBtn.textContent = 'Preview';
-      createMessage.textContent = '';
+      if (createPreviewBtn) createPreviewBtn.textContent = 'Preview';
+      if (createMessage) createMessage.textContent = '';
     });
 
     cancelBtn?.addEventListener('click', () => {
@@ -1131,8 +1131,8 @@ export async function renderMyJobPostDetail(container, jobId) {
       editCountry.value = country || 'United States';
       statusInput.value = data.status || 'draft';
       editPreview.classList.add('hidden');
-      editPreviewBtn.textContent = 'Preview';
-      editMessage.textContent = '';
+      if (editPreviewBtn) editPreviewBtn.textContent = 'Preview';
+      if (editMessage) editMessage.textContent = '';
     });
 
     createCancelBtn?.addEventListener('click', () => {
@@ -1156,33 +1156,46 @@ export async function renderMyJobPostDetail(container, jobId) {
       createCountry.value = 'United States';
       createStatus.value = 'publish';
       createPreview.classList.add('hidden');
-      createPreviewBtn.textContent = 'Preview';
-      createMessage.textContent = '';
+      if (createPreviewBtn) createPreviewBtn.textContent = 'Preview';
+      if (createMessage) createMessage.textContent = '';
     });
 
     saveBtn?.addEventListener('click', async () => {
-      editMessage.className = 'text-sm text-gray-600';
-      editMessage.textContent = 'Saving...';
+      if (editMessage) {
+        editMessage.className = 'text-sm text-gray-600';
+        editMessage.textContent = 'Saving...';
+      }
 
       const editFieldValue = fieldInput?.value === 'other'
         ? (fieldOtherInput?.value || '').trim()
         : (fieldInput?.value || '').trim();
       if (!editEmploymentType?.value) {
-        editMessage.className = 'text-sm text-red-600';
-        editMessage.textContent = 'Employment type is required.';
+        if (editMessage) {
+          editMessage.className = 'text-sm text-red-600';
+          editMessage.textContent = 'Employment type is required.';
+        }
         return;
       }
 
-      const rateMinVal = (editRateMin?.value || '').toString().replace(/[^0-9.]/g, '');
-      const rateMaxVal = (editRateMax?.value || '').toString().replace(/[^0-9.]/g, '');
-      if (!editRateType?.value || !rateMinVal || !rateMaxVal || isNaN(rateMinVal) || isNaN(rateMaxVal)) {
-        editMessage.className = 'text-sm text-red-600';
-        editMessage.textContent = 'Please enter a valid rate type and range.';
+      let rateMinVal = (editRateMin?.value || '').toString().replace(/[^0-9.]/g, '');
+      let rateMaxVal = (editRateMax?.value || '').toString().replace(/[^0-9.]/g, '');
+      let editRateTypeVal = (editRateType?.value || '').trim() || 'undisclosed';
+      // Rate is optional; when omitted we normalize to undisclosed.
+      if (!rateMinVal && !rateMaxVal) {
+        editRateTypeVal = 'undisclosed';
+      }
+      if ((rateMinVal && isNaN(rateMinVal)) || (rateMaxVal && isNaN(rateMaxVal))) {
+        if (editMessage) {
+          editMessage.className = 'text-sm text-red-600';
+          editMessage.textContent = 'Please enter a valid rate range.';
+        }
         return;
       }
-      if (Number(rateMinVal) > Number(rateMaxVal)) {
-        editMessage.className = 'text-sm text-red-600';
-        editMessage.textContent = 'Rate min must be less than or equal to rate max.';
+      if (rateMinVal && rateMaxVal && Number(rateMinVal) > Number(rateMaxVal)) {
+        if (editMessage) {
+          editMessage.className = 'text-sm text-red-600';
+          editMessage.textContent = 'Rate min must be less than or equal to rate max.';
+        }
         return;
       }
 
@@ -1194,7 +1207,7 @@ export async function renderMyJobPostDetail(container, jobId) {
         country: editCountry.value.trim(),
       };
       if (!await isValidUsaLocation(editLocation, editMessage)) {
-        editMessage.className = 'text-sm text-red-600';
+        if (editMessage) editMessage.className = 'text-sm text-red-600';
         return;
       }
 
@@ -1205,7 +1218,7 @@ export async function renderMyJobPostDetail(container, jobId) {
         status: statusInput.value,
         field: editFieldValue,
         employment_type: editEmploymentType.value.trim(),
-        rate_type: editRateType.value.trim(),
+        rate_type: editRateTypeVal,
         rate_min: rateMinVal,
         rate_max: rateMaxVal,
         street1: editStreet1.value.trim(),
@@ -1223,15 +1236,17 @@ export async function renderMyJobPostDetail(container, jobId) {
         const result = await res.json();
         if (!res.ok) throw new Error(result.message || 'Update failed');
 
-        editMessage.className = 'text-sm text-green-700';
-        editMessage.textContent = 'Saved.';
+        if (editMessage) {
+          editMessage.className = 'text-sm text-green-700';
+          editMessage.textContent = 'Saved.';
+        }
 
         const titleEl = container.querySelector('#jobTitle');
         const contentEl = container.querySelector('#jobContent');
         const fieldEl = container.querySelector('#jobField');
         const locationEl = container.querySelector('#jobLocation');
-        titleEl.textContent = payload.title || titleEl.textContent;
-        contentEl.innerHTML = payload.content || contentEl.innerHTML;
+        if (titleEl) titleEl.textContent = payload.title || titleEl.textContent;
+        if (contentEl) contentEl.innerHTML = payload.content || contentEl.innerHTML;
         if (fieldEl) {
           if (payload.field) {
             fieldEl.textContent = `Field: ${payload.field}`;
@@ -1302,34 +1317,48 @@ export async function renderMyJobPostDetail(container, jobId) {
           jobView.classList.remove('hidden');
         }, 300);
       } catch (err) {
-        editMessage.className = 'text-sm text-red-600';
-        editMessage.textContent = err.message;
+        if (editMessage) {
+          editMessage.className = 'text-sm text-red-600';
+          editMessage.textContent = err.message;
+        }
       }
     });
 
     createSubmitBtn?.addEventListener('click', async () => {
-      createMessage.className = 'text-sm text-gray-600';
-      createMessage.textContent = 'Creating...';
+      if (createMessage) {
+        createMessage.className = 'text-sm text-gray-600';
+        createMessage.textContent = 'Creating...';
+      }
 
       const createFieldValue = createField?.value === 'other'
         ? (createFieldOther?.value || '').trim()
         : (createField?.value || '').trim();
       if (!createEmploymentType?.value) {
-        createMessage.className = 'text-sm text-red-600';
-        createMessage.textContent = 'Employment type is required.';
+        if (createMessage) {
+          createMessage.className = 'text-sm text-red-600';
+          createMessage.textContent = 'Employment type is required.';
+        }
         return;
       }
 
-      const createRateMinVal = (createRateMin?.value || '').toString().replace(/[^0-9.]/g, '');
-      const createRateMaxVal = (createRateMax?.value || '').toString().replace(/[^0-9.]/g, '');
+      let createRateMinVal = (createRateMin?.value || '').toString().replace(/[^0-9.]/g, '');
+      let createRateMaxVal = (createRateMax?.value || '').toString().replace(/[^0-9.]/g, '');
+      let createRateTypeVal = (createRateType?.value || '').trim() || 'undisclosed';
+      if (!createRateMinVal && !createRateMaxVal) {
+        createRateTypeVal = 'undisclosed';
+      }
       if ((createRateMinVal && isNaN(createRateMinVal)) || (createRateMaxVal && isNaN(createRateMaxVal))) {
-        createMessage.className = 'text-sm text-red-600';
-        createMessage.textContent = 'Please enter a valid rate range.';
+        if (createMessage) {
+          createMessage.className = 'text-sm text-red-600';
+          createMessage.textContent = 'Please enter a valid rate range.';
+        }
         return;
       }
       if (createRateMinVal && createRateMaxVal && Number(createRateMinVal) > Number(createRateMaxVal)) {
-        createMessage.className = 'text-sm text-red-600';
-        createMessage.textContent = 'Rate min must be less than or equal to rate max.';
+        if (createMessage) {
+          createMessage.className = 'text-sm text-red-600';
+          createMessage.textContent = 'Rate min must be less than or equal to rate max.';
+        }
         return;
       }
 
@@ -1341,7 +1370,7 @@ export async function renderMyJobPostDetail(container, jobId) {
         country: createCountry.value.trim(),
       };
       if (!await isValidUsaLocation(createLocation, createMessage)) {
-        createMessage.className = 'text-sm text-red-600';
+        if (createMessage) createMessage.className = 'text-sm text-red-600';
         return;
       }
 
@@ -1351,7 +1380,7 @@ export async function renderMyJobPostDetail(container, jobId) {
         status: createStatus.value,
         field: createFieldValue,
         employment_type: createEmploymentType.value.trim(),
-        rate_type: createRateType.value.trim() || 'undisclosed',
+        rate_type: createRateTypeVal,
         rate_min: createRateMinVal,
         rate_max: createRateMaxVal,
         street1: createStreet1.value.trim(),
@@ -1369,16 +1398,20 @@ export async function renderMyJobPostDetail(container, jobId) {
         const result = await res.json();
         if (!res.ok) throw new Error(result.message || 'Create failed');
 
-        createMessage.className = 'text-sm text-green-700';
-        createMessage.textContent = 'Created.';
+        if (createMessage) {
+          createMessage.className = 'text-sm text-green-700';
+          createMessage.textContent = 'Created.';
+        }
         if (result.post_id) {
           window.location.hash = `#my-job-post-detail?id=${result.post_id}`;
         } else {
           window.location.hash = '#my-job-posts';
         }
       } catch (err) {
-        createMessage.className = 'text-sm text-red-600';
-        createMessage.textContent = err.message;
+        if (createMessage) {
+          createMessage.className = 'text-sm text-red-600';
+          createMessage.textContent = err.message;
+        }
       }
     });
 

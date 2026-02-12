@@ -89,6 +89,42 @@ button:focus-visible {
   box-shadow: 0 0 0 3px var(--form-focus);
 }
 
+/* High-visibility action buttons for save/create/submit flows */
+.btn-primary,
+button.text-purple {
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: #ffffff;
+  border-color: #1d4ed8;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.22);
+}
+.btn-primary:hover,
+button.text-purple:hover {
+  background: linear-gradient(135deg, #1e40af, #1d4ed8);
+  border-color: #1e40af;
+  color: #ffffff;
+}
+.btn-primary:disabled,
+button.text-purple:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+/* Make save actions easy to spot across the app */
+button[id*="save" i],
+button[data-action="save"],
+button[data-action="save-job"] {
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: #ffffff;
+  border-color: #1d4ed8;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.22);
+}
+button[id*="save" i]:hover,
+button[data-action="save"]:hover,
+button[data-action="save-job"]:hover {
+  background: linear-gradient(135deg, #1e40af, #1d4ed8);
+  border-color: #1e40af;
+  color: #ffffff;
+}
+
 .btn-close {
   border: 0 !important;
   background: transparent !important;
@@ -182,17 +218,21 @@ button {
   margin-right: 0.5rem;
 }
 
-/* Ensure outline-style buttons are always visible */
-button.text-purple,
+/* Ensure outline-style buttons are always visible for secondary accent styles */
 button.text-indigo-700,
 button.text-indigo-600 {
   border-color: #c7d2fe;
   background-color: transparent;
 }
-button.text-purple:hover,
 button.text-indigo-700:hover,
 button.text-indigo-600:hover {
   border-color: #818cf8;
+}
+/* Keep primary purple buttons filled; don't force transparent on hover */
+button.text-purple:hover,
+button.text-indigo-700:hover,
+button.text-indigo-600:hover {
+  border-color: inherit;
 }
 
 /* Make Tailwind width utilities take precedence */

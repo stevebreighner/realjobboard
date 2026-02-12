@@ -114,7 +114,7 @@ export async function renderAdmin(container) {
           <h2 class="text-xl font-semibold">Email Templates</h2>
           <div class="flex items-center space-x-3">
             <button id="addTemplate" class="text-sm text-indigo-600 hover:underline">Add template</button>
-            <button id="saveTemplates" class="text-sm text-indigo-600 hover:underline">Save</button>
+            <button id="saveTemplates" class="btn-primary text-sm px-3 py-1.5 rounded">Save</button>
           </div>
         </div>
         <p class="text-xs text-gray-500 mb-2">These templates appear in employer/applicant message dropdowns.</p>

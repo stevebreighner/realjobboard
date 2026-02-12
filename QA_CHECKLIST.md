@@ -1,6 +1,22 @@
 # QA Checklist
 
 ## Latest Run
+- Date: 2026-02-12
+- Scope: save button prominence, my-job-post-detail edit stability, optional rate handling, basic API smoke
+
+### Results
+- Save/create buttons updated to high-visibility primary style across key flows
+- `my-job-post-detail` edit no longer crashes on missing DOM node (`textContent` null guard + matching IDs)
+- Job post edit/create now allow blank min/max rate and normalize to `Undisclosed`
+- `/api/ping` OK (`200`)
+- `/api/jobs` OK (`200`)
+- `/api/session` unauthenticated path OK (`403` with `Not logged in`)
+
+### Remaining
+- Full authenticated flow re-test: employer edit/create + applicant apply + my-applications
+- Stripe checkout remains phase 2
+
+## Latest Run
 - Date: 2026-02-07
 - Scope: login/session, create job w/ compliance, applicant submit, employer view
 
