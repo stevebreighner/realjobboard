@@ -30,6 +30,7 @@ import { renderVerifyEmail } from './views/verifyEmail.js';
 import { renderUnsubscribe } from './views/unsubscribe.js';
 import { renderSavedSearches } from './views/savedSearches.js';
 import { renderCompleteProfile } from './views/completeProfile.js';
+import { renderNotFound } from './views/notFound.js';
 
 function parseHash() {
   const rawHash = window.location.hash.slice(1);
@@ -217,6 +218,7 @@ case 'myapplications':
   return;
   //end specific
     default:
-      app.innerHTML = '<h1 class="text-xl">404 - Page Not Found</h1>';
+      renderNotFound(app, path);
+      return scrollToTopAfterRender();
   }
 }

@@ -8,6 +8,7 @@
 - Save/create buttons updated to high-visibility primary style across key flows
 - `my-job-post-detail` edit no longer crashes on missing DOM node (`textContent` null guard + matching IDs)
 - Job post edit/create now allow blank min/max rate and normalize to `Undisclosed`
+- Added dedicated 404 view and router integration (`views/notFound.js`)
 - `/api/ping` OK (`200`)
 - `/api/jobs` OK (`200`)
 - `/api/session` unauthenticated path OK (`403` with `Not logged in`)
@@ -15,6 +16,15 @@
 ### Remaining
 - Full authenticated flow re-test: employer edit/create + applicant apply + my-applications
 - Stripe checkout remains phase 2
+
+## Backlog Input
+- [ ] Add new item here (quick scratchpad line)
+
+## Phase 1 Close-Out TODOs
+- [ ] Run final end-to-end smoke pass (logged-out, employee, employer, admin)
+- [ ] Fix any final UI regressions discovered in smoke pass
+- [ ] Freeze phase 1 config values (copy, flags, free-post mode)
+- [ ] Tag phase 1 release and add brief deployment/runbook notes
 
 ## Latest Run
 - Date: 2026-02-07

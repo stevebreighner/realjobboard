@@ -24,6 +24,24 @@
       padding: 0;
       width: 320px;
     }
+    #notes {
+      list-style: none;
+      padding: 0;
+      width: 320px;
+      margin-top: 1rem;
+    }
+    #notes li {
+      background: #fff7ed;
+      margin: 0.4rem 0;
+      padding: 0.55rem 0.8rem;
+      border-radius: 8px;
+      border: 1px solid #fed7aa;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+      font-size: 0.9rem;
+    }
 
     #checklist li {
       background: white;
@@ -74,8 +92,16 @@
     <button onclick="addItem()">Add</button>
   </div>
 
+  <h2 style="margin-top:1.5rem;">Backlog Notes</h2>
+  <div>
+    <input id="newNote" type="text" placeholder="Throw a quick note here...">
+    <button onclick="addNote()">Add Note</button>
+  </div>
+  <ul id="notes"></ul>
+
   <script>
     let checklist = [];
+    let notes = [];
 
     // Load items from local JSON or localStorage
     async function loadChecklist() {
@@ -122,6 +148,20 @@
       localStorage.setItem('checklist', JSON.stringify(checklist));
     }
 
+    function renderNotes() {
+      const list = document.getElementById('notes');
+      list.innerHTML = '';
+      notes.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <span>${item}</span>
+          <button onclick="deleteNote(${index})">🗑</button>
+        `;
+        list.appendChild(li);
+      });
+      localStorage.setItem('checklist_notes', JSON.stringify(notes));
+    }
+
     function addItem() {
       const input = document.getElementById('newItem');
       const text = input.value.trim();
@@ -142,7 +182,24 @@
       renderList();
     }
 
+    function addNote() {
+      const input = document.getElementById('newNote');
+      const text = input.value.trim();
+      if (text) {
+        notes.push(text);
+        input.value = '';
+        renderNotes();
+      }
+    }
+
+    function deleteNote(index) {
+      notes.splice(index, 1);
+      renderNotes();
+    }
+
+    notes = JSON.parse(localStorage.getItem('checklist_notes')) || [];
     loadChecklist();
+    renderNotes();
   </script>
 
 </body>
