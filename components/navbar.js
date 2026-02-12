@@ -6,25 +6,45 @@ let hasHashListener = false;
 function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
   return `
     <style>
-  .navbar {
-    position: relative;
+  .header-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: white;
     padding: 0.75rem 1rem;
     font-family: sans-serif;
     background: #fff;
     border-bottom: 1px solid #ddd;
+    min-height: 64px;
+    gap: 0.75rem;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    box-sizing: border-box;
   }
-  .logo {
+  .header-left {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+  }
+  .header-middle {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .header-right {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 0 0 auto;
+  }
+  .brand-logo {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
   }
-  .logo img {
-    width: 28px;
-    height: 28px;
+  .brand-logo img {
+    width: auto;
+    height: 132px;
+    max-width: 780px;
+    object-fit: contain;
     display: block;
   }
   .sr-only {
@@ -39,25 +59,54 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     border: 0;
   }
 
-  .navbar a {
+  .menu .nav-link {
     color: #4f46e5;
     text-decoration: none;
-    margin-left: 1rem;
     font-size: 0.9rem;
+    padding: 0.4rem 0;
+    margin: 0;
+    white-space: nowrap;
   }
-
-  .navbar a:hover {
+  .menu .nav-link:hover {
     text-decoration: underline;
   }
 
   .menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    background: #fff;
+    padding: 0.5rem 0.9rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    z-index: 1000;
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-8px);
+    overflow: hidden;
+    pointer-events: none;
+    transition: max-height 0.25s ease, opacity 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+  }
+
+  .menu.show {
+    max-height: 480px;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
   }
 
   .menu-toggle {
-    display: none;
-    padding: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
     background: none;
     border: none;
     outline: none;
@@ -77,72 +126,57 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
   }
 
   @media (max-width: 640px) {
-    .menu-toggle {
-      display: block;
+    .brand-logo img {
+      height: 72px;
+      max-width: 340px;
     }
-
     .menu {
-      flex-direction: column;
-      align-items: flex-start;
-      position: absolute;
-      top: 100%;
+      min-width: min(88vw, 320px);
       right: 0;
-      left: 0;
-      background: white;
-      padding: 0.75rem 1rem;
-      border-top: 1px solid #ddd;
-      z-index: 1000;
-      max-height: 0;
-      opacity: 0;
-      transform: translateY(-6px);
-      overflow: hidden;
-      pointer-events: none;
-      transition: max-height 0.35s ease, opacity 0.2s ease, transform 0.2s ease;
-    }
-
-    .menu.show {
-      max-height: 320px;
-      opacity: 1;
-      transform: translateY(0);
-      pointer-events: auto;
-    }
-
-    .navbar a {
-      margin: 0.5rem 0;
     }
   }
 </style>
 
 
-    <nav class="navbar">
-      <a href="/#home" class="logo" aria-label="${CONFIG.COMPANY_NAME}">
-        <img src="${CONFIG.LOGO_URL || '/logo.svg'}" alt="${CONFIG.COMPANY_NAME} logo" />
-        <span class="sr-only">${CONFIG.COMPANY_NAME}</span>
-      </a>
-      <button id="menuToggle" class="menu-toggle" aria-label="Menu">☰</button>
-      <div id="menu" class="menu">
-        <a href="/#list" class="nav-link">${CONFIG.COMPANY_BUSINESS_THING_PLURAL}</a>
-        ${isEmployer ? `<a href="/#post" class="nav-link">Post a ${CONFIG.COMPANY_BUSINESS_THING}</a>` : ''}
-        ${isEmployer ? `<a href="/#my-job-posts" class="nav-link">${CONFIG.JOB_COPY?.MY_POSTS_TITLE || 'My Job Posts'}</a>` : ''}
-        ${isSiteAdmin ? `<a href="/#admin" class="nav-link">Admin</a>` : ''}
-        ${isLoggedIn ? '<a href="/#profile" class="nav-link">Profile</a>' : ''}
-        ${isLoggedIn && !isEmployer ? `<a href="/#saved-searches" class="nav-link">${CONFIG.JOB_COPY?.SAVED_SEARCHES_TITLE || 'Saved Searches'}</a>` : ''}
-        ${isLoggedIn && !isEmployer ? `<a href="/#myApplications" class="nav-link">${CONFIG.JOB_COPY?.MY_APPLICATIONS_TITLE || 'My Applications'}</a>` : ''}
-        ${isLoggedIn
-          ? '<a href="#" class="nav-link" id="logoutLink">Logout</a>'
-          : '<a href="/#login" class="nav-link">Login</a>'
-        }
+    <div class="header-row">
+      <div class="header-left">
+        <a href="/#home" class="brand-logo" aria-label="${CONFIG.COMPANY_NAME}">
+          <img src="${CONFIG.LOGO_URL || '/logo.svg'}" alt="${CONFIG.COMPANY_NAME} logo" />
+          <span class="sr-only">${CONFIG.COMPANY_NAME}</span>
+        </a>
       </div>
-    </nav>
+      <div class="header-middle" aria-hidden="true"></div>
+      <div class="header-right">
+        <button id="menuToggle" class="menu-toggle" aria-label="Menu">☰</button>
+        <nav id="menu" class="menu" aria-label="Primary">
+          <a href="/#list" class="nav-link">${CONFIG.COMPANY_BUSINESS_THING_PLURAL}</a>
+          ${isEmployer ? `<a href="/#post" class="nav-link">Post a ${CONFIG.COMPANY_BUSINESS_THING}</a>` : ''}
+          ${isEmployer ? `<a href="/#my-job-posts" class="nav-link">${CONFIG.JOB_COPY?.MY_POSTS_TITLE || 'My Job Posts'}</a>` : ''}
+          ${isSiteAdmin ? `<a href="/#admin" class="nav-link">Admin</a>` : ''}
+          ${isLoggedIn ? '<a href="/#profile" class="nav-link">Profile</a>' : ''}
+          ${isLoggedIn && !isEmployer ? `<a href="/#saved-searches" class="nav-link">${CONFIG.JOB_COPY?.SAVED_SEARCHES_TITLE || 'Saved Searches'}</a>` : ''}
+          ${isLoggedIn && !isEmployer ? `<a href="/#myApplications" class="nav-link">${CONFIG.JOB_COPY?.MY_APPLICATIONS_TITLE || 'My Applications'}</a>` : ''}
+          ${isLoggedIn
+            ? '<a href="#" class="nav-link" id="logoutLink">Logout</a>'
+            : '<a href="/#login" class="nav-link">Login</a>'
+          }
+        </nav>
+      </div>
+    </div>
   `;
 }
 
 function bindNavbar(container, isLoggedIn) {
-  // Toggle menu on small screens
+  // Toggle menu on all screen sizes
   const menu = document.getElementById('menu');
   const toggle = document.getElementById('menuToggle');
   toggle?.addEventListener('click', () => {
-    menu.classList.toggle('show');
+    menu?.classList.toggle('show');
+  });
+  menu?.addEventListener('click', (evt) => {
+    if (evt.target?.closest?.('a.nav-link')) {
+      menu.classList.remove('show');
+    }
   });
 
   const closeMenu = (evt) => {
