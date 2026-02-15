@@ -6,6 +6,7 @@ namespace App\Controllers;
 use App\Services\AuthService;
 use App\Services\RateLimiter;
 use App\Services\Mailer;
+use App\Services\AdminNotificationService;
 use App\Models\CompanyModel;
 use App\Models\UserMetaModel;
 use App\Models\AuthTokenModel;
@@ -217,6 +218,17 @@ class AuthController {
         $userMeta->setMeta((int) $user['id'], 'company_name', (string) $company['name']);
         $companyModel->addMember((int) $company['id'], (int) $user['id'], 'owner');
       }
+    }
+
+    // Notify site admins of new account creation (abuse monitoring, onboarding, etc.)
+    try {
+      $notifier = new AdminNotificationService($GLOBALS['DB_PDO']);
+      $notifier->notifyNewUser($user, 'register', [
+        'email_verified' => 0,
+        'role' => $role,
+      ]);
+    } catch (\Throwable $e) {
+      // Never block registration due to email failure.
     }
 
     return [

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Services\AuthService;
+use App\Services\AdminNotificationService;
 use App\Models\UserMetaModel;
 
 class AdminUserController {
@@ -114,6 +115,17 @@ class AdminUserController {
       'employer_verified' => $role === 'employer' ? 0 : 1,
     ]);
     $this->meta->setMeta((int) $user['id'], 'temp_password', $password);
+
+    // Notify site admins when an admin creates an account (audit/onboarding).
+    try {
+      $notifier = new AdminNotificationService($GLOBALS['DB_PDO']);
+      $notifier->notifyNewUser($user, 'admin_create', [
+        'created_by' => (int) ($admin['id'] ?? 0),
+      ]);
+    } catch (\Throwable $e) {
+      // Never block user creation due to email failure.
+    }
+
     return ['user' => $user];
   }
 

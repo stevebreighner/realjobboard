@@ -5,6 +5,7 @@ namespace App\Controllers;
 
 use App\Services\OAuthService;
 use App\Services\AuthService;
+use App\Services\AdminNotificationService;
 use App\Models\UserMetaModel;
 
 class OAuthController {
@@ -88,6 +89,14 @@ class OAuthController {
         'employer_verified' => 0,
       ]);
       $isNew = true;
+      try {
+        $notifier = new AdminNotificationService($GLOBALS['DB_PDO']);
+        $notifier->notifyNewUser($user, 'oauth_google', [
+          'provider' => 'google',
+          'email_verified' => 1,
+        ]);
+      } catch (\Throwable $e) {
+      }
     }
     $this->meta->setMeta((int) $user['id'], 'oauth_google', '1');
     if ($isNew) {
