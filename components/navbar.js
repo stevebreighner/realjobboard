@@ -101,9 +101,10 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
       align-items: stretch;
       position: absolute;
       top: calc(100% + 0.5rem);
+      left: 0.75rem;
       right: 0.75rem;
-      left: auto;
-      width: min(92vw, 360px);
+      width: auto;
+      box-sizing: border-box;
       background: rgba(255, 255, 255, 0.98);
       padding: 0.5rem;
       border: 1px solid #e2e8f0;
