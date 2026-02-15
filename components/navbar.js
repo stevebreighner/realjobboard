@@ -47,6 +47,7 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     font-weight: 600;
     letter-spacing: 0.01em;
     line-height: 1;
+    margin: 0;
     white-space: nowrap;
   }
 
@@ -163,7 +164,7 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     <nav class="navbar">
       <a href="/#home" class="logo" aria-label="${CONFIG.COMPANY_NAME}">
         <img src="${CONFIG.LOGO_URL || '/logo.svg'}" alt="${CONFIG.COMPANY_NAME} logo" />
-        <span class="logo-name">${CONFIG.COMPANY_NAME}</span>
+        <h1 class="logo-name">${CONFIG.COMPANY_NAME}</h1>
         <span class="sr-only">${CONFIG.COMPANY_NAME}</span>
       </a>
       <button id="menuToggle" class="menu-toggle" aria-label="Menu">☰</button>
