@@ -12,13 +12,12 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     justify-content: space-between;
     align-items: center;
     color: white;
-    padding: 0.75rem 1rem;
+    padding: 0.85rem 1.5rem;
     font-family: sans-serif;
     background: #fff;
     border-bottom: 1px solid #ddd;
-    width: calc(100% + 2rem);
-    margin-left: -1rem;
-    margin-right: -1rem;
+    width: 100%;
+    margin: 0;
     box-sizing: border-box;
   }
   .logo {
@@ -99,38 +98,59 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
 
     .menu {
       flex-direction: column;
-      align-items: flex-start;
+      align-items: stretch;
       position: absolute;
-      top: 100%;
-      right: 0;
-      left: 0;
-      background: white;
-      padding: 0.75rem 1rem;
-      border-top: 1px solid #ddd;
+      top: calc(100% + 0.5rem);
+      right: 0.75rem;
+      left: auto;
+      width: min(92vw, 360px);
+      background: rgba(255, 255, 255, 0.98);
+      padding: 0.5rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18);
+      backdrop-filter: blur(10px);
       z-index: 1000;
       max-height: 0;
       opacity: 0;
-      transform: translateY(-6px);
-      overflow: hidden;
+      transform: translateY(-6px) scale(0.98);
+      overflow-x: hidden;
+      overflow-y: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
       pointer-events: none;
       transition: max-height 0.35s ease, opacity 0.2s ease, transform 0.2s ease;
     }
+    .menu::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+    }
 
     .menu.show {
-      max-height: 90svh;
+      max-height: min(70vh, 520px);
       opacity: 1;
-      transform: translateY(0);
+      transform: translateY(0) scale(1);
       pointer-events: auto;
     }
 
     .navbar a {
-      margin: 0.5rem 0;
+      margin: 0;
     }
     .menu .nav-link {
       display: block;
       width: 100%;
       white-space: normal;
       overflow-wrap: anywhere;
+      padding: 0.7rem 0.75rem;
+      border-radius: 12px;
+      color: #0f172a;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+      border: 1px solid transparent;
+    }
+    .menu .nav-link:hover {
+      text-decoration: none;
+      background: rgba(79, 70, 229, 0.08);
+      border-color: rgba(79, 70, 229, 0.16);
     }
     .logo-name {
       display: none;
