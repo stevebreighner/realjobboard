@@ -3,6 +3,11 @@ import { CONFIG } from '../config.js';
 const FORMSPREE_URL = 'https://formspree.io/f/xgozgqzd';
 
 export function renderSupport(container, params = {}) {
+  const siteUrl =
+    (typeof window !== 'undefined' && window?.location?.origin)
+      ? window.location.origin
+      : (CONFIG.WEBSITE_URL || '');
+
   container.innerHTML = `
     <div class="max-w-3xl mx-auto px-4 py-8">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
@@ -55,8 +60,8 @@ export function renderSupport(container, params = {}) {
 
       <p class="mt-6 text-sm text-gray-600">
         Visit our website: 
-        <a href="https://${CONFIG.WEBSITE_URL}" class="text-blue-600 underline" target="_blank" rel="noopener">
-          ${CONFIG.WEBSITE_URL}
+        <a href="${siteUrl}" class="text-blue-600 underline" target="_blank" rel="noopener">
+          ${siteUrl}
         </a>
       </p>
     </div>
