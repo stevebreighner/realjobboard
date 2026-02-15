@@ -129,7 +129,8 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     }
 
     .menu.show {
-      max-height: min(70vh, 520px);
+      max-height: calc(100vh - 84px);
+      max-height: calc(100svh - 84px);
       opacity: 1;
       transform: translateY(0) scale(1);
       pointer-events: auto;
