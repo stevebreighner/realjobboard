@@ -31,6 +31,7 @@ import { renderUnsubscribe } from './views/unsubscribe.js';
 import { renderSavedSearches } from './views/savedSearches.js';
 import { renderCompleteProfile } from './views/completeProfile.js';
 import { renderNotFound } from './views/notFound.js';
+import { renderAnalytics } from './views/analytics.js';
 
 function parseHash() {
   const rawHash = window.location.hash.slice(1);
@@ -48,9 +49,9 @@ function kebabToCamel(str) {
   return str.replace(/-([a-z])/g, (_, char) => char.toUpperCase());
 }
 
-const protectedRoutes = ['profile', 'updatePassword','post','apply','resume', 'myJobPosts', 'myJobPostDetail', 'myApplications', 'myjobposts', 'myjobpostdetail', 'myapplications', 'admin', 'savedSearches', 'savedsearches', 'saved-searches', 'complete-profile', 'completeProfile'];
+const protectedRoutes = ['profile', 'updatePassword','post','apply','resume', 'myJobPosts', 'myJobPostDetail', 'myApplications', 'myjobposts', 'myjobpostdetail', 'myapplications', 'admin', 'analytics', 'savedSearches', 'savedsearches', 'saved-searches', 'complete-profile', 'completeProfile'];
 const employerRoutes = ['post', 'myJobPosts', 'myJobPostDetail', 'myjobposts', 'myjobpostdetail'];
-const adminRoutes = ['admin'];
+const adminRoutes = ['admin', 'analytics'];
 
 export async function router() {
   
@@ -148,6 +149,9 @@ case 'myapplications':
       return scrollToTopAfterRender();
     case 'admin':
       renderAdmin(app);
+      return scrollToTopAfterRender();
+    case 'analytics':
+      await renderAnalytics(app);
       return scrollToTopAfterRender();
     case 'updatePassword':
       renderUpdatePassword(app);

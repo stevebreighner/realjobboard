@@ -122,7 +122,10 @@ export async function renderHome(container) {
         <div class="home-blob two"></div>
         <div class="absolute inset-0 bg-black/35 pointer-events-none"></div>
         <div class="relative z-10 text-shadow text-center max-w-5xl mx-auto">
-          <div class="text-xs uppercase tracking-widest text-white/80 mb-2">${CONFIG.SITE_TAGLINE || 'A job search site'}</div>
+          <div class="flex items-center justify-center gap-2 text-xs uppercase tracking-widest text-white/80 mb-2">
+            <span>${CONFIG.SITE_TAGLINE || 'A job search site'}</span>
+            ${CONFIG.SITE_STAGE_LABEL ? `<span class="px-2 py-0.5 rounded-full bg-white/15 border border-white/30 text-white/90 text-[10px] tracking-wider">${CONFIG.SITE_STAGE_LABEL}</span>` : ''}
+          </div>
           <h1 class="text-3xl md:text-5xl font-bold mb-3">${hero.title}</h1>
           <p class="text-white/90 text-base mt-1">${CONFIG.HOME_HERO_BLURB || 'A privacy-first job search site with smarter matching.'}</p>
           ${heroLines}

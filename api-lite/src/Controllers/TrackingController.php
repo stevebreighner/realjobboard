@@ -77,11 +77,15 @@ class TrackingController {
       return ['error' => 'Access denied'];
     }
     $pdo = $GLOBALS['DB_PDO'];
+    $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 200;
+    if ($limit < 1) $limit = 200;
+    if ($limit > 2000) $limit = 2000;
+
     $rows = $pdo->query("
       SELECT id, event, path, referrer, user_id, created_at
       FROM jb_tracking_events
       ORDER BY created_at DESC
-      LIMIT 200
+      LIMIT {$limit}
     ")->fetchAll();
     return $rows ?: [];
   }

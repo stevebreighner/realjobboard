@@ -2,23 +2,38 @@
 
 ## Latest Run
 - Date: 2026-02-12
-- Scope: save button prominence, my-job-post-detail edit stability, optional rate handling, basic API smoke
+- Scope: authenticated API flow smoke (employee, employer, admin), job lifecycle, applications, files, alerts
 
 ### Results
-- Save/create buttons updated to high-visibility primary style across key flows
-- `my-job-post-detail` edit no longer crashes on missing DOM node (`textContent` null guard + matching IDs)
-- Job post edit/create now allow blank min/max rate and normalize to `Undisclosed`
-- Added dedicated 404 view and router integration (`views/notFound.js`)
 - `/api/ping` OK (`200`)
-- `/api/jobs` OK (`200`)
-- `/api/session` unauthenticated path OK (`403` with `Not logged in`)
+- `/api/session` unauthenticated path OK (`403`)
+- Session/auth via cookie OK for employee, employer, and site_admin test users
+- Employee profile update/show OK (`/api/user-profile-update`, `/api/user-profile`)
+- Employer create job OK (`/api/create-post`, publish status), and public retrieval OK (`/api/job`, `/api/jobs`)
+- Saved jobs toggle/list OK (`/api/saved-jobs`)
+- Job alerts create/list/delete OK (`/api/job-alerts`, `/api/job-alerts-delete`)
+- Resume text upload/list OK (`/api/user-files-upload-text`, `/api/resumes`)
+- Application flow OK:
+  - check eligibility (`/api/check-application`)
+  - submit (`/api/submit-application`)
+  - employer review detail (`/api/user-job-detail`)
+  - status update (`/api/update-application-status`)
+  - applicant withdraw (`/api/withdraw-application`)
+- Contact endpoints OK in dev mode (`/api/contact-employer`, `/api/contact-applicant`)
+- Employer job update/delete OK (`/api/user-job-update`, `/api/user-job-delete`)
+- Admin users list/create/delete OK (`/api/admin/users`, `/api/admin/user-create`, `/api/admin/user-delete`)
+- Fixed `GET /api/admin/flags` 404 by adding route
+- Hardened admin delete: now returns `404 User not found` for invalid IDs (instead of false positive `ok`)
 
 ### Remaining
-- Full authenticated flow re-test: employer edit/create + applicant apply + my-applications
-- Stripe checkout remains phase 2
+- Browser/UI pass still needed for visual regressions and route transition behavior
+- Stripe checkout live-flow remains phase 2
 
 ## Backlog Input
 - [ ] Add new item here (quick scratchpad line)
+- [ ] SEO launch step: switch `robots.txt` from `Disallow: /` (dev) to production crawl policy
+- [ ] SEO launch step: expand `sitemap.xml` once path-based routes (non-hash) are available
+- [ ] Performance pass: extract critical above-the-fold CSS and move remaining CSS to deferred stylesheet
 
 ## Phase 1 Close-Out TODOs
 - [ ] Run final end-to-end smoke pass (logged-out, employee, employer, admin)

@@ -7,9 +7,9 @@ export async function renderAdmin(container) {
 
       <div id="adminNotice" class="mb-4 text-sm text-gray-600"></div>
       <div class="mb-6 text-sm text-slate-600 flex flex-wrap gap-3">
-        <a href="#admin-analytics" class="text-indigo-600 hover:underline">Analytics</a>
-        <a href="#admin-promos" class="text-indigo-600 hover:underline">Promo codes</a>
-        <a href="#admin-bizdev" class="text-indigo-600 hover:underline">Biz dev targets</a>
+        <a href="/#analytics" class="text-indigo-600 hover:underline">Analytics</a>
+        <button type="button" data-scroll="admin-promos" class="text-indigo-600 hover:underline">Promo codes</button>
+        <button type="button" data-scroll="admin-bizdev" class="text-indigo-600 hover:underline">Biz dev targets</button>
       </div>
 
       <div class="mb-8">
@@ -238,6 +238,16 @@ export async function renderAdmin(container) {
   const bizDevList = container.querySelector('#bizDevList');
   const bizDevMsg = container.querySelector('#bizDevMsg');
   const refreshBizDevBtn = container.querySelector('#refreshBizDev');
+
+  // In-page section jumps (avoid hash-route collisions like #admin-promos)
+  container.querySelectorAll('button[data-scroll]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-scroll');
+      const el = id ? document.getElementById(id) : null;
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
   const refreshLogBtn = container.querySelector('#refreshLog');
   const downloadLogBtn = container.querySelector('#downloadLog');
   const logContainer = container.querySelector('#logContainer');
@@ -263,6 +273,10 @@ export async function renderAdmin(container) {
       <div>
         <strong>Google Auth note:</strong> When you move to the real domain, update the OAuth Authorized
         JavaScript origins + redirect URI in Google Cloud Console.
+      </div>
+      <div>
+        <strong>Domain migration copy command:</strong>
+        <code>rsync -avh --delete --exclude '.git/' --filter=':- .gitignore' /home/stepusmy/jobs.stephenbreighner.com/ /home/stepusmy/NEW_DOMAIN_DIR/</code>
       </div>
     </div>
   `;

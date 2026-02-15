@@ -174,6 +174,11 @@ class AdminUserController {
       return ['error' => 'Missing id'];
     }
     $pdo = $GLOBALS['DB_PDO'];
+    $user = $this->auth->getUserById($userId);
+    if (empty($user)) {
+      http_response_code(404);
+      return ['error' => 'User not found'];
+    }
     $pdo->beginTransaction();
     try {
       if ($this->tableExists('jb_user_meta')) {
@@ -232,6 +237,9 @@ class AdminUserController {
       }
       $stmt = $pdo->prepare("DELETE FROM jb_users WHERE id = :id");
       $stmt->execute([':id' => $userId]);
+      if ($stmt->rowCount() < 1) {
+        throw new \RuntimeException('No user deleted');
+      }
       $pdo->commit();
     } catch (\Throwable $e) {
       $pdo->rollBack();

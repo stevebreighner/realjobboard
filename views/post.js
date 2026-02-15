@@ -1,6 +1,7 @@
 import { CONFIG, US_STATES } from '../config.js';
 import { getUserProfileCached } from '../utils/session.js';
 import { attachFieldHints, markInvalidField } from '../utils/formHints.js';
+import { ensureStripeLoaded } from '../utils/loadScript.js';
 
 export function renderPost(container) {
   const tiers = Array.isArray(CONFIG.JOB_POSTING_TIERS) ? CONFIG.JOB_POSTING_TIERS : [];
@@ -406,7 +407,8 @@ export function renderPost(container) {
         return;
       }
 
-      const stripe = Stripe(stripeConfig.publishableKey);
+      const StripeCtor = await ensureStripeLoaded();
+      const stripe = StripeCtor(stripeConfig.publishableKey);
       sessionStorage.removeItem('postDraft');
       const { error } = await stripe.redirectToCheckout({ sessionId: checkoutData.sessionId });
       if (error) {

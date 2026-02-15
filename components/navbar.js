@@ -16,6 +16,10 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     font-family: sans-serif;
     background: #fff;
     border-bottom: 1px solid #ddd;
+    width: calc(100% + 2rem);
+    margin-left: -1rem;
+    margin-right: -1rem;
+    box-sizing: border-box;
   }
   .logo {
     display: inline-flex;
@@ -38,6 +42,14 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     white-space: nowrap;
     border: 0;
   }
+  .logo-name {
+    color: #0f172a;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    white-space: nowrap;
+  }
 
   .navbar a {
     color: #4f46e5;
@@ -53,6 +65,9 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
   .menu {
     display: flex;
     align-items: center;
+  }
+  .menu .nav-link {
+    white-space: nowrap;
   }
 
   .menu-toggle {
@@ -79,6 +94,7 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
   @media (max-width: 640px) {
     .menu-toggle {
       display: block;
+      width: auto !important;
     }
 
     .menu {
@@ -101,7 +117,7 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     }
 
     .menu.show {
-      max-height: 320px;
+      max-height: 90svh;
       opacity: 1;
       transform: translateY(0);
       pointer-events: auto;
@@ -110,6 +126,15 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     .navbar a {
       margin: 0.5rem 0;
     }
+    .menu .nav-link {
+      display: block;
+      width: 100%;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    .logo-name {
+      display: none;
+    }
   }
 </style>
 
@@ -117,6 +142,7 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     <nav class="navbar">
       <a href="/#home" class="logo" aria-label="${CONFIG.COMPANY_NAME}">
         <img src="${CONFIG.LOGO_URL || '/logo.svg'}" alt="${CONFIG.COMPANY_NAME} logo" />
+        <span class="logo-name">${CONFIG.COMPANY_NAME}</span>
         <span class="sr-only">${CONFIG.COMPANY_NAME}</span>
       </a>
       <button id="menuToggle" class="menu-toggle" aria-label="Menu">☰</button>

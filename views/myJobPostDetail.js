@@ -13,6 +13,7 @@ const getDevFlags = async () => {
 };
 
 import { CONFIG, US_STATES } from '../config.js';
+import { ensureStripeLoaded } from '../utils/loadScript.js';
 
 export async function renderMyJobPostDetail(container, jobId) {
   container.innerHTML = `<p>Loading job details...</p>`;
@@ -540,7 +541,8 @@ export async function renderMyJobPostDetail(container, jobId) {
             alert('❌ Payment setup failed: ' + (checkoutData.message || checkoutData.error || 'Unknown error'));
             return;
           }
-          const stripe = Stripe(stripeConfig.publishableKey);
+          const StripeCtor = await ensureStripeLoaded();
+          const stripe = StripeCtor(stripeConfig.publishableKey);
           const { error } = await stripe.redirectToCheckout({ sessionId: checkoutData.sessionId });
           if (error) {
             alert(error.message || 'Stripe checkout failed.');

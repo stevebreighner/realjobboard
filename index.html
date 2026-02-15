@@ -5,9 +5,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://js.stripe.com https://challenges.cloudflare.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.zippopotam.us https://formspree.io https://api.stripe.com https://js.stripe.com https://challenges.cloudflare.com; frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://challenges.cloudflare.com; font-src 'self' data: https:;">
-  <title>JobBoard</title>
+  <title>Jabbard</title>
   <meta name="description" content="A job search site with privacy-first applications and smarter matching." />
-  <meta property="og:title" content="JobBoard" />
+  <meta property="og:title" content="Jabbard" />
   <meta property="og:description" content="A job search site with privacy-first applications and smarter matching." />
   <meta property="og:type" content="website" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -16,7 +16,7 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
 
    <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.tailwindcss.com"></script>
 <style>:root {
   --site-font: system-ui;
   font-family: var(--site-font), Avenir, Helvetica, Arial, sans-serif;
@@ -300,6 +300,18 @@ footer {
   <div id="navbar"></div>
   <div id="app" class="p-6 flex-1"></div>
   <footer class="text-center p-4 text-sm text-gray-500 border-t mt-8">
+    <a href="/#home" class="inline-flex items-center justify-center mb-3" aria-label="Home">
+      <img
+        src="/jabbard_footer_logo.png"
+        alt="Jabbard logo"
+        width="132"
+        height="88"
+        loading="lazy"
+        decoding="async"
+        fetchpriority="low"
+        style="height: 88px; width: auto; object-fit: contain;"
+      />
+    </a>
     <div class="flex flex-wrap items-center justify-center gap-3 mb-2">
       <a href="/#about" class="text-gray-600 hover:text-gray-900">About</a>
       <span class="text-gray-300">•</span>
@@ -314,7 +326,6 @@ footer {
     &copy; <span id="year"></span> <span id="companyName"></span>. All rights reserved.
   </footer>
 
-  <script src="https://js.stripe.com/v3/"></script>
   <script type="module" src="main.js"></script>
 </body>
 </html>

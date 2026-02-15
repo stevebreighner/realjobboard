@@ -1,6 +1,11 @@
 // config.js
 
-const APP_DOMAIN = 'jobs.stephenbreighner.com';
+const APP_DOMAIN = (() => {
+  if (typeof window !== 'undefined' && window?.location?.hostname) {
+    return window.location.hostname.replace(/^www\./, '');
+  }
+  return 'jobs.stephenbreighner.com';
+})();
 // const JOB_PRICE_STANDARD = 149;
 // const JOB_PRICE_PREMIUM = 299;
 const JOB_PRICE_STANDARD = 0.01;
@@ -61,14 +66,14 @@ export const US_STATES = [
 ];
 
 export const CONFIG = {
-    SITE_TITLE: 'JobBoard',
+    SITE_TITLE: 'Jabbard',
     SITE_DESCRIPTION: 'A job search site with privacy-first applications and smarter matching.',
-    COMPANY_NAME: 'JobBoard', // or "PetFinder", etc.
+    COMPANY_NAME: 'Jabbard', // or "PetFinder", etc.
     COMPANY_BUSINESS_THING: 'Job', // or "Pet", etc.
     COMPANY_BUSINESS_THING_PLURAL: 'Jobs', // or "Pets"
     COMPANY_ENTITY_LABEL: 'Company page',
     LOGO_URL: '/logo.svg',
-    EMAIL_FROM_NAME: 'JobBoard', // display name for system emails
+    EMAIL_FROM_NAME: 'Jabbard', // display name for system emails
     APP_DOMAIN,
     WEBSITE_URL: `https://${APP_DOMAIN}`, // used by frontend links
     COMPANY_SUPPORT_EMAIL: `support@${APP_DOMAIN}`, // or "Pets"
@@ -76,6 +81,7 @@ export const CONFIG = {
     SUBMIT_LABEL: 'Apply Now', // or 'Submit Offer', etc.
     TURNSTILE_SITE_KEY: '0x4AAAAAACXQm_OHceB7I6bi',
     SITE_TAGLINE: 'A job search site',
+    SITE_STAGE_LABEL: 'Beta',
     JOB_POSTING_TIERS: [
       {
         id: 'standard',

@@ -46,6 +46,7 @@ return [
     '/api/admin/error-log-download' => [new AdminController(), 'errorLogDownload'],
     '/api/admin/export-users' => [new AdminUserController(), 'exportUsers'],
     '/api/admin/export-jobs' => [new AdminController(), 'exportJobs'],
+    '/api/admin/flags' => [new DevFlagController(), 'adminFlags'],
     '/api/dev-flags' => [new DevFlagController(), 'getFlags'],
     '/api/saved-jobs' => [new SavedJobController(), 'list'],
     '/api/job-alerts' => [new JobAlertController(), 'list'],
