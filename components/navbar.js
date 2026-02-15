@@ -151,6 +151,7 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
         ${isEmployer ? `<a href="/#post" class="nav-link">Post a ${CONFIG.COMPANY_BUSINESS_THING}</a>` : ''}
         ${isEmployer ? `<a href="/#my-job-posts" class="nav-link">${CONFIG.JOB_COPY?.MY_POSTS_TITLE || 'My Job Posts'}</a>` : ''}
         ${isSiteAdmin ? `<a href="/#admin" class="nav-link">Admin</a>` : ''}
+        ${isSiteAdmin ? `<a href="/#analytics" class="nav-link">Analytics</a>` : ''}
         ${isLoggedIn ? '<a href="/#profile" class="nav-link">Profile</a>' : ''}
         ${isLoggedIn && !isEmployer ? `<a href="/#saved-searches" class="nav-link">${CONFIG.JOB_COPY?.SAVED_SEARCHES_TITLE || 'Saved Searches'}</a>` : ''}
         ${isLoggedIn && !isEmployer ? `<a href="/#myApplications" class="nav-link">${CONFIG.JOB_COPY?.MY_APPLICATIONS_TITLE || 'My Applications'}</a>` : ''}
