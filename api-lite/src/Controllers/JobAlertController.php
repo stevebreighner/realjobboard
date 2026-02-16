@@ -50,7 +50,7 @@ class JobAlertController {
     if ($email) {
       $this->subscribers->upsert((int) $user['id'], $email);
       $token = $this->subscribers->getOrCreateToken($email);
-      $siteName = $_ENV['EMAIL_FROM_NAME'] ?? 'JobBoard';
+      $siteName = $_ENV['SITE_NAME'] ?? ($_ENV['EMAIL_FROM_NAME'] ?? 'Site');
       $baseUrl = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
       $unsubscribeUrl = $baseUrl . '/api/unsubscribe?token=' . urlencode($token);
       $subject = $siteName . ' — Job alert saved';

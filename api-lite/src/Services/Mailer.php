@@ -5,10 +5,11 @@ namespace App\Services;
 
 class Mailer {
   public function send(string $to, string $subject, string $html, ?string $text = null): bool {
-    $fromAddress = $_ENV['EMAIL_FROM_ADDRESS'] ?? ('no-reply@' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
-    $fromName = $_ENV['EMAIL_FROM_NAME'] ?? 'JobBoard';
-    $siteName = $_ENV['SITE_NAME'] ?? $fromName;
-    $siteUrl = $_ENV['SITE_URL'] ?? ('https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
+    $brand = new BrandingService();
+    $fromAddress = $_ENV['EMAIL_FROM_ADDRESS'] ?? ('no-reply@' . $brand->host());
+    $fromName = $brand->fromName();
+    $siteName = $brand->siteName();
+    $siteUrl = $brand->siteUrl();
     $logoUrl = $_ENV['EMAIL_LOGO_URL'] ?? ($_ENV['LOGO_URL'] ?? '');
 
     $headers = [];
@@ -75,8 +76,8 @@ class Mailer {
         {$textBlock}
       </div>
       <div style="font-size:12px;color:#94a3b8;margin-top:12px;text-align:center;">
-        <div>{$safeSite} · <a href="{$safeUrl}" style="color:#64748b;text-decoration:none;">{$safeUrl}</a></div>
-        <div style="margin-top:4px;">You’re receiving this because you have an account on {$safeSite}.</div>
+        <div>{$safeSite} - <a href="{$safeUrl}" style="color:#64748b;text-decoration:none;">{$safeUrl}</a></div>
+        <div style="margin-top:4px;">You're receiving this because you have an account on {$safeSite}.</div>
       </div>
     </div>
   </body>

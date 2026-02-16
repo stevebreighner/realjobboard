@@ -5,8 +5,9 @@ namespace App\Controllers;
 
 use App\Services\AuthService;
 use App\Services\RateLimiter;
-use App\Services\Mailer;
 use App\Services\AdminNotificationService;
+use App\Services\SiteNotificationService;
+use App\Services\DeviceTrustService;
 use App\Models\CompanyModel;
 use App\Models\UserMetaModel;
 use App\Models\AuthTokenModel;
@@ -19,6 +20,8 @@ class AuthController {
   private SettingsModel $settings;
   private AuditLogModel $audit;
   private UserMetaModel $meta;
+  private SiteNotificationService $notify;
+  private DeviceTrustService $devices;
 
   public function __construct() {
     $this->auth = new AuthService($GLOBALS['DB_PDO']);
@@ -26,6 +29,8 @@ class AuthController {
     $this->settings = new SettingsModel();
     $this->audit = new AuditLogModel();
     $this->meta = new UserMetaModel();
+    $this->notify = new SiteNotificationService($GLOBALS['DB_PDO']);
+    $this->devices = new DeviceTrustService();
   }
 
   private function jsonInput(): array {
@@ -187,10 +192,7 @@ class AuthController {
     $token = $this->tokens->createToken('jb_email_verifications', (int) $user['id'], 60);
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $link = "https://{$host}/#verify-email?token={$token}";
-    $mailer = new Mailer();
-    $subject = 'Verify your email';
-    $html = "<p>Verify your email by clicking this link:</p><p><a href=\"{$link}\">Verify Email</a></p>";
-    $mailer->send($user['email'], $subject, $html, "Verify email: {$link}");
+    $this->notify->sendAccountCreated($user, $link, 'register');
 
     if ($role === 'employer' && $companyName) {
       $companyModel = new CompanyModel();
@@ -308,6 +310,7 @@ class AuthController {
       'username' => $user['username'] ?? '',
       'login' => $login,
     ]);
+    $this->notifyIfNewDevice($user);
     return [
       'message' => 'Login successful',
       'user' => [
@@ -342,6 +345,17 @@ class AuthController {
       'roles' => [$user['role']],
       'needs_profile' => $needsProfile === '1',
     ];
+  }
+
+  private function notifyIfNewDevice(array $user): void {
+    try {
+      $device = $this->devices->registerLoginDevice((int) $user['id']);
+      if (!empty($device['is_new'])) {
+        $this->notify->sendNewDeviceSignIn($user, $device);
+      }
+    } catch (\Throwable $e) {
+      // Never block auth flow due to notification issues.
+    }
   }
 
   public function updatePassword(): array {
@@ -381,6 +395,7 @@ class AuthController {
     $hash = password_hash($new, PASSWORD_BCRYPT);
     $stmt = $GLOBALS['DB_PDO']->prepare("UPDATE jb_users SET password_hash = :hash WHERE id = :id");
     $stmt->execute([':hash' => $hash, ':id' => (int) $user['id']]);
+    $this->notify->sendPasswordChanged($user);
     return ['message' => 'Password updated'];
   }
 
@@ -413,10 +428,7 @@ class AuthController {
     $token = $this->tokens->createToken('jb_password_resets', (int) $user['id'], 30);
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $link = "https://{$host}/#reset-password?token={$token}";
-    $mailer = new Mailer();
-    $subject = 'Reset your password';
-    $html = "<p>Use the link below to reset your password:</p><p><a href=\"{$link}\">Reset Password</a></p>";
-    $mailer->send($user['email'], $subject, $html, "Reset password: {$link}");
+    $this->notify->sendForgotPassword($user, $link);
     return ['message' => 'If that email exists, a reset link has been sent.'];
   }
 
@@ -465,6 +477,10 @@ class AuthController {
     $stmt = $GLOBALS['DB_PDO']->prepare("UPDATE jb_users SET password_hash = :hash WHERE id = :id");
     $stmt->execute([':hash' => $hash, ':id' => $userId]);
     $this->tokens->consumeToken('jb_password_resets', $token);
+    $updatedUser = $this->auth->getUserById($userId);
+    if (!empty($updatedUser)) {
+      $this->notify->sendPasswordChanged($updatedUser);
+    }
     return ['message' => 'Password reset successfully'];
   }
 
@@ -489,10 +505,7 @@ class AuthController {
     $token = $this->tokens->createToken('jb_email_verifications', (int) $user['id'], 60);
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $link = "https://{$host}/#verify-email?token={$token}";
-    $mailer = new Mailer();
-    $subject = 'Verify your email';
-    $html = "<p>Verify your email by clicking this link:</p><p><a href=\"{$link}\">Verify Email</a></p>";
-    $mailer->send($user['email'], $subject, $html, "Verify email: {$link}");
+    $this->notify->sendVerificationEmail($user, $link);
     return ['message' => 'If that email exists, a verification link has been sent.'];
   }
 
@@ -536,10 +549,7 @@ class AuthController {
     }
     $code = (string) random_int(100000, 999999);
     $this->tokens->createTwoFactorCode($userId, $code, 10);
-    $mailer = new Mailer();
-    $subject = 'Your login code';
-    $html = "<p>Your 2FA code is:</p><h2>{$code}</h2><p>This code expires in 10 minutes.</p>";
-    $mailer->send($user['email'], $subject, $html, "Your 2FA code: {$code}");
+    $this->notify->sendTwoFactorCode($user, $code);
     return ['message' => '2FA code sent'];
   }
 
@@ -572,6 +582,9 @@ class AuthController {
     $this->clearPendingCookie();
     $this->auth->createSession($userId);
     $user = $this->auth->getUserById($userId);
+    if (!empty($user)) {
+      $this->notifyIfNewDevice($user);
+    }
     return [
       'message' => '2FA verified',
       'user' => [
@@ -610,10 +623,7 @@ class AuthController {
     $token = $this->tokens->createToken('jb_magic_links', (int) $user['id'], 20);
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $link = "https://{$host}/#magic-login?token={$token}";
-    $mailer = new Mailer();
-    $subject = 'Your magic login link';
-    $html = "<p>Click to log in:</p><p><a href=\"{$link}\">Log in</a></p>";
-    $mailer->send($user['email'], $subject, $html, "Magic link: {$link}");
+    $this->notify->sendMagicLink($user, $link);
     return ['message' => 'If that email exists, a link has been sent.'];
   }
 
@@ -633,6 +643,9 @@ class AuthController {
     $this->tokens->consumeToken('jb_magic_links', $token);
     $this->auth->createSession($userId);
     $user = $this->auth->getUserById($userId);
+    if (!empty($user)) {
+      $this->notifyIfNewDevice($user);
+    }
     return [
       'message' => 'Logged in',
       'user' => [

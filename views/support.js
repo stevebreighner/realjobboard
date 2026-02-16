@@ -1,7 +1,3 @@
-import { CONFIG } from '../config.js';
-
-const FORMSPREE_URL = 'https://formspree.io/f/xgozgqzd';
-
 export function renderSupport(container, params = {}) {
   container.innerHTML = `
     <div class="max-w-3xl mx-auto px-4 py-8">
@@ -81,18 +77,20 @@ export function renderSupport(container, params = {}) {
     supportMessage.textContent = '';
     const formData = Object.fromEntries(new FormData(supportForm).entries());
     try {
-      const res = await fetch(FORMSPREE_URL, {
+      const res = await fetch('/api/support-contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(formData),
       });
-      if (!res.ok) throw new Error('Failed to send');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Failed to send');
       supportMessage.className = 'text-sm text-green-700';
-      supportMessage.textContent = 'Message sent. We will get back to you.';
+      supportMessage.textContent = data?.message || 'Message sent. We will get back to you.';
       supportForm.reset();
     } catch (err) {
       supportMessage.className = 'text-sm text-red-600';
-      supportMessage.textContent = err.message;
+      supportMessage.textContent = err?.message || 'Unable to send message.';
     }
   });
 }

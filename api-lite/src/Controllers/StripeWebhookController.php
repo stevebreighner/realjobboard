@@ -132,7 +132,7 @@ class StripeWebhookController {
       $toList[] = $employerEmail;
     }
     if ($toList) {
-      $siteName = $_ENV['EMAIL_FROM_NAME'] ?? 'JobBoard';
+      $siteName = $_ENV['SITE_NAME'] ?? ($_ENV['EMAIL_FROM_NAME'] ?? 'Site');
       $subject = $siteName . ' — Job post received';
       $jobUrl = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/#list-detail?id=' . $jobId;
       $html = '
@@ -154,7 +154,7 @@ class StripeWebhookController {
 
   private function notifyPaymentIssue(array $session, string $label): void {
     $email = $session['customer_details']['email'] ?? ($session['customer_email'] ?? '');
-    $siteName = $_ENV['EMAIL_FROM_NAME'] ?? 'JobBoard';
+    $siteName = $_ENV['SITE_NAME'] ?? ($_ENV['EMAIL_FROM_NAME'] ?? 'Site');
     $subject = $siteName . ' — ' . $label;
     $html = '
       <div style="font-family: Arial, sans-serif; background:#f8fafc; padding:24px;">

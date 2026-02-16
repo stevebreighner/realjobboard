@@ -13,6 +13,8 @@ use App\Models\UserFileModel;
 use App\Services\RateLimiter;
 use App\Services\Mailer;
 use App\Services\EncryptionService;
+use App\Services\SiteNotificationService;
+use App\Services\BrandingService;
 use App\Models\SettingsModel;
 use App\Models\AuditLogModel;
 
@@ -27,6 +29,8 @@ class JobPostController {
   private EncryptionService $crypto;
   private SettingsModel $settings;
   private AuditLogModel $audit;
+  private SiteNotificationService $notify;
+  private BrandingService $brand;
 
   public function __construct() {
     $this->auth = new AuthService($GLOBALS['DB_PDO']);
@@ -39,6 +43,8 @@ class JobPostController {
     $this->crypto = new EncryptionService();
     $this->settings = new SettingsModel();
     $this->audit = new AuditLogModel();
+    $this->notify = new SiteNotificationService($GLOBALS['DB_PDO']);
+    $this->brand = new BrandingService();
   }
 
   private function requireEmployer(): array {
@@ -261,6 +267,7 @@ class JobPostController {
       'title' => $title,
       'status' => $status,
     ]);
+    $this->notify->sendJobCreated($user, $jobId, $title, (string) ($meta['company'] ?? ''));
     $this->notifyAdminsJobCreated($title, $jobId, $meta['company'] ?? '');
     return ['id' => $jobId];
   }
@@ -270,8 +277,8 @@ class JobPostController {
     $admins = $pdo->query("SELECT email FROM jb_users WHERE role IN ('site_admin','administrator')")->fetchAll();
     $adminEmails = array_values(array_filter(array_map(fn($r) => $r['email'] ?? '', $admins ?: [])));
     if (!$adminEmails) return;
-    $siteName = $_ENV['EMAIL_FROM_NAME'] ?? 'JobBoard';
-    $subject = $siteName . ' — Job post created';
+    $siteName = $this->brand->siteName();
+    $subject = $siteName . ' - Job post created';
     $jobUrl = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/#list-detail?id=' . $jobId;
     $html = '
       <div style="font-family: Arial, sans-serif; background:#f8fafc; padding:24px;">

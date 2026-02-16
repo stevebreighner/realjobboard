@@ -319,7 +319,7 @@ class AdminController {
     }
     $jobs = $this->jobs->list(10);
     $baseUrl = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
-    $siteName = $_ENV['EMAIL_FROM_NAME'] ?? 'JobBoard';
+    $siteName = $_ENV['SITE_NAME'] ?? ($_ENV['EMAIL_FROM_NAME'] ?? 'Site');
     $mailer = new Mailer();
     $sent = 0;
     foreach ($subscribers as $sub) {

@@ -6,17 +6,23 @@ namespace App\Controllers;
 use App\Services\OAuthService;
 use App\Services\AuthService;
 use App\Services\AdminNotificationService;
+use App\Services\SiteNotificationService;
+use App\Services\DeviceTrustService;
 use App\Models\UserMetaModel;
 
 class OAuthController {
   private OAuthService $oauth;
   private AuthService $auth;
   private UserMetaModel $meta;
+  private SiteNotificationService $notify;
+  private DeviceTrustService $devices;
 
   public function __construct() {
     $this->oauth = new OAuthService();
     $this->auth = new AuthService($GLOBALS['DB_PDO']);
     $this->meta = new UserMetaModel();
+    $this->notify = new SiteNotificationService($GLOBALS['DB_PDO']);
+    $this->devices = new DeviceTrustService();
   }
 
   public function startGoogle(): void {
@@ -97,6 +103,7 @@ class OAuthController {
         ]);
       } catch (\Throwable $e) {
       }
+      $this->notify->sendAccountCreated($user, null, 'oauth_google');
     }
     $this->meta->setMeta((int) $user['id'], 'oauth_google', '1');
     if ($isNew) {
@@ -104,6 +111,13 @@ class OAuthController {
     }
     $this->maybeStoreGoogleAvatar($info, (int) $user['id']);
     $this->auth->createSession((int) $user['id']);
+    try {
+      $device = $this->devices->registerLoginDevice((int) $user['id']);
+      if (!empty($device['is_new'])) {
+        $this->notify->sendNewDeviceSignIn($user, $device);
+      }
+    } catch (\Throwable $e) {
+    }
     $this->clearCookie('oauth_state');
     $this->clearCookie('oauth_nonce');
     header('Location: ' . ($isNew ? '/#complete-profile' : '/#home'));

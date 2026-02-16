@@ -23,6 +23,7 @@ use App\Controllers\AdminCompanyController;
 use App\Controllers\OAuthController;
 use App\Controllers\TrackingController;
 use App\Controllers\SubscriberController;
+use App\Controllers\SupportController;
 
 return [
   'GET' => [
@@ -127,5 +128,6 @@ return [
     '/api/upload-resume' => [new UserFileController(), 'uploadResume'],
     '/api/upload-cover' => [new UserFileController(), 'uploadCover'],
     '/api/track' => [new TrackingController(), 'track'],
+    '/api/support-contact' => [new SupportController(), 'contact'],
   ],
 ];

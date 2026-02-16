@@ -8,10 +8,12 @@ use PDO;
 class AdminNotificationService {
   private PDO $pdo;
   private Mailer $mailer;
+  private BrandingService $brand;
 
   public function __construct(PDO $pdo) {
     $this->pdo = $pdo;
     $this->mailer = new Mailer();
+    $this->brand = new BrandingService();
   }
 
   private function adminEmails(): array {
@@ -24,11 +26,10 @@ class AdminNotificationService {
     $emails = $this->adminEmails();
     if (!$emails) return;
 
-    $siteName = $_ENV['EMAIL_FROM_NAME'] ?? 'JobBoard';
-    $subject = $siteName . ' — New account created';
+    $siteName = $this->brand->siteName();
+    $subject = $siteName . ' - New account created';
 
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $adminUrl = 'https://' . $host . '/#admin';
+    $adminUrl = $this->brand->adminUrl();
 
     $username = htmlspecialchars((string) ($user['username'] ?? ''), ENT_QUOTES);
     $email = htmlspecialchars((string) ($user['email'] ?? ''), ENT_QUOTES);
@@ -65,4 +66,3 @@ class AdminNotificationService {
     }
   }
 }
-

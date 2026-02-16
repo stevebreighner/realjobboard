@@ -9,7 +9,7 @@ use App\Models\JobModel;
 use App\Services\RateLimiter;
 use App\Services\EncryptionService;
 use App\Models\AuditLogModel;
-use App\Services\Mailer;
+use App\Services\SiteNotificationService;
 
 class ApplicationController {
   private AuthService $auth;
@@ -17,6 +17,7 @@ class ApplicationController {
   private JobModel $jobs;
   private EncryptionService $crypto;
   private AuditLogModel $audit;
+  private SiteNotificationService $notify;
 
   public function __construct() {
     $this->auth = new AuthService($GLOBALS['DB_PDO']);
@@ -24,6 +25,7 @@ class ApplicationController {
     $this->jobs = new JobModel();
     $this->crypto = new EncryptionService();
     $this->audit = new AuditLogModel();
+    $this->notify = new SiteNotificationService($GLOBALS['DB_PDO']);
   }
 
   private function jsonInput(): array {
@@ -161,10 +163,12 @@ class ApplicationController {
 
     $userEmail = $user['email'] ?? '';
     if ($userEmail) {
-      $mailer = new Mailer();
-      $subject = 'Application received';
-      $body = "Thanks for applying. We received your application and will notify you with updates.\n\nJob ID: {$jobId}";
-      $sent = $mailer->send($userEmail, $subject, nl2br(htmlspecialchars($body, ENT_QUOTES)), $body);
+      $sent = $this->notify->sendApplicationReceived(
+        $user,
+        $jobId,
+        (string) ($job['title'] ?? ''),
+        (string) ($job['meta']['company'] ?? '')
+      );
       if (!$sent) {
         $this->audit->log((int) $user['id'], 'application_email_failed', 'Email send failed', [
           'job_id' => $jobId,
