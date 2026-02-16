@@ -251,6 +251,22 @@ export function renderList(container) {
     if (t === 'commission') return 'commission';
     return val || '';
   };
+  const formatEmploymentType = (val) => {
+    const raw = (val || '').toString().trim();
+    if (!raw) return '';
+    const key = raw.toLowerCase();
+    const fromConfig = (CONFIG.EMPLOYMENT_TYPES || []).find(opt => String(opt.value || '').toLowerCase() === key);
+    if (fromConfig?.label) return fromConfig.label;
+    const map = {
+      full_time: 'Full Time',
+      part_time: 'Part Time',
+      internship: 'Internship',
+      contract: 'Contract',
+      temporary: 'Temporary',
+      volunteer: 'Volunteer',
+    };
+    return map[key] || raw.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  };
   const formatMoney = (val) => {
     const num = parseFloat(val);
     if (isNaN(num)) return val;
@@ -755,6 +771,7 @@ export function renderList(container) {
               const company = safeCompanyName(rawCompany);
               const companySlug = getMetaValue(item, 'company_slug');
               const employmentType = getMetaValue(item, 'employment_type');
+              const employmentTypeLabel = formatEmploymentType(employmentType);
               const rateType = formatRateType(getMetaValue(item, 'rate_type'));
               const rateMin = getMetaValue(item, 'rate_min');
               const rateMax = getMetaValue(item, 'rate_max');
@@ -770,7 +787,7 @@ export function renderList(container) {
               const safeCompanySlug = escapeHtml(companySlug || '');
               const summary = escapeHtml(item.summary || '');
               const safeField = escapeHtml(field);
-              const safeEmploymentType = escapeHtml(employmentType || '');
+              const safeEmploymentType = escapeHtml(employmentTypeLabel || '');
               const safeRate = escapeHtml(formatRate(rateMin, rateMax, rateType));
               const safeLocation = escapeHtml(location);
               const safeDistance = escapeHtml(distanceLabel);
@@ -795,7 +812,7 @@ export function renderList(container) {
                       </svg>
                       ${safeField}
                     </span>` : ''}
-                    ${employmentType ? `<span class="px-3 py-1.5 rounded-full bg-slate-100 inline-flex items-center gap-2">
+                    ${employmentTypeLabel ? `<span class="px-3 py-1.5 rounded-full bg-slate-100 inline-flex items-center gap-2">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="7" width="18" height="12" rx="2"></rect>
                         <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>

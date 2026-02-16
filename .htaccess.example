@@ -8,6 +8,7 @@
 RewriteEngine On
 RewriteRule ^robots\.txt$ /robots.php [L,QSA]
 RewriteRule ^sitemap\.xml$ /sitemap.php [L,QSA]
+RewriteRule ^job/([0-9]+)/?$ /job-share.php?id=$1 [L,QSA,NC]
 RewriteRule ^api/?$ /api-lite/public/index.php [L,QSA]
 RewriteRule ^api/(.*)$ /api-lite/public/index.php [L,QSA]
 RewriteCond %{REQUEST_FILENAME} -f [OR]

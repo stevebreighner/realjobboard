@@ -90,6 +90,20 @@ export async function renderMyJobPostDetail(container, jobId) {
       if (t === 'commission') return 'commission';
       return val || '';
     };
+    const formatEmploymentType = (val) => {
+      const raw = (val || '').toString().trim();
+      if (!raw) return '';
+      const key = raw.toLowerCase();
+      const map = {
+        full_time: 'Full Time',
+        part_time: 'Part Time',
+        internship: 'Internship',
+        contract: 'Contract',
+        temporary: 'Temporary',
+        volunteer: 'Volunteer',
+      };
+      return map[key] || raw.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    };
     const formatMoney = (val) => {
       const num = parseFloat(val);
       if (isNaN(num)) return val;
@@ -128,7 +142,6 @@ export async function renderMyJobPostDetail(container, jobId) {
               ${isFeatured ? '<span class="text-amber-600">★ Featured</span>' : ''}
               ${tierLabel ? `<span class="text-slate-500">Tier: ${tierLabel}</span>` : ''}
               ${paymentStatus ? `<span class="text-slate-500">Payment: ${paymentStatus}</span>` : ''}
-              ${getMeta('company_id') ? `<span class="text-slate-500">Company ID: ${getMeta('company_id')}</span>` : ''}
             </div>
           </div>
           <div class="flex flex-wrap items-center gap-2">
@@ -146,7 +159,7 @@ export async function renderMyJobPostDetail(container, jobId) {
             </div>
             <div>
               <div class="text-xs uppercase tracking-wide text-slate-500">Employment Type</div>
-              <div id="jobEmployment" class="font-medium">${employmentType || '—'}</div>
+              <div id="jobEmployment" class="font-medium">${formatEmploymentType(employmentType) || '—'}</div>
             </div>
             <div>
               <div class="text-xs uppercase tracking-wide text-slate-500">Rate</div>
@@ -1250,12 +1263,7 @@ export async function renderMyJobPostDetail(container, jobId) {
         if (titleEl) titleEl.textContent = payload.title || titleEl.textContent;
         if (contentEl) contentEl.innerHTML = payload.content || contentEl.innerHTML;
         if (fieldEl) {
-          if (payload.field) {
-            fieldEl.textContent = `Field: ${payload.field}`;
-            fieldEl.classList.remove('hidden');
-          } else {
-            fieldEl.classList.add('hidden');
-          }
+          fieldEl.textContent = payload.field || '—';
         }
         setStatusBadge(payload.status);
         if (locationEl) {
@@ -1264,10 +1272,11 @@ export async function renderMyJobPostDetail(container, jobId) {
           const updatedLocationLine = [updatedCityState, payload.zip].filter(Boolean).join(' ');
           const updatedFull = [updatedAddress, updatedLocationLine, payload.country].filter(Boolean).join(' • ');
           if (updatedFull) {
-            locationEl.textContent = updatedFull;
+            locationEl.textContent = `${companyName || 'Company'} • ${updatedFull}`;
             locationEl.classList.remove('hidden');
           } else {
-            locationEl.classList.add('hidden');
+            locationEl.textContent = companyName || 'Company';
+            locationEl.classList.remove('hidden');
           }
         }
         const rateEl = container.querySelector('#jobRate');
@@ -1291,13 +1300,11 @@ export async function renderMyJobPostDetail(container, jobId) {
           const minLabel = payload.rate_min ? `$${formatMoney(payload.rate_min)}` : '';
           const maxLabel = payload.rate_max ? `$${formatMoney(payload.rate_max)}` : '';
           const range = minLabel && maxLabel ? `${minLabel}–${maxLabel}` : (minLabel || maxLabel);
-          rateEl.textContent = `Rate: ${(range || typeLabel) ? `${range}${typeLabel ? ` ${typeLabel}` : ''}`.trim() : 'Undisclosed'}`;
-          rateEl.classList.remove('hidden');
+          rateEl.textContent = (range || typeLabel) ? `${range}${typeLabel ? ` ${typeLabel}` : ''}`.trim() : 'Undisclosed';
         }
         const employmentEl = container.querySelector('#jobEmployment');
         if (employmentEl) {
-          employmentEl.textContent = `Employment: ${payload.employment_type || ''}`;
-          employmentEl.classList.toggle('hidden', !payload.employment_type);
+          employmentEl.textContent = formatEmploymentType(payload.employment_type) || '—';
         }
 
         data.title = payload.title;

@@ -16,12 +16,57 @@ export async function renderListDetail(container, id) {
       'employer_email',
       'company_email',
       'job_applications',
+      'company_id',
+      'company_slug',
+      'owner_id',
+      'owner_email',
+      'job_featured',
     ]);
+
+    const toTitleCaseWords = (value) => {
+      const text = String(value || '').trim();
+      if (!text) return '';
+      return text
+        .replace(/_/g, ' ')
+        .replace(/\s+/g, ' ')
+        .split(' ')
+        .filter(Boolean)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+    };
+
+    const formatEmploymentType = (value) => {
+      const key = String(value || '').trim().toLowerCase();
+      const map = {
+        full_time: 'Full Time',
+        part_time: 'Part Time',
+        internship: 'Internship',
+        contract: 'Contract',
+        temporary: 'Temporary',
+        volunteer: 'Volunteer',
+      };
+      if (!key) return '';
+      return map[key] || toTitleCaseWords(key);
+    };
+
+    const formatJobType = (value) => {
+      const key = String(value || '').trim().toLowerCase();
+      const map = {
+        onsite: 'On-site',
+        on_site: 'On-site',
+        remote: 'Remote',
+        hybrid: 'Hybrid',
+      };
+      if (!key) return '';
+      return map[key] || toTitleCaseWords(key);
+    };
 
     const formatMetaValue = (key, val) => {
       if (hiddenMetaKeys.has(key)) return '';
       if (key === 'company' && typeof val === 'string' && val.includes('@')) return '';
-      if (['company_slug', 'location', 'description', 'rate_min', 'rate_max', 'rate_type'].includes(key)) return '';
+      if (['location', 'description', 'rate_min', 'rate_max', 'rate_type'].includes(key)) return '';
+      if (key === 'employment_type') return escapeHtml(formatEmploymentType(val));
+      if (key === 'job_type') return escapeHtml(formatJobType(val));
       if (key === 'job_applications' && typeof val === 'string') {
         const apps = [];
         const entryRegex = /s:7:"user_id";i:(\d+);s:6:"resume";s:\d+:"([^"]*)";s:12:"cover_letter";s:\d+:"([^"]*)";s:4:"time";i:(\d+);/g;
@@ -62,11 +107,7 @@ export async function renderListDetail(container, id) {
 
     const rawCompany = data.meta?.company || '';
     const company = rawCompany && rawCompany.includes('@') ? '' : rawCompany;
-    const companySite = data.meta?.company_site || '';
     const companySlug = data.meta?.company_slug || '';
-    const companyId = data.meta?.company_id || '';
-    const companyLink = companySlug ? `/#company/${encodeURIComponent(companySlug)}` : '';
-    const safeCompanySite = safeUrl(companySite);
     const safeTitle = escapeHtml(data.title || data.name || '');
     const safeCompany = escapeHtml(company || '');
     const safeCompanySlug = escapeHtml(companySlug || '');
@@ -77,6 +118,8 @@ export async function renderListDetail(container, id) {
     const safeDesc = escapeHtml(data.description || '');
     const rawRateType = data.meta?.rate_type || '';
     const employmentType = data.meta?.employment_type || '';
+    const employmentTypeLabel = formatEmploymentType(employmentType);
+    const jobTypeLabel = formatJobType(data.meta?.job_type || '');
     const rateType = (() => {
       const t = rawRateType.toString().toLowerCase();
       if (t === 'undisclosed') return 'Undisclosed';
@@ -182,9 +225,9 @@ export async function renderListDetail(container, id) {
         </div>
         <div class="flex flex-wrap gap-2 text-xs text-slate-600 mb-4">
           ${formatRate() ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>Rate:</strong> ${formatRate()}</span>` : ''}
-          ${employmentType ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>Employment:</strong> ${escapeHtml(employmentType)}</span>` : ''}
+          ${employmentTypeLabel ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>Employment:</strong> ${escapeHtml(employmentTypeLabel)}</span>` : ''}
+          ${jobTypeLabel ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>Type:</strong> ${escapeHtml(jobTypeLabel)}</span>` : ''}
           ${company ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>${CONFIG.JOB_COPY?.COMPANY_LABEL || 'Company'}</strong> ${safeCompanySlug ? `<a class="text-indigo-600 hover:underline" href="/#company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany}</span>` : ''}
-          ${companyId ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>Company ID:</strong> ${escapeHtml(companyId)}</span>` : ''}
           ${locationLine.trim() ? `<span class="px-3 py-1.5 rounded-full bg-slate-100" id="jobLocationLine"><strong>Location:</strong> ${escapeHtml(locationLine)}</span>` : ''}
         </div>
         <div class="prose mb-4">${safeDesc}</div>
@@ -196,7 +239,7 @@ export async function renderListDetail(container, id) {
           ${data.meta ? `
             <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               ${Object.entries(data.meta)
-                .filter(([key]) => !['owner_email', 'owner_id', 'company_email'].includes(key))
+                .filter(([key]) => !['owner_email', 'owner_id', 'company_email', 'company_id', 'company_slug', 'job_featured', 'job_type', 'employment_type'].includes(key))
                 .map(([key, val]) => {
                   const labelMap = {
                     job_type: 'Job Type',

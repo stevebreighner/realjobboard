@@ -30,6 +30,7 @@ export function renderRegister(container) {
           </svg>
         </button>
       </div>
+      <input type="password" id="registerPasswordConfirm" name="confirm_password" placeholder="Confirm Password" class="w-full p-2 border rounded" required />
       
       <select name="role" class="w-full p-2 border rounded" required>
         <option value="" disabled selected>Select Role</option>
@@ -42,7 +43,7 @@ export function renderRegister(container) {
         <input type="text" name="company" placeholder="Company Name" class="w-full p-2 border rounded mb-2" list="companySuggestions" />
         <datalist id="companySuggestions"></datalist>
         <div id="companySuggestionHint" class="text-xs text-gray-500 mb-2 hidden"></div>
-        <input type="url" name="company_site" placeholder="Company Website (https://...)" class="w-full p-2 border rounded mb-2" />
+        <input type="text" name="company_site" inputmode="url" autocapitalize="off" placeholder="Company Website (example.com or https://example.com)" class="w-full p-2 border rounded mb-2" />
         <input type="email" name="company_email" placeholder="Company Email (name@company.com)" class="w-full p-2 border rounded" />
         <p class="text-xs text-gray-500 mt-2">Employer accounts require a company email that matches your website domain.</p>
       </div>
@@ -81,6 +82,7 @@ export function renderRegister(container) {
   const googleBtn = container.querySelector('#googleRegisterBtn');
   const turnstileContainer = container.querySelector('#turnstile-container');
   const passwordInput = container.querySelector('#registerPassword');
+  const confirmPasswordInput = container.querySelector('#registerPasswordConfirm');
   const togglePasswordBtn = container.querySelector('#toggleRegisterPassword');
   const roleSelect = container.querySelector('select[name="role"]');
   const usernameInput = container.querySelector('input[name="username"]');
@@ -228,9 +230,25 @@ export function renderRegister(container) {
     const formData = Object.fromEntries(new FormData(form).entries());
     formData.tos_accept = formData.tos_accept ? 1 : 0;
     const devFlags = await getDevFlags();
+    const host = (window.location.hostname || '').toLowerCase();
+    const isDevHost = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+    const skipPasswordStrength = !!devFlags.dev_mode && isDevHost;
     const password = (formData.password || '').toString();
+    const confirmPassword = (formData.confirm_password || '').toString();
     clearMessage();
-    if (!devFlags.dev_mode) {
+    clearInvalidField(passwordInput);
+    clearInvalidField(confirmPasswordInput);
+    if (!confirmPassword) {
+      markInvalidField(confirmPasswordInput, 'Please confirm your password.');
+      setMessage('Please confirm your password.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      markInvalidField(confirmPasswordInput, 'Passwords do not match.');
+      setMessage('Passwords do not match.');
+      return;
+    }
+    if (!skipPasswordStrength) {
       const strongEnough =
         password.length >= 10 &&
         /[a-z]/.test(password) &&
@@ -322,14 +340,21 @@ export function renderRegister(container) {
         markInvalidField(form.querySelector('input[name="company_email"]'), 'Please use a company email address.');
         return;
       }
+      const rootDomain = (domain) => {
+        const parts = (domain || '').toLowerCase().split('.').filter(Boolean);
+        if (parts.length < 2) return (domain || '').toLowerCase();
+        return parts.slice(-2).join('.');
+      };
       try {
-        const url = new URL(companySite.startsWith('http') ? companySite : `https://${companySite}`);
-        const host = url.hostname.replace(/^www\./, '');
-        if (!host || !emailDomain.endsWith(host)) {
+        const normalizedInput = /^(https?:)?\/\//i.test(companySite) ? companySite : `https://${companySite}`;
+        const url = new URL(normalizedInput);
+        const host = url.hostname.replace(/^www\./, '').toLowerCase();
+        if (!host || rootDomain(emailDomain) !== rootDomain(host)) {
           markInvalidField(form.querySelector('input[name="company_email"]'), 'Email must match website domain.');
           markInvalidField(form.querySelector('input[name="company_site"]'), 'Website must match email domain.');
           return;
         }
+        formData.company_site = `${url.protocol}//${url.hostname}`;
       } catch (err) {
         markInvalidField(form.querySelector('input[name="company_site"]'), 'Please enter a valid company website URL.');
         return;

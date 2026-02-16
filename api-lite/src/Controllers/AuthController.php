@@ -112,6 +112,36 @@ class AuthController {
     return in_array($domain, $blocked, true);
   }
 
+  private function normalizeCompanySite(string $companySite): ?string {
+    $companySite = trim($companySite);
+    if ($companySite === '') return null;
+    if (!preg_match('/^https?:\\/\\//i', $companySite)) {
+      $companySite = 'https://' . $companySite;
+    }
+    $parts = parse_url($companySite);
+    if (!is_array($parts)) return null;
+    $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+    $host = strtolower((string) ($parts['host'] ?? ''));
+    if (!in_array($scheme, ['http', 'https'], true) || $host === '') return null;
+    return $scheme . '://' . $host;
+  }
+
+  private function rootDomain(string $domain): string {
+    $domain = strtolower(trim($domain));
+    if ($domain === '') return '';
+    $parts = array_values(array_filter(explode('.', $domain)));
+    if (count($parts) < 2) return $domain;
+    return $parts[count($parts) - 2] . '.' . $parts[count($parts) - 1];
+  }
+
+  private function canSkipPasswordStrength(): bool {
+    $devMode = ($_ENV['DEV_MODE'] ?? '') === '1' || ($this->settings->get('dev_mode') === '1');
+    if (!$devMode) return false;
+    $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+    $host = preg_replace('/:\\d+$/', '', $host) ?? $host;
+    return in_array($host, ['localhost', '127.0.0.1', '::1'], true);
+  }
+
   public function register(): array {
     if ($blocked = $this->rateLimit('register', 5, 600)) {
       return $blocked;
@@ -127,15 +157,20 @@ class AuthController {
     $username = trim($data['username'] ?? '');
     $email = trim($data['email'] ?? '');
     $password = (string) ($data['password'] ?? '');
+    $confirmPassword = (string) ($data['confirm_password'] ?? '');
     $tosAccept = !empty($data['tos_accept']);
     $role = $data['role'] === 'employer' ? 'employer' : 'employee';
     $companyName = trim($data['company'] ?? $data['company_name'] ?? '');
     $companySite = trim($data['company_site'] ?? '');
     $companyEmail = trim($data['company_email'] ?? '');
 
-    if (!$username || !$email || !$password) {
+    if (!$username || !$email || !$password || !$confirmPassword) {
       http_response_code(422);
       return ['error' => 'Missing required fields'];
+    }
+    if ($password !== $confirmPassword) {
+      http_response_code(422);
+      return ['error' => 'Passwords do not match'];
     }
     if ($this->isDisposableDomain($email)) {
       http_response_code(422);
@@ -145,9 +180,31 @@ class AuthController {
       http_response_code(422);
       return ['error' => 'Terms not accepted'];
     }
+    if ($role === 'employer') {
+      if ($companySite === '' || $companyEmail === '') {
+        http_response_code(422);
+        return ['error' => 'Company website and company email are required for employer accounts.'];
+      }
+      $freeDomains = ['gmail.com','yahoo.com','outlook.com','hotmail.com','icloud.com','aol.com','proton.me','protonmail.com'];
+      $emailDomain = strtolower((string) (explode('@', $companyEmail)[1] ?? ''));
+      if ($emailDomain === '' || in_array($emailDomain, $freeDomains, true)) {
+        http_response_code(422);
+        return ['error' => 'Please use a company email address.'];
+      }
+      $normalizedSite = $this->normalizeCompanySite($companySite);
+      if ($normalizedSite === null) {
+        http_response_code(422);
+        return ['error' => 'Please enter a valid company website URL.'];
+      }
+      $siteHost = strtolower((string) parse_url($normalizedSite, PHP_URL_HOST));
+      if ($this->rootDomain($emailDomain) !== $this->rootDomain(preg_replace('/^www\\./', '', $siteHost))) {
+        http_response_code(422);
+        return ['error' => 'Company email must match company website domain.'];
+      }
+      $companySite = $normalizedSite;
+    }
 
-    $devMode = ($_ENV['DEV_MODE'] ?? '') === '1' || ($this->settings->get('dev_mode') === '1');
-    if (!$devMode) {
+    if (!$this->canSkipPasswordStrength()) {
       $strongEnough =
         strlen($password) >= 10 &&
         preg_match('/[a-z]/', $password) &&
