@@ -72,7 +72,7 @@ export const CONFIG = {
     COMPANY_BUSINESS_THING: 'Job', // or "Pet", etc.
     COMPANY_BUSINESS_THING_PLURAL: 'Jobs', // or "Pets"
     COMPANY_ENTITY_LABEL: 'Company page',
-    LOGO_URL: '/logo.svg',
+    LOGO_URL: '/jabbard_logo.webp',
     EMAIL_FROM_NAME: 'Jabbard', // display name for system emails
     APP_DOMAIN,
     WEBSITE_URL: `https://${APP_DOMAIN}`, // used by frontend links

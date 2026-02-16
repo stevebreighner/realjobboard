@@ -25,6 +25,11 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     align-items: center;
     gap: 0.5rem;
   }
+  .logo:hover,
+  .logo:focus,
+  .logo:focus-visible {
+    text-decoration: none;
+  }
   .logo img {
     width: 28px;
     height: 28px;
@@ -91,7 +96,7 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
     box-shadow: none;
   }
 
-  @media (max-width: 640px) {
+  @media (max-width: 920px) {
     .menu-toggle {
       display: block;
       width: auto !important;
