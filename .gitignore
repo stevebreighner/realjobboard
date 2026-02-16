@@ -29,6 +29,3 @@ api-lite/logs/
 uploads/
 api-lite/uploads/
 utils/bin/
-# Host-specific SEO files managed separately per environment (dev vs live)
-robots.txt
-sitemap.xml
