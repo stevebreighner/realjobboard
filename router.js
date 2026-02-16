@@ -32,27 +32,24 @@ import { renderSavedSearches } from './views/savedSearches.js';
 import { renderCompleteProfile } from './views/completeProfile.js';
 import { renderNotFound } from './views/notFound.js';
 import { renderAnalytics } from './views/analytics.js';
+import { parseHashLocation, parsePathLocation, routeToPath } from './utils/routes.js';
 
-function parseHash() {
-  const rawHash = window.location.hash.slice(1);
-  const [pathPart, queryString = ''] = rawHash.split('?');
-  const normalizedPathPart = (pathPart || '').replace(/^\/+/, '').replace(/\/+$/, '');
-  const params = Object.fromEntries(new URLSearchParams(queryString));
-  const pathLower = normalizedPathPart.toLowerCase();
-  if (pathLower.startsWith('company/')) {
-    params.slug = normalizedPathPart.split('/').slice(1).join('/') || params.slug;
-    return { path: 'company', params };
-  }
-  return { path: pathLower, params };
-}
-
-function kebabToCamel(str) {
-  return str.replace(/-([a-z])/g, (_, char) => char.toUpperCase());
-}
-
-const protectedRoutes = ['profile', 'updatePassword','post','apply','resume', 'myJobPosts', 'myJobPostDetail', 'myApplications', 'myjobposts', 'myjobpostdetail', 'myapplications', 'admin', 'analytics', 'savedSearches', 'savedsearches', 'saved-searches', 'complete-profile', 'completeProfile'];
-const employerRoutes = ['post', 'myJobPosts', 'myJobPostDetail', 'myjobposts', 'myjobpostdetail'];
+const protectedRoutes = ['profile', 'updatePassword', 'post', 'apply', 'resume', 'myJobPosts', 'myJobPostDetail', 'myApplications', 'admin', 'analytics', 'savedSearches', 'completeProfile'];
+const employerRoutes = ['post', 'myJobPosts', 'myJobPostDetail'];
 const adminRoutes = ['admin', 'analytics'];
+
+function currentViewPath() {
+  return `${window.location.pathname}${window.location.search}`;
+}
+
+export function navigateTo(route, params = {}, replace = false) {
+  const target = routeToPath(route, params);
+  if (replace) {
+    window.history.replaceState({}, '', target);
+  } else {
+    window.history.pushState({}, '', target);
+  }
+}
 
 export async function router() {
   
@@ -62,16 +59,27 @@ export async function router() {
     app.style.transition = 'opacity 120ms ease';
     app.style.visibility = 'hidden';
   }
-  const currentHash = window.location.hash || '#home';
-  const prevHash = sessionStorage.getItem('currentView');
-  if (prevHash && prevHash !== currentHash) {
-    sessionStorage.setItem('lastView', prevHash);
+
+  const currentView = currentViewPath();
+  const prevView = sessionStorage.getItem('currentView');
+  if (prevView && prevView !== currentView) {
+    sessionStorage.setItem('lastView', prevView);
   }
-  sessionStorage.setItem('currentView', currentHash);
-  const { path, params } = parseHash();
-  const normalizedPath = (!path || path === '/') ? 'home' : kebabToCamel(path);
-  console.log('Hash path:', path);
-  console.log('Normalized path:', normalizedPath);
+  sessionStorage.setItem('currentView', currentView);
+
+  const hasHashRoute = !!(window.location.hash && window.location.hash !== '#');
+  const parsed = hasHashRoute
+    ? parseHashLocation(window.location.hash)
+    : parsePathLocation(window.location.pathname, window.location.search);
+  const normalizedPath = parsed.route || 'home';
+  const params = parsed.params || {};
+
+  if (hasHashRoute) {
+    const prettyPath = routeToPath(normalizedPath, params);
+    window.history.replaceState({}, '', prettyPath);
+  }
+
+  console.log('Route:', normalizedPath);
   console.log('Params:', params);
   const scrollToTopAfterRender = () => {
     requestAnimationFrame(() => {
@@ -85,23 +93,26 @@ export async function router() {
   if (protectedRoutes.includes(normalizedPath)) {
     const session = await getSessionCached({ maxAgeMs: 30000 });
     if (!session) {
-      if (window.location.hash && window.location.hash !== '#login') {
-        sessionStorage.setItem('postLoginRedirect', window.location.hash);
+      if (normalizedPath !== 'login') {
+        sessionStorage.setItem('postLoginRedirect', currentViewPath());
       }
-      window.location.hash = '#login';
+      navigateTo('login');
+      router();
       return;
     }
     if (employerRoutes.includes(normalizedPath)) {
       const roles = Array.isArray(session?.roles) ? session.roles : [];
       if (!roles.includes('employer')) {
-        window.location.hash = '#home';
+        navigateTo('home');
+        router();
         return;
       }
     }
     if (adminRoutes.includes(normalizedPath)) {
       const roles = Array.isArray(session?.roles) ? session.roles : [];
       if (!roles.includes('site_admin') && !roles.includes('administrator')) {
-        window.location.hash = '#home';
+        navigateTo('home');
+        router();
         return;
       }
     }
@@ -123,25 +134,22 @@ export async function router() {
     case 'list':
       renderList(app);
       return scrollToTopAfterRender();
-      case 'listDetail':
-        if (params.id) {
-          renderListDetail(app, params.id);
-          return scrollToTopAfterRender();
-        }
-        app.innerHTML = '<h1 class="text-xl">Missing ID for List Detail</h1>';
-        return;
-        case 'myJobPosts':
-        case 'myjobposts':
-  renderMyJobPosts(app);
-  return scrollToTopAfterRender();
-case 'myJobPostDetail':
-case 'myjobpostdetail':
-  renderMyJobPostDetail(app, params.id);
-  return scrollToTopAfterRender();
-case 'myApplications':
-case 'myapplications':
-  renderMyApplications(app);
-  return scrollToTopAfterRender();
+    case 'listDetail':
+      if (params.id) {
+        renderListDetail(app, params.id);
+        return scrollToTopAfterRender();
+      }
+      app.innerHTML = '<h1 class="text-xl">Missing ID for List Detail</h1>';
+      return;
+    case 'myJobPosts':
+      renderMyJobPosts(app);
+      return scrollToTopAfterRender();
+    case 'myJobPostDetail':
+      renderMyJobPostDetail(app, params.id);
+      return scrollToTopAfterRender();
+    case 'myApplications':
+      renderMyApplications(app);
+      return scrollToTopAfterRender();
     case 'post':
       renderPost(app);
       return scrollToTopAfterRender();
@@ -198,32 +206,26 @@ case 'myapplications':
       renderUnsubscribe(app);
       return scrollToTopAfterRender();
     case 'savedSearches':
-    case 'savedsearches':
-    case 'saved-searches':
       renderSavedSearches(app);
       return scrollToTopAfterRender();
     case 'completeProfile':
-    case 'complete-profile':
       await renderCompleteProfile(app);
       return scrollToTopAfterRender();
-        case '2fa':
-          render2FA(app);
-          return scrollToTopAfterRender();
-          // specific to jobboard
-          case 'resume':
-            renderResume(app);
-            return scrollToTopAfterRender();
-        
-          case 'apply':
-  if (params.id) {
-    renderApply(app, params.id);
-    return scrollToTopAfterRender();
-  }
-  app.innerHTML = '<h1 class="text-xl">Missing Job ID for Apply</h1>';
-  return;
-  //end specific
+    case '2fa':
+      render2FA(app);
+      return scrollToTopAfterRender();
+    case 'resume':
+      renderResume(app);
+      return scrollToTopAfterRender();
+    case 'apply':
+      if (params.id) {
+        renderApply(app, params.id);
+        return scrollToTopAfterRender();
+      }
+      app.innerHTML = '<h1 class="text-xl">Missing Job ID for Apply</h1>';
+      return;
     default:
-      renderNotFound(app, path);
+      renderNotFound(app, window.location.pathname || normalizedPath);
       return scrollToTopAfterRender();
   }
 }

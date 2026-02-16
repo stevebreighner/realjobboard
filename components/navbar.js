@@ -1,7 +1,7 @@
 import { CONFIG } from '../config.js';
 import { getSessionCached, clearProfileCache, clearSessionCache, notifyAuthChanged } from '../utils/session.js';
 
-let hasHashListener = false;
+let hasRouteListener = false;
 
 function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
   return `
@@ -168,24 +168,24 @@ function navbarHtml(isLoggedIn, isEmployer, isSiteAdmin) {
 
 
     <nav class="navbar">
-      <a href="/#home" class="logo" aria-label="${CONFIG.COMPANY_NAME}">
+      <a href="/" class="logo" aria-label="${CONFIG.COMPANY_NAME}">
         <img src="${CONFIG.LOGO_URL || '/logo.svg'}" alt="${CONFIG.COMPANY_NAME} logo" />
         <h1 class="logo-name">${CONFIG.COMPANY_NAME}</h1>
         <span class="sr-only">${CONFIG.COMPANY_NAME}</span>
       </a>
       <button id="menuToggle" class="menu-toggle" aria-label="Menu">☰</button>
       <div id="menu" class="menu">
-        <a href="/#list" class="nav-link">${CONFIG.COMPANY_BUSINESS_THING_PLURAL}</a>
-        ${isEmployer ? `<a href="/#post" class="nav-link">Post a ${CONFIG.COMPANY_BUSINESS_THING}</a>` : ''}
-        ${isEmployer ? `<a href="/#my-job-posts" class="nav-link">${CONFIG.JOB_COPY?.MY_POSTS_TITLE || 'My Job Posts'}</a>` : ''}
-        ${isSiteAdmin ? `<a href="/#admin" class="nav-link">Admin</a>` : ''}
-        ${isSiteAdmin ? `<a href="/#analytics" class="nav-link">Analytics</a>` : ''}
-        ${isLoggedIn ? '<a href="/#profile" class="nav-link">Profile</a>' : ''}
-        ${isLoggedIn && !isEmployer ? `<a href="/#saved-searches" class="nav-link">${CONFIG.JOB_COPY?.SAVED_SEARCHES_TITLE || 'Saved Searches'}</a>` : ''}
-        ${isLoggedIn && !isEmployer ? `<a href="/#myApplications" class="nav-link">${CONFIG.JOB_COPY?.MY_APPLICATIONS_TITLE || 'My Applications'}</a>` : ''}
+        <a href="/list" class="nav-link">${CONFIG.COMPANY_BUSINESS_THING_PLURAL}</a>
+        ${isEmployer ? `<a href="/post" class="nav-link">Post a ${CONFIG.COMPANY_BUSINESS_THING}</a>` : ''}
+        ${isEmployer ? `<a href="/my-job-posts" class="nav-link">${CONFIG.JOB_COPY?.MY_POSTS_TITLE || 'My Job Posts'}</a>` : ''}
+        ${isSiteAdmin ? `<a href="/admin" class="nav-link">Admin</a>` : ''}
+        ${isSiteAdmin ? `<a href="/analytics" class="nav-link">Analytics</a>` : ''}
+        ${isLoggedIn ? '<a href="/profile" class="nav-link">Profile</a>' : ''}
+        ${isLoggedIn && !isEmployer ? `<a href="/saved-searches" class="nav-link">${CONFIG.JOB_COPY?.SAVED_SEARCHES_TITLE || 'Saved Searches'}</a>` : ''}
+        ${isLoggedIn && !isEmployer ? `<a href="/my-applications" class="nav-link">${CONFIG.JOB_COPY?.MY_APPLICATIONS_TITLE || 'My Applications'}</a>` : ''}
         ${isLoggedIn
           ? '<a href="#" class="nav-link" id="logoutLink">Logout</a>'
-          : '<a href="/#login" class="nav-link">Login</a>'
+          : '<a href="/login" class="nav-link">Login</a>'
         }
       </div>
     </nav>
@@ -226,15 +226,17 @@ function bindNavbar(container, isLoggedIn) {
       clearSessionCache();
       clearProfileCache();
       notifyAuthChanged(null);
-      window.location.hash = '#login';
+      window.history.pushState({}, '', '/login');
+      window.dispatchEvent(new PopStateEvent('popstate'));
       renderNavbar(container);
     });
   }
 
   highlightActiveLink();
-  if (!hasHashListener) {
+  if (!hasRouteListener) {
+    window.addEventListener('popstate', highlightActiveLink);
     window.addEventListener('hashchange', highlightActiveLink);
-    hasHashListener = true;
+    hasRouteListener = true;
   }
 }
 
@@ -263,9 +265,10 @@ function renderNavbarFromSession(container, session) {
 }
 
 function highlightActiveLink() {
-  const hash = window.location.hash || '#/home';
+  const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
   document.querySelectorAll('.nav-link').forEach(link => {
-    if (link.getAttribute('href') === hash) {
+    const hrefPath = new URL(link.href, window.location.origin).pathname.replace(/\/+$/, '') || '/';
+    if (hrefPath === currentPath) {
       link.style.textDecoration = 'underline';
       link.style.fontWeight = 'bold';
     } else {

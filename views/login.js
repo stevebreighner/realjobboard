@@ -2,6 +2,22 @@ import { start2FA, verify2FA } from './2fa.js';
 import { CONFIG } from '../config.js';
 import { renderNavbar } from '../components/navbar.js';
 import { clearProfileCache, clearSessionCache, getSessionCached, notifyAuthChanged } from '../utils/session.js';
+import { hashToPath } from '../utils/routes.js';
+
+function goTo(path) {
+  window.history.pushState({}, '', path);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
+function normalizeRedirectPath(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '/';
+  if (raw.startsWith('#') || raw.startsWith('/#')) {
+    return hashToPath(raw.startsWith('/#') ? raw.slice(1) : raw);
+  }
+  if (raw.startsWith('/')) return raw;
+  return '/';
+}
 
 export function renderLogin(container) {
   container.innerHTML = `
@@ -40,7 +56,7 @@ export function renderLogin(container) {
       </div>
       <br>
       <div class="mt-4 space-y-3">
-        <a href="/#forgot-password" class="text-blue-600 text-sm block text-center">Forgot Password</a>
+        <a href="/forgot-password" class="text-blue-600 text-sm block text-center">Forgot Password</a>
         <details class="border border-slate-200 rounded p-3">
           <summary class="cursor-pointer text-sm text-slate-700">Email me a magic login link</summary>
           <form id="magicLinkForm" class="space-y-2 mt-3">
@@ -56,7 +72,7 @@ export function renderLogin(container) {
           </form>
         </details>
       </div>
-      <p class="mt-4 text-center">No account? <a href="/#register" class="text-blue-600">Register here</a></p>
+      <p class="mt-4 text-center">No account? <a href="/register" class="text-blue-600">Register here</a></p>
     </div>
   `;
 
@@ -173,9 +189,9 @@ export function renderLogin(container) {
         const redirect = sessionStorage.getItem('postLoginRedirect');
         if (redirect) {
           sessionStorage.removeItem('postLoginRedirect');
-          window.location.hash = redirect;
+          goTo(normalizeRedirectPath(redirect));
         } else {
-          window.location.hash = '#home';
+          goTo('/');
         }
       }
     } else {
@@ -211,9 +227,9 @@ export function renderLogin(container) {
       const redirect = sessionStorage.getItem('postLoginRedirect');
       if (redirect) {
         sessionStorage.removeItem('postLoginRedirect');
-        window.location.hash = redirect;
+        goTo(normalizeRedirectPath(redirect));
       } else {
-        window.location.hash = '#home';
+        goTo('/');
       }
     } else {
       messageEl.className = 'mt-4 text-sm text-red-600';

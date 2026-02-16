@@ -402,7 +402,7 @@ export function renderList(container) {
     };
     sessionStorage.setItem('listState', JSON.stringify(listState));
     const params = new URLSearchParams(listState);
-    sessionStorage.setItem('listHash', `#list?${params.toString()}`);
+    sessionStorage.setItem('listHash', `/list?${params.toString()}`);
 
     const filtered = items.filter(item => {
       const searchText = getSearchText(item);
@@ -702,8 +702,9 @@ export function renderList(container) {
       const session = await getSessionCached({ maxAgeMs: 0, force: true });
       if (!session) {
         sessionStorage.setItem('pendingJobAlert', JSON.stringify({ label, criteria }));
-        sessionStorage.setItem('postLoginRedirect', '#list');
-        window.location.hash = '#login';
+        sessionStorage.setItem('postLoginRedirect', '/list');
+        window.history.pushState({}, '', '/login');
+        window.dispatchEvent(new PopStateEvent('popstate'));
         return;
       }
       try {
@@ -796,8 +797,8 @@ export function renderList(container) {
                   <div class="absolute inset-y-0 left-0 w-1 rounded-l-2xl bg-gradient-to-b from-indigo-500 via-pink-500 to-amber-400 opacity-70"></div>
                   <div class="flex items-start justify-between gap-3">
                     <div>
-                      <a href="/#list-detail?id=${id}" data-detail-id="${id}" class="js-view-detail text-2xl font-semibold text-slate-900 hover:text-slate-900 hover:no-underline">${title}</a>
-                      ${company ? `<div class="text-sm text-slate-600 mt-1">${safeCompanySlug ? `<a class="hover:underline" href="/#company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany}</div>` : ''}
+                      <a href="/list-detail/${id}" data-detail-id="${id}" class="js-view-detail text-2xl font-semibold text-slate-900 hover:text-slate-900 hover:no-underline">${title}</a>
+                      ${company ? `<div class="text-sm text-slate-600 mt-1">${safeCompanySlug ? `<a class="hover:underline" href="/company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany}</div>` : ''}
                     </div>
                     <div class="flex items-center gap-2">
                       ${isNew ? `<span class="text-[11px] bg-emerald-100 text-emerald-800 px-2 py-1 rounded-full">New</span>` : ''}
@@ -842,7 +843,7 @@ export function renderList(container) {
                       <button data-save-id="${id}" class="text-xs px-3 py-1.5 rounded-full border border-indigo-300 text-indigo-700 hover:border-indigo-500 transition ${isSaved ? 'bg-amber-50 text-amber-700 border-amber-300' : ''}">
                         ${isSaved ? 'Saved' : 'Save'}
                       </button>
-                      <a href="/#list-detail?id=${id}" data-detail-id="${id}" class="js-view-detail inline-flex items-center gap-2 text-indigo-700 border border-indigo-300 px-2.5 py-1 rounded-full hover:border-indigo-500 transition">
+                      <a href="/list-detail/${id}" data-detail-id="${id}" class="js-view-detail inline-flex items-center gap-2 text-indigo-700 border border-indigo-300 px-2.5 py-1 rounded-full hover:border-indigo-500 transition">
                         View
                         <span aria-hidden="true">→</span>
                       </a>
@@ -867,7 +868,8 @@ export function renderList(container) {
             app.style.opacity = '0';
             app.style.visibility = 'hidden';
           }
-          window.location.hash = `#list-detail?id=${id}`;
+          window.history.pushState({}, '', `/list-detail/${id}`);
+          window.dispatchEvent(new PopStateEvent('popstate'));
         }, { once: true });
       });
     }

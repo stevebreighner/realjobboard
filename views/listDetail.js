@@ -215,7 +215,7 @@ export async function renderListDetail(container, id) {
       <div class="border border-slate-200 rounded-2xl p-6 bg-white shadow-sm">
         <div class="flex items-start justify-between gap-4 mb-4">
           <div>
-            <p class="text-xs uppercase tracking-wide text-slate-500">${CONFIG.JOB_COPY?.POSTED_BY || 'Posted by'} ${company ? (safeCompanySlug ? `<a class="text-indigo-600 hover:underline" href="/#company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany) : (CONFIG.JOB_COPY?.POSTED_BY_FALLBACK || 'Employer')} • ${safeDate}</p>
+            <p class="text-xs uppercase tracking-wide text-slate-500">${CONFIG.JOB_COPY?.POSTED_BY || 'Posted by'} ${company ? (safeCompanySlug ? `<a class="text-indigo-600 hover:underline" href="/company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany) : (CONFIG.JOB_COPY?.POSTED_BY_FALLBACK || 'Employer')} • ${safeDate}</p>
             <h1 class="text-2xl font-semibold text-slate-900 mt-2">${safeTitle}</h1>
           </div>
           <div class="flex items-center gap-2">
@@ -227,7 +227,7 @@ export async function renderListDetail(container, id) {
           ${formatRate() ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>Rate:</strong> ${formatRate()}</span>` : ''}
           ${employmentTypeLabel ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>Employment:</strong> ${escapeHtml(employmentTypeLabel)}</span>` : ''}
           ${jobTypeLabel ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>Type:</strong> ${escapeHtml(jobTypeLabel)}</span>` : ''}
-          ${company ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>${CONFIG.JOB_COPY?.COMPANY_LABEL || 'Company'}</strong> ${safeCompanySlug ? `<a class="text-indigo-600 hover:underline" href="/#company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany}</span>` : ''}
+          ${company ? `<span class="px-3 py-1.5 rounded-full bg-slate-100"><strong>${CONFIG.JOB_COPY?.COMPANY_LABEL || 'Company'}</strong> ${safeCompanySlug ? `<a class="text-indigo-600 hover:underline" href="/company/${safeCompanySlug}">${safeCompany}</a>` : safeCompany}</span>` : ''}
           ${locationLine.trim() ? `<span class="px-3 py-1.5 rounded-full bg-slate-100" id="jobLocationLine"><strong>Location:</strong> ${escapeHtml(locationLine)}</span>` : ''}
         </div>
         <div class="prose mb-4">${safeDesc}</div>
@@ -297,19 +297,20 @@ export async function renderListDetail(container, id) {
               </div>
             </div>
           ` : `
-            <p class="text-sm text-gray-600">Please <a href="/#login" class="text-indigo-600 hover:underline">log in</a> to message this employer.</p>
+            <p class="text-sm text-gray-600">Please <a href="/login" class="text-indigo-600 hover:underline">log in</a> to message this employer.</p>
           `}
         </div>
       </div>
 
       <div class="mt-6 text-xs text-gray-500 flex items-center justify-between">
-        <a href="${sessionStorage.getItem('listHash') || '/#list'}" class="text-blue-600 hover:underline">← Back to List</a>
-        <a class="text-blue-600 hover:underline" href="/#support?subject=Report%20Abuse&context=job:${id}">${CONFIG.JOB_COPY?.REPORT_ABUSE || 'Report abuse'}</a>
+        <a href="${sessionStorage.getItem('listHash') || '/list'}" class="text-blue-600 hover:underline">← Back to List</a>
+        <a class="text-blue-600 hover:underline" href="/support?subject=Report%20Abuse&context=job:${id}">${CONFIG.JOB_COPY?.REPORT_ABUSE || 'Report abuse'}</a>
       </div>
     `;
 
     document.getElementById('submitAction')?.addEventListener('click', () => {
-      window.location.hash = `#apply?id=${id}`;
+      window.history.pushState({}, '', `/apply/${id}`);
+      window.dispatchEvent(new PopStateEvent('popstate'));
     });
 
     applyDistance();
