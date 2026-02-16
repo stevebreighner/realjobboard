@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://js.stripe.com https://challenges.cloudflare.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.zippopotam.us https://formspree.io https://api.stripe.com https://js.stripe.com https://challenges.cloudflare.com; frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://challenges.cloudflare.com; font-src 'self' data: https:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com https://challenges.cloudflare.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.zippopotam.us https://formspree.io https://api.stripe.com https://js.stripe.com https://challenges.cloudflare.com; frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://challenges.cloudflare.com; font-src 'self' data: https:;">
   <title>Jabbard</title>
   <meta name="description" content="A job search site with privacy-first applications and smarter matching." />
   <meta property="og:title" content="Jabbard" />
@@ -15,8 +15,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
 
-   <!-- Tailwind CSS CDN -->
-  <script defer src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/styles/tailwind.min.css" />
 <style>:root {
   --site-font: system-ui;
   font-family: var(--site-font), Avenir, Helvetica, Arial, sans-serif;
