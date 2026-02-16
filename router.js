@@ -36,10 +36,11 @@ import { renderAnalytics } from './views/analytics.js';
 function parseHash() {
   const rawHash = window.location.hash.slice(1);
   const [pathPart, queryString = ''] = rawHash.split('?');
+  const normalizedPathPart = (pathPart || '').replace(/^\/+/, '').replace(/\/+$/, '');
   const params = Object.fromEntries(new URLSearchParams(queryString));
-  const pathLower = pathPart.toLowerCase();
+  const pathLower = normalizedPathPart.toLowerCase();
   if (pathLower.startsWith('company/')) {
-    params.slug = pathPart.split('/').slice(1).join('/') || params.slug;
+    params.slug = normalizedPathPart.split('/').slice(1).join('/') || params.slug;
     return { path: 'company', params };
   }
   return { path: pathLower, params };
